@@ -79,3 +79,18 @@ assignment's weight and sent to the SRMS as a percentage.
 
 A staging and demonstration copy runs on Railway in the project "GSA Ecosystem", beside the other two
 systems, with fictional data only. How it is built and configured: [deploy/railway/README.md](deploy/railway/README.md).
+
+## Demonstration data
+
+The LMS owns no person and no class list, so `seed_demo` first pulls sites and class lists from the SRMS
+and names from the HRMS, then adds two weeks of content, an announcement, two assignments, submissions and
+marks to each course site, and one staff-development site with a completion. Load the demonstration data of
+the HRMS and the SRMS first. **Never run it on a database that holds real records.**
+
+```bash
+docker compose exec api python manage.py seed_demo --fictional
+docker compose exec api python manage.py sync_ecosystem --push-marks --push-training
+```
+
+The second command returns the coursework totals to the SRMS and reports the completion to the HRMS. Both
+are idempotent.

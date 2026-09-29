@@ -50,7 +50,7 @@ def ecosystem(settings, monkeypatch):
 
     settings.SRMS_API_URL, settings.SRMS_API_KEY = "http://srms-api:8000", "k"
     settings.HRMS_API_URL, settings.HRMS_API_KEY = "http://hrms-api:8000", "k"
-    state = {"roster": list(ROSTER), "posted": []}
+    state = {"roster": list(ROSTER), "staff": [STAFF], "posted": []}
 
     def fake_pages(base, key, path, params=None):
         if "offerings" in path:
@@ -58,7 +58,7 @@ def ecosystem(settings, monkeypatch):
         if "enrolments" in path:
             return iter(state["roster"])
         if "staff" in path:
-            return iter([STAFF])
+            return iter(state["staff"])
         raise AssertionError(path)
 
     def fake_call(base, key, path, params=None, data=None):
@@ -82,6 +82,7 @@ def ecosystem(settings, monkeypatch):
     monkeypatch.setattr(srms, "pages", fake_pages)
     monkeypatch.setattr(srms, "call", fake_call)
     monkeypatch.setattr(hrms, "call", fake_call)
+    monkeypatch.setattr(hrms, "pages", fake_pages)
     return state
 
 
@@ -167,3 +168,63 @@ def test_a_key_held_by_the_platform_is_registered_without_being_printed(monkeypa
             "create_service_client", name="sibling", scopes=["sites:read"], key_env="SERVICE_KEY_TEST"
         )
     assert ServiceClient.authenticate(key) is not None
+
+
+@pytest.mark.django_db
+def test_demonstration_content_follows_the_class_lists_and_is_idempotent(seeded, ecosystem):
+    from decimal import Decimal
+
+    from django.core.management import CommandError, call_command
+
+    from assessments.models import Assignment
+    from assessments.services import coursework_percent
+    from courses.models import Announcement, ContentItem, Module
+
+    with pytest.raises(CommandError):
+        call_command("seed_demo", verbosity=0)
+    assert not CourseSite.objects.exists()
+
+    ecosystem["roster"] = ROSTER + [
+        {"student_no": "26MRP0003", "first_name": "Joshua", "last_name": "Henry", "campus_code": "MRP"},
+        {"student_no": "26MRP0004", "first_name": "Alicia", "last_name": "Gomes", "campus_code": "MRP"},
+    ]
+    ecosystem["staff"] = [
+        STAFF,
+        {**STAFF, "employee_no": "E0006", "first_name": "Natasha", "last_name": "Khan"},
+    ]
+
+    def counts():
+        return tuple(
+            model.objects.count()
+            for model in (
+                CourseSite,
+                Module,
+                ContentItem,
+                Announcement,
+                Assignment,
+                Submission,
+                Mark,
+                Completion,
+            )
+        )
+
+    call_command("seed_demo", fictional=True, verbosity=0)
+    first = counts()
+    call_command("seed_demo", fictional=True, verbosity=0)
+    assert counts() == first == (2, 3, 4, 1, 2, 3, 2, 1)
+
+    site = CourseSite.objects.get(code=OFFERING["code"])
+    assert site.is_published and site.announcements.get().author.external_id == "E0001"
+    people = {p.last_name: p for p in PersonRef.objects.filter(kind="student")}
+    # name order: Gomes and Henry are marked, Ramnarine waits for a mark, Singh has not submitted
+    assert coursework_percent(site, people["Gomes"]) == Decimal("84.00")
+    assert coursework_percent(site, people["Henry"]) == Decimal("76.00")
+    assert coursework_percent(site, people["Ramnarine"]) is None
+    assert coursework_percent(site, people["Singh"]) == Decimal("0.00")
+    assert Submission.objects.get(student=people["Henry"]).is_late
+
+    # the staff-development site takes only staff the HRMS knows, and one of them has completed it
+    staff_site = CourseSite.objects.get(code="SD-101")
+    assert staff_site.kind == "staff_development" and staff_site.source == "local"
+    assert [m.person.external_id for m in staff_site.memberships.all()] == ["E0006"]
+    assert staff_site.completions.get().person.full_name == "Natasha Khan"

@@ -4,9 +4,30 @@ from django.conf import settings
 from django.utils import timezone
 
 from courses.models import Completion, CourseSite
-from integration.client import call
+from integration.client import call, pages
 from integration.models import CampusRef
 from people.models import PersonRef
+
+
+def staff_refs(employee_nos: list[str]) -> list[PersonRef]:
+    """References for the named staff, from the HRMS directory. Staff the HRMS does not know are left out."""
+    wanted = set(employee_nos)
+    people = []
+    for row in pages(settings.HRMS_API_URL, settings.HRMS_API_KEY, "/api/v1/integration/staff/"):
+        if row["employee_no"] in wanted:
+            person, _ = PersonRef.objects.update_or_create(
+                kind=PersonRef.Kind.STAFF,
+                external_id=row["employee_no"],
+                defaults={
+                    "first_name": row.get("first_name", ""),
+                    "last_name": row.get("last_name", ""),
+                    "email": row.get("email") or "",
+                    "campus_code": row.get("campus_code") or "",
+                    "is_active": True,
+                },
+            )
+            people.append(person)
+    return people
 
 
 def sync_org() -> dict:
