@@ -148,3 +148,22 @@ def test_integration_api_requires_a_scoped_key(site):
     client.credentials(HTTP_AUTHORIZATION=f"Api-Key {key}")
     body = client.get("/api/v1/integration/sites/").json()
     assert body["count"] == 1 and body["results"][0]["code"] == site.code
+
+
+@pytest.mark.django_db
+def test_a_key_held_by_the_platform_is_registered_without_being_printed(monkeypatch, capsys):
+    from django.core.management import CommandError, call_command
+
+    key = "k" * 43
+    monkeypatch.setenv("SERVICE_KEY_TEST", key)
+    call_command("create_service_client", name="sibling", scopes=["sites:read"], key_env="SERVICE_KEY_TEST")
+    assert key not in capsys.readouterr().out
+    client = ServiceClient.authenticate(key)
+    assert client is not None and client.name == "sibling" and client.scopes == ["sites:read"]
+
+    monkeypatch.setenv("SERVICE_KEY_TEST", "too-short")
+    with pytest.raises(CommandError):
+        call_command(
+            "create_service_client", name="sibling", scopes=["sites:read"], key_env="SERVICE_KEY_TEST"
+        )
+    assert ServiceClient.authenticate(key) is not None
