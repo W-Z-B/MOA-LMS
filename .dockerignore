@@ -1,0 +1,16 @@
+# Used when the build context is the repository root (deploy/railway/Dockerfile).
+.git
+.github
+.env
+.env.*
+!.env.example
+docs
+**/node_modules
+**/__pycache__
+**/*.py[cod]
+**/.pytest_cache
+**/.ruff_cache
+web/dist
+api/staticfiles
+api/media
+api/db.sqlite3

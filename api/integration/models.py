@@ -7,6 +7,7 @@ import secrets
 from django.db import models
 
 PREFIX_LENGTH = 8
+MIN_KEY_LENGTH = 32
 
 
 def _hash(key: str) -> str:
@@ -31,6 +32,13 @@ class ServiceClient(models.Model):
     def issue(cls, name: str, scopes: list[str]) -> tuple["ServiceClient", str]:
         """Create or rotate a client. Returns the client and the key, which is shown only once."""
         key = secrets.token_urlsafe(32)
+        return cls.register(name, scopes, key), key
+
+    @classmethod
+    def register(cls, name: str, scopes: list[str], key: str) -> "ServiceClient":
+        """Create or rotate a client with a key that the caller already holds (a shared platform secret)."""
+        if len(key) < MIN_KEY_LENGTH:
+            raise ValueError(f"A service key must be at least {MIN_KEY_LENGTH} characters long.")
         client, _ = cls.objects.update_or_create(
             name=name,
             defaults={
@@ -40,7 +48,7 @@ class ServiceClient(models.Model):
                 "is_active": True,
             },
         )
-        return client, key
+        return client
 
     @classmethod
     def authenticate(cls, key: str) -> "ServiceClient | None":

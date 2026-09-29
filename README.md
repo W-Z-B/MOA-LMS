@@ -74,3 +74,8 @@ assignment's weight and sent to the SRMS as a percentage.
   decision recorded in the ecosystem architecture document.
 - Never commit secrets. `.env` is ignored; `.env.example` holds placeholders only.
 - Branching: trunk-based, `feature/<area>-<name>` branches, pull request with green CI into `main`.
+
+## Hosted staging (Railway)
+
+A staging and demonstration copy runs on Railway in the project "GSA Ecosystem", beside the other two
+systems, with fictional data only. How it is built and configured: [deploy/railway/README.md](deploy/railway/README.md).

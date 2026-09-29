@@ -1,0 +1,35 @@
+{
+	# TLS ends at the platform's edge, which forwards plain HTTP to this container.
+	auto_https off
+	admin off
+	servers {
+		trusted_proxies static private_ranges 100.64.0.0/10
+	}
+}
+
+:{$PORT:8080} {
+	encode zstd gzip
+
+	@app path /api/* /admin/*
+	handle @app {
+		reverse_proxy 127.0.0.1:8000 {
+			header_up X-Forwarded-Proto https
+		}
+	}
+	handle_path /static/* {
+		root * /app/staticfiles
+		file_server
+	}
+	handle {
+		root * /srv/web
+		try_files {path} /index.html
+		file_server
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+	}
+}
