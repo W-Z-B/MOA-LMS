@@ -4,7 +4,19 @@
 set -euo pipefail
 cd /app
 
-python manage.py migrate --noinput
+# The database may still be starting, or restarting, when this container starts: never wait on a
+# dead connection, and retry for about two minutes before giving up.
+export PGCONNECT_TIMEOUT="${PGCONNECT_TIMEOUT:-10}"
+attempt=1
+until python manage.py migrate --noinput; do
+  if [ "$attempt" -ge 10 ]; then
+    echo "Migrations failed after $attempt attempts."
+    exit 1
+  fi
+  echo "Database not ready or migration failed (attempt $attempt); retrying in 3 seconds."
+  attempt=$((attempt + 1))
+  sleep 3
+done
 python manage.py seed --country GY
 
 # First administrator, from variables the owner sets on the platform. Remove the password
