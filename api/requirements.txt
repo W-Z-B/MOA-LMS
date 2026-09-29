@@ -1,0 +1,16 @@
+# All packages below are MIT, BSD or Apache 2.0 licensed. See docs/adr/0001-stack-selection.md.
+django>=5.2,<6
+djangorestframework>=3.15
+drf-spectacular>=0.27
+procrastinate[django]>=2.9
+psycopg[binary]>=3.2
+gunicorn>=23
+cryptography>=43
+pyotp>=2.9
+weasyprint>=62
+openpyxl>=3.1
+django-cors-headers>=4.4
+# development and test
+pytest>=8
+pytest-django>=4.8
+ruff>=0.6

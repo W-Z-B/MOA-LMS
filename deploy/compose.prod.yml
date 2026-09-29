@@ -1,0 +1,40 @@
+# Production overrides. Usage:
+#   docker compose -f compose.yml -f deploy/compose.prod.yml up -d
+services:
+  api:
+    command: gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 4 --timeout 60
+    volumes:
+      - files:/srv/files
+    restart: unless-stopped
+
+  worker:
+    volumes:
+      - files:/srv/files
+    restart: unless-stopped
+
+  web:
+    # Built static bundle served by Caddy; the dev server is not used in production.
+    build:
+      context: ./web
+    command: sh -c "npm ci && npm run build && cp -r dist/. /srv/web/"
+    volumes:
+      - web_dist:/srv/web
+    restart: "no"
+
+  caddy:
+    volumes:
+      - ./deploy/Caddyfile.prod:/etc/caddy/Caddyfile:ro
+      - web_dist:/srv/web:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    restart: unless-stopped
+
+  db:
+    restart: unless-stopped
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - backups:/backups
+
+volumes:
+  web_dist:
+  backups:

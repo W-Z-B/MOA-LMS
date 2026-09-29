@@ -1,0 +1,35 @@
+# secrets and local config
+.env
+*.pem
+*.key
+*.crt
+secrets/
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+api/staticfiles/
+api/media/
+api/db.sqlite3
+
+# node
+node_modules/
+web/dist/
+web/dev-dist/
+*.tsbuildinfo
+
+# docker volumes and data
+data/
+backups/
+
+# editors and os
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

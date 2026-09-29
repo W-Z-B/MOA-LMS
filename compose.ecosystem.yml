@@ -1,0 +1,19 @@
+# Optional override that joins this stack to the shared GSA ecosystem network.
+#
+#   docker network create gsa-ecosystem        # once per host
+#   docker compose -f compose.yml -f compose.ecosystem.yml up -d
+services:
+  api:
+    networks:
+      default: {}
+      ecosystem:
+        aliases: [lms-api]
+  worker:
+    networks:
+      default: {}
+      ecosystem: {}
+
+networks:
+  ecosystem:
+    name: gsa-ecosystem
+    external: true

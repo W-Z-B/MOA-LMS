@@ -1,0 +1,35 @@
+{
+	# Non-standard host port in development: do not redirect HTTP to port 443.
+	auto_https disable_redirects
+}
+
+# Reverse proxy and TLS. {$DOMAIN} comes from the environment.
+# Local development: lms.localhost gets an internal certificate automatically.
+# Production on a public name: Caddy obtains and renews a Let's Encrypt certificate.
+# Isolated LAN: replace "tls internal" with "tls /certs/gsa.crt /certs/gsa.key".
+
+{$DOMAIN} {
+	encode zstd gzip
+	tls internal
+
+	handle /api/* {
+		reverse_proxy api:8000
+	}
+	handle /admin/* {
+		reverse_proxy api:8000
+	}
+	handle /static/* {
+		reverse_proxy api:8000
+	}
+	handle {
+		# development: Vite dev server; production compose serves /srv/web instead
+		reverse_proxy web:5173
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+	}
+}
