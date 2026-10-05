@@ -41,6 +41,12 @@ class Submission(TimeStampedModel):
         max_length=255, blank=True, help_text="The name the file had when handed in; used for downloads"
     )
     submitted_at = models.DateTimeField()
+    client_submitted_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When the device says it was handed in, for work sent later from its offline queue. "
+        "Server time decides lateness; this is shown to teaching staff, who may excuse it by an extension.",
+    )
     is_late = models.BooleanField(default=False)
 
     class Meta:

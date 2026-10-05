@@ -23,6 +23,7 @@ urlpatterns = [
     path("api/v1/", include("practicals.api")),
     path("api/v1/", include("courses.api")),
     path("api/v1/", include("audit.urls")),
+    path("api/v1/", include("core.urls")),
     path("api/v1/privacy/", include("privacy.urls")),
     path("api/v1/", include(run_urls)),
     path("api/v1/approvals/", include("approvals.urls")),

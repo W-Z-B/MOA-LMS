@@ -1,17 +1,52 @@
-/* Design tokens from the wireframe frame: paper ground, GSA green accent, system type. */
+/* Public Sans, served by the app itself (SIL Open Font Licence 1.1, web/public/fonts/OFL.txt): nothing is
+   fetched from a third party, so no visitor's address leaves and the Content-Security-Policy stands. */
+@font-face {
+  font-family: "Public Sans";
+  src: url("/fonts/public-sans-latin-wght.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Design tokens (item 2.07, as the HRMS's item 2.30): the crest's colours, a thin yellow band above a deep
+   green header, shared by every GSA system; each system has its own accent for actions (HRMS green, SRMS
+   blue, LMS amber). The LMS's is a deep ochre amber: white on it is 6.0:1, it on the paper ground 5.6:1 and
+   on its tint 5.2:1; its light form on the deep green header is 7.5:1. Every pairing of text and ground
+   below meets WCAG AA. */
 :root {
   --paper: #f6f7f3;
   --card: #ffffff;
   --ink: #1c2320;
+  --ink-2: #3d4640;
+  --ink-3: #4a544c;
   --muted: #5f695f;
-  --accent: #8A4B12;
+  --accent: #875a00;
+  --accent-hover: #6f4a00;
   --accent-ink: #ffffff;
-  --rule: #d5dbd0;
+  /* The accent where it sits on the deep green header (the active tab on a phone). */
+  --accent-on-dark: #f2b234;
+  --header: #06331f;
+  --header-ink: #d9e7de;
+  --header-sub: #a8c9b6;
+  --band: #fcf303;
+  --rule: #e1e6dc;
+  --rule-soft: #eef1eb;
+  --field: #c6d2c9;
   --stripe: #edf1e8;
+  --head-row: #f8faf6;
+  --hover-row: #f6f3ec;
+  --tint: #f8eedb;
+  --tint-ink: #6f4a00;
   --danger: #9a2f2f;
-  --amber: #9a6a14;
-  --nav-w: 200px;
-  --topbar-h: 52px;
+  --danger-bg: #f7e4e2;
+  /* Amber for lines and dots; --amber-text for small text on light grounds (5.7:1 on --warn-bg). */
+  --amber: #c9971a;
+  --amber-text: #7d5610;
+  --warn-bg: #f6eedb;
+  --radius-card: 12px;
+  --radius-control: 8px;
+  --masthead-h: 68px;
+  --tabbar-h: 72px;
   color-scheme: light;
 }
 
@@ -29,16 +64,26 @@ body,
 body {
   background: var(--paper);
   color: var(--ink);
-  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  /* Public Sans where it is installed (the design's face); the system's own sans-serif elsewhere. */
+  font: 14px/1.5 "Public Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
 h1 {
-  font-size: 26px;
+  font-size: 28px;
+  line-height: 1.2;
+  font-weight: 700;
+  letter-spacing: -0.01em;
   margin: 0 0 16px;
 }
 h2 {
-  font-size: 18px;
+  font-size: 17px;
   margin: 24px 0 8px;
+}
+a {
+  color: var(--accent);
+}
+a:hover {
+  color: var(--accent-hover);
 }
 .muted {
   color: var(--muted);
@@ -65,122 +110,680 @@ h2 {
   clip: rect(0 0 0 0);
 }
 
-/* Shell: top bar, side navigation, content. */
-.shell {
-  display: grid;
-  grid-template-columns: var(--nav-w) minmax(0, 1fr);
-  grid-template-rows: var(--topbar-h) minmax(0, 1fr);
-  min-height: 100%;
+/* The frame (item 2.07): a deep green header under a thin yellow band, with Home, search, To do,
+   notifications and the person's menu. No side menu: pages take the full width, under a breadcrumb. */
+/* The page scrolls in its own area between the header and (on a phone) the tabs, as the design draws it:
+   nothing is ever laid over the page, so no control is half hidden under the header or the tabs. */
+.frame {
+  height: 100vh;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
 }
-.topbar {
-  grid-column: 1 / -1;
+.scroller {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.masthead {
+  position: relative;
+  z-index: 10;
+  flex: none;
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 0 16px;
-  background: var(--accent);
-  color: var(--accent-ink);
+  gap: 20px;
+  height: calc(var(--masthead-h) + 6px);
+  padding: 0 28px;
+  border-top: 6px solid var(--band);
+  background: var(--header);
+  color: #ffffff;
+}
+.home-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: none;
+  color: #ffffff;
+  text-decoration: none;
+}
+.home-link:hover {
+  color: #ffffff;
+}
+.home-link:focus-visible,
+.masthead :focus-visible,
+.tabbar :focus-visible {
+  outline: 2px solid var(--band);
+  outline-offset: 2px;
+}
+.crest {
+  display: inline-block;
+  flex: none;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--band);
+}
+.crest img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.crest-32 {
+  width: 32px;
+  height: 32px;
+}
+.crest-40 {
+  width: 40px;
+  height: 40px;
+}
+.crest-72 {
+  width: 72px;
+  height: 72px;
+}
+.crest-140 {
+  width: 140px;
+  height: 140px;
 }
 .brand {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+.brand-name {
+  font-size: 15px;
   font-weight: 700;
   letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.brand-sub {
+  font-size: 12px;
+  color: var(--header-sub);
+  white-space: nowrap;
 }
 .spacer {
   flex: 1;
 }
-.user small {
-  opacity: 0.8;
-  margin-left: 6px;
+/* The search bar reads as a field, and opens the search dialog. */
+.search-bar {
+  flex: 0 1 520px;
+  margin: 0 auto;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 10px 0 16px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--header-ink);
+  font-weight: 400;
+  font-size: 14.5px;
+  cursor: text;
 }
-.topbar select {
-  background: rgba(255, 255, 255, 0.15);
-  color: inherit;
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  border-radius: 4px;
-  padding: 4px 8px;
+.search-bar:hover {
+  background: rgba(255, 255, 255, 0.13);
 }
-.topbar select option {
+/* Between a phone and a wide screen (a tablet, a small laptop) the header gives way: the School's name
+   and the shortcut hint go, and the search bar shrinks before anything is pushed off the edge. */
+.search-bar {
+  min-width: 0;
+}
+@media (max-width: 1100px) {
+  .masthead {
+    gap: 12px;
+    padding: 0 16px;
+  }
+  .brand-sub,
+  .search-bar kbd {
+    display: none;
+  }
+}
+.search-bar span {
+  flex: 1;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+kbd {
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 5px;
+  padding: 2px 7px;
+}
+.search-bar kbd {
+  color: var(--header);
+  background: var(--band);
+}
+.masthead-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+.campus-switch {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.1);
+}
+.campus-switch button {
+  min-height: 0;
+  padding: 5px 11px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--header-ink);
+  font-size: 13px;
+  font-weight: 500;
+}
+.campus-switch button:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+.campus-switch button.active {
+  background: var(--band);
+  color: var(--header);
+  font-weight: 700;
+}
+.todo-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  font-weight: 600;
+  text-decoration: none;
+}
+.todo-link:hover,
+.todo-link[aria-current="page"] {
+  background: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+}
+.count,
+.badge {
+  min-width: 20px;
+  padding: 0 7px;
+  border-radius: 10px;
+  background: var(--band);
+  color: var(--header);
+  font-size: 11.5px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+}
+.bell,
+.account {
+  position: relative;
+}
+.icon-button,
+.avatar-button {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: #ffffff;
+}
+.icon-button:hover,
+.avatar-button:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+.icon-button .badge {
+  position: absolute;
+  top: 2px;
+  right: 0;
+  min-width: 18px;
+  padding: 0 5px;
+  font-size: 11px;
+}
+.avatar {
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  /* A ring with no fill: white on the deep green is 13:1. */
+  border: 2px solid rgba(255, 255, 255, 0.75);
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+/* Panels opened from the header: a drop-down on a wide screen, a sheet from the bottom on a phone. */
+.popover-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 29;
+}
+.popover {
+  position: absolute;
+  top: calc(100% + 14px);
+  right: 0;
+  z-index: 30;
+  width: 380px;
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
+  background: var(--card);
+  color: var(--ink);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-card);
+  box-shadow: 0 16px 40px rgba(6, 51, 31, 0.18);
+}
+.account .popover {
+  width: 300px;
+}
+.popover-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--rule-soft);
+  font-size: 15px;
+}
+.popover-head.stacked {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
+}
+.popover-empty {
+  margin: 0;
+  padding: 14px 16px;
+}
+.popover-foot {
+  padding: 10px 16px;
+  border-top: 1px solid var(--rule-soft);
+}
+.popover .campus-switch {
+  margin: 10px 12px 4px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  background: var(--stripe);
+  border-radius: 10px;
+}
+.popover .campus-switch button {
+  min-height: 40px;
+  color: var(--ink-3);
+}
+.popover .campus-switch button:hover {
+  background: rgba(255, 255, 255, 0.6);
   color: var(--ink);
 }
-.sidenav {
+.popover .campus-switch button.active {
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: 0 1px 2px rgba(28, 35, 32, 0.14);
+}
+.notes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.notes li + li {
+  border-top: 1px solid var(--rule-soft);
+}
+.note {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  width: 100%;
+  min-height: 0;
+  padding: 12px 16px;
+  border: 0;
+  border-radius: 0;
+  background: var(--card);
+  color: var(--ink);
+  text-align: left;
+  font-weight: 500;
+}
+.notes li.unread .note {
+  background: #fbf6ec;
+  font-weight: 700;
+}
+.note:hover,
+.notes li.unread .note:hover {
+  background: #f6efe0;
+}
+.note .title {
+  display: block;
+}
+.note .small {
+  font-weight: 400;
+}
+.kind {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-top: 7px;
+  background: #8a948a;
+  flex: none;
+}
+.kind-approval {
+  background: var(--accent);
+}
+.kind-alert {
+  background: var(--amber);
+}
+.menu-list {
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+}
+.menu-list a {
   display: flex;
   flex-direction: column;
-  padding: 12px 8px;
-  border-right: 1px solid var(--rule);
-  background: var(--card);
-}
-.sidenav a {
+  padding: 8px 10px;
+  border-radius: 8px;
   color: var(--ink);
   text-decoration: none;
-  padding: 8px 12px;
-  border-radius: 4px;
 }
-.sidenav a[aria-current="page"] {
-  background: var(--stripe);
+.menu-list a:hover {
+  background: #f6f3ec;
+  color: var(--ink);
+}
+.menu-label {
+  font-weight: 600;
+}
+/* Pages: a readable width, a breadcrumb back to Home above each. */
+.content {
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 22px 32px 48px;
+  min-width: 0;
+}
+.crumbs ol {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 14px;
+  padding: 0;
+  list-style: none;
+  font-size: 13.5px;
+}
+.crumbs li + li::before {
+  content: "/";
+  margin-right: 8px;
+  color: #a3ab9f;
+}
+.crumbs a {
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: none;
+}
+.crumbs a:hover {
+  text-decoration: underline;
+}
+.crumbs [aria-current="page"] {
+  color: var(--ink-2);
+}
+/* Links inside tables and cards: the accent, so they read as part of the design and stand out from text. */
+table a {
   color: var(--accent);
   font-weight: 600;
 }
-.content {
-  padding: 20px 24px 32px;
-  min-width: 0;
+.tabbar,
+.search-field {
+  display: none;
 }
 
-/* Buttons and forms. */
+/* Buttons and forms: the accent for the main action, white with an accent label for the others. */
 button {
   font: inherit;
+  font-weight: 600;
   background: var(--accent);
   color: var(--accent-ink);
-  border: 0;
-  border-radius: 4px;
-  padding: 8px 14px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-control);
+  min-height: 40px;
+  padding: 0 16px;
   cursor: pointer;
 }
+button:hover {
+  background: var(--accent-hover);
+}
 button:disabled {
-  opacity: 0.6;
+  opacity: 0.55;
   cursor: default;
+}
+button.secondary {
+  background: var(--card);
+  color: var(--accent);
+  border: 1px solid var(--field);
+}
+button.secondary:hover {
+  background: var(--hover-row);
+}
+button.danger {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #ffffff;
+}
+button.danger:hover {
+  background: #842626;
+}
+button.secondary.danger-text {
+  color: var(--danger);
+}
+button.wide {
+  width: 100%;
+  min-height: 46px;
+  font-size: 15px;
+  font-weight: 700;
+}
+button.small-button {
+  min-height: 34px;
+  padding: 0 12px;
+  font-size: 13px;
 }
 button.link {
   background: none;
+  border: 0;
   color: inherit;
   text-decoration: underline;
+  min-height: 0;
   padding: 4px;
+  font-weight: inherit;
+}
+button.link:hover {
+  background: none;
+}
+button.link.accent {
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: none;
+  padding: 4px 0;
+}
+button.link.accent:hover {
+  color: var(--accent-hover);
+  text-decoration: underline;
 }
 input,
-select {
+select,
+textarea {
   font: inherit;
-  padding: 7px 9px;
-  border: 1px solid var(--rule);
-  border-radius: 4px;
+  min-height: 40px;
+  padding: 0 10px;
+  border: 1px solid var(--field);
+  border-radius: var(--radius-control);
   background: var(--card);
   color: var(--ink);
+}
+textarea {
+  padding: 8px 10px;
+}
+input[type="checkbox"],
+input[type="radio"],
+input[type="file"] {
+  min-height: 0;
+  padding: 0;
+  border: 0;
 }
 label {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  font-size: 14px;
+  gap: 6px;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+label input,
+label select,
+label textarea {
+  font-weight: 400;
 }
 :focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
-/* Login. */
+/* Before signing in (item 2.07): the crest and the School's name on deep green beside the form. */
 .login {
   min-height: 100%;
   display: grid;
-  place-items: center;
-  padding: 16px;
+  grid-template-columns: minmax(320px, 44%) minmax(0, 1fr);
+  border-top: 6px solid var(--band);
+}
+.auth-brand {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 28px;
+  padding: 56px 64px 96px;
+  background: var(--header);
+  color: #ffffff;
+}
+.auth-brand p {
+  margin: 0;
+}
+.auth-title {
+  font-size: 46px;
+  line-height: 1.08;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+.auth-sub {
+  margin-top: 12px !important;
+  max-width: 440px;
+  font-size: 18px;
+  color: #cfe0d5;
+}
+.auth-motto {
+  position: absolute;
+  left: 64px;
+  bottom: 40px;
+  font-size: 13.5px;
+  color: var(--header-sub);
+}
+.auth-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding: 48px 24px;
+}
+.auth-foot {
+  margin: 0;
+  width: min(420px, 100%);
+  font-size: 12.5px;
+  color: var(--muted);
+  text-align: center;
 }
 .card {
   background: var(--card);
   border: 1px solid var(--rule);
-  border-radius: 6px;
-  padding: 24px;
+  border-radius: 14px;
+  padding: 32px;
   width: min(420px, 100%);
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 18px;
+}
+.card.wide {
+  width: min(720px, 100%);
+}
+/* The card's gap spaces its headings and text; their own margins would double it. */
+.card h1,
+.card h2,
+.card p {
+  margin: 0;
+}
+.card h2 {
+  font-size: 24px;
+  line-height: 1.2;
+}
+/* Above each card, the system's name, small: the page's purpose is the larger heading under it. */
+.card h1,
+.card-eyebrow {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.card > button.link {
+  align-self: flex-start;
+}
+.card-foot {
+  padding-top: 16px;
+  border-top: 1px solid var(--rule-soft);
+  font-size: 13.5px;
+  color: var(--ink-2);
+}
+.card label input {
+  min-height: 46px;
+  font-size: 16px;
+}
+/* A field whose label holds only its words, for a field with a button beside it inside the same box. */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.password-field {
+  position: relative;
+  display: block;
+}
+.password-field input {
+  width: 100%;
+  min-height: 46px;
+  padding-right: 72px;
+  font-size: 16px;
+}
+.password-field .reveal {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  min-height: 34px;
+  padding: 0 10px;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font-size: 13.5px;
+}
+.password-field .reveal:hover {
+  background: var(--hover-row);
+}
+.card label input.code-input {
+  min-height: 52px;
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: 0.35em;
+  font-variant-numeric: tabular-nums;
 }
 .loading {
   padding: 24px;
@@ -190,24 +793,34 @@ label {
 /* Tables and tiles. */
 table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   background: var(--card);
   border: 1px solid var(--rule);
+  border-radius: var(--radius-card);
+  overflow: hidden;
   font-size: 14px;
 }
 th,
 td {
   text-align: left;
-  padding: 8px 10px;
-  border-bottom: 1px solid var(--rule);
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--rule-soft);
+}
+tbody tr:last-child td {
+  border-bottom: 0;
 }
 th {
-  background: var(--stripe);
-  font-weight: 600;
+  background: var(--head-row);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 tbody tr:hover,
 tbody tr.selected {
-  background: var(--stripe);
+  background: var(--hover-row);
   cursor: pointer;
 }
 .tiles {
@@ -219,15 +832,15 @@ tbody tr.selected {
 .tile {
   background: var(--card);
   border: 1px solid var(--rule);
-  border-radius: 6px;
-  padding: 14px;
+  border-radius: var(--radius-card);
+  padding: 14px 16px;
   display: flex;
   flex-direction: column;
 }
 .tile .num {
   font-size: 28px;
   font-weight: 700;
-  color: var(--accent);
+  line-height: 1.2;
 }
 .filters {
   display: flex;
@@ -239,6 +852,17 @@ tbody tr.selected {
 .filters input {
   flex: 1 1 240px;
 }
+/* A search field inside its own (hidden) label: the label takes the width, the field keeps its height. */
+.filters .grow {
+  flex: 1 1 240px;
+}
+.filters label.grow input {
+  flex: none;
+  width: 100%;
+}
+.filters input[type="checkbox"] {
+  flex: none;
+}
 
 /* Directory split view. */
 .split {
@@ -249,8 +873,8 @@ tbody tr.selected {
 .panel {
   background: var(--card);
   border: 1px solid var(--rule);
-  border-radius: 6px;
-  padding: 16px;
+  border-radius: var(--radius-card);
+  padding: 16px 18px;
   align-self: start;
 }
 .panel dl {
@@ -273,26 +897,32 @@ tbody tr.selected {
 /* Tabs, secondary buttons, forms, lists. */
 .tabs {
   display: flex;
-  flex-wrap: wrap; /* on a phone the tabs take a second line rather than overlap */
+  /* Tabs wrap onto a second row rather than scroll: a tab that has scrolled out of sight is one people
+     never find. */
+  flex-wrap: wrap;
   gap: 4px;
   border-bottom: 1px solid var(--rule);
   margin: 0 0 14px;
 }
 .tab {
   background: none;
-  color: var(--muted);
-  border-radius: 4px 4px 0 0;
-  padding: 8px 12px;
+  color: var(--ink-3);
+  border: 0;
+  border-radius: 0;
+  min-height: 44px;
+  padding: 0 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  flex: none;
+}
+.tab:hover {
+  color: var(--ink);
+  background: none;
 }
 .tab.active {
   color: var(--accent);
-  font-weight: 600;
-  box-shadow: inset 0 -2px 0 var(--accent);
-}
-button.secondary {
-  background: var(--card);
-  color: var(--accent);
-  border: 1px solid var(--accent);
+  font-weight: 700;
+  box-shadow: inset 0 -3px 0 var(--accent);
 }
 .form-row {
   display: flex;
@@ -343,7 +973,7 @@ ul.plain {
 }
 fieldset {
   border: 1px solid var(--rule);
-  border-radius: 4px;
+  border-radius: var(--radius-control);
   padding: 10px 12px;
   margin: 0;
 }
@@ -380,120 +1010,848 @@ label.inline {
   margin: 0 0 8px;
 }
 
-/* Notifications bell and dropdown. */
-.bell {
-  position: relative;
-}
-.badge {
-  display: inline-block;
-  min-width: 20px;
-  margin-left: 6px;
-  padding: 0 6px;
-  border-radius: 10px;
-  background: var(--amber);
-  color: #fff;
-  font-size: 12px;
-  text-align: center;
-}
-.dropdown {
-  position: absolute;
-  right: 0;
-  top: calc(100% + 6px);
-  width: min(360px, 90vw);
+/* Cards of a form, rows of actions, and chips that say a state. */
+.card-block {
   background: var(--card);
-  color: var(--ink);
   border: 1px solid var(--rule);
-  border-radius: 6px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-  padding: 10px;
-  z-index: 20;
+  border-radius: var(--radius-card);
+  padding: 18px 20px;
+  margin-bottom: 16px;
+  max-width: 640px;
 }
-.dropdown-head {
+.card-block h2 {
+  margin-top: 0;
+}
+.actions {
   display: flex;
-  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
   align-items: center;
-  margin-bottom: 6px;
 }
-.dropdown-head .link {
+button.accent {
   color: var(--accent);
 }
-.dropdown ul {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  max-height: 60vh;
-  overflow-y: auto;
+.notice.good {
+  border-left-color: var(--accent);
 }
-.dropdown .item {
-  display: flex;
-  gap: 8px;
-  width: 100%;
-  text-align: left;
-  background: none;
-  color: var(--ink);
-  padding: 8px 6px;
-  border-radius: 4px;
+.notice.bad {
+  border-left-color: var(--danger);
+  color: var(--danger);
 }
-.dropdown li.unread .item {
-  background: var(--stripe);
+/* A link that does a button's job (a download): it looks like a secondary button. */
+a.button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid var(--field);
+  border-radius: var(--radius-control);
+  background: var(--card);
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: none;
 }
-.dropdown .item .title {
-  display: block;
+a.button:hover {
+  background: var(--hover-row);
 }
-.kind {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  margin-top: 7px;
-  background: var(--muted);
+.chip {
   flex: none;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 12px;
+  background: var(--stripe);
+  color: var(--muted);
+  white-space: nowrap;
 }
-.kind-approval {
-  background: var(--accent);
+.chip-submitted,
+.chip-supervisor_approved,
+.chip-waiting {
+  background: var(--warn-bg);
+  color: var(--amber-text);
 }
-.kind-alert {
-  background: var(--amber);
+.chip-approved {
+  background: var(--tint);
+  color: var(--tint-ink);
 }
-
-/* Phones: navigation becomes a bottom bar, split view stacks. */
-@media (max-width: 760px) {
-  .shell {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto minmax(0, 1fr) auto;
+.chip-rejected {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+.chip-draft {
+  background: var(--stripe);
+  color: var(--ink-3);
+}
+/* Printing, or saving as a PDF, gives the page content alone. */
+@media print {
+  .masthead,
+  .tabbar,
+  .crumbs,
+  .no-print {
+    display: none !important;
   }
-  /* The top bar wraps rather than pushing the name and Sign out off a narrow screen. */
-  .topbar {
-    flex-wrap: wrap;
-    gap: 4px 12px;
-    padding: 8px 16px;
-    min-height: var(--topbar-h);
+  /* On paper the page runs on: no scrolling area. */
+  .frame {
+    display: block;
+    height: auto;
   }
-  .sidenav {
-    grid-row: 3;
-    flex-direction: row;
-    overflow-x: auto;
-    border-right: 0;
-    border-top: 1px solid var(--rule);
-    position: sticky;
-    bottom: 0;
-    padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px));
-  }
-  .sidenav a {
-    white-space: nowrap;
-    font-size: 14px;
+  .scroller {
+    overflow: visible;
   }
   .content {
-    padding: 16px;
+    padding: 0;
+    max-width: none;
+  }
+  body {
+    background: #fff;
+  }
+  .receipt {
+    border: 0;
+    border-top: 4px solid var(--accent);
+    max-width: none;
+  }
+}
+
+/* Phones: four tabs at the bottom, sheets in place of drop-downs, split views stacked. */
+@media (max-width: 760px) {
+  /* The header keeps the crest, the bell and the person; search, To do and Me move to the tabs. */
+  .masthead {
+    height: calc(56px + 5px);
+    gap: 6px;
+    padding: 0 8px 0 14px;
+    border-top-width: 5px;
+  }
+  .masthead-tools {
+    margin-left: auto;
+    gap: 2px;
+  }
+  .icon-button,
+  .avatar-button {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+  }
+  .avatar {
+    width: 34px;
+    height: 34px;
+  }
+  .content {
+    padding: 16px 16px 28px;
+  }
+  .search-field {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    min-height: 50px;
+    margin-bottom: 16px;
+    padding: 0 16px;
+    border-radius: 12px;
+    border: 1.5px solid var(--field);
+    background: var(--card);
+    color: var(--muted);
+    font-size: 15px;
+    font-weight: 400;
+    text-align: left;
+    cursor: text;
+  }
+  .search-field:hover {
+    background: var(--card);
+  }
+  .tabbar {
+    position: relative;
+    z-index: 32;
+    flex: none;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+    height: calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px));
+    padding: 8px 10px calc(14px + env(safe-area-inset-bottom, 0px));
+    background: var(--card);
+    border-top: 1px solid var(--rule);
+  }
+  .tabbar a,
+  .tabbar button {
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 0 4px;
+    border: 0;
+    border-radius: 12px;
+    background: transparent;
+    color: var(--ink-2);
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+  }
+  .tabbar a:hover,
+  .tabbar button:hover {
+    background: var(--stripe);
+    color: var(--ink);
+  }
+  .tabbar [aria-current="page"],
+  .tabbar [aria-pressed="true"],
+  .tabbar [aria-expanded="true"],
+  .tabbar [aria-current="page"]:hover {
+    background: var(--header);
+    color: var(--accent-on-dark);
+    font-weight: 700;
+  }
+  .tabbar :focus-visible {
+    outline-color: var(--accent);
+  }
+  /* Sheets rise from the bottom, above the tabs, which stay in reach. */
+  .popover-backdrop.sheet {
+    bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px));
+    background: rgba(6, 51, 31, 0.36);
+  }
+  .popover.sheet,
+  .account .popover.sheet {
+    position: fixed;
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px));
+    width: auto;
+    max-height: calc(100% - 140px);
+    padding: 10px 12px 16px;
+    border: 0;
+    border-radius: 20px 20px 0 0;
+    box-shadow: 0 -12px 32px rgba(6, 51, 31, 0.18);
+  }
+  .sheet-handle {
+    display: block;
+    width: 40px;
+    height: 4px;
+    margin: 2px auto 6px;
+    border-radius: 2px;
+    background: var(--rule);
+  }
+  .sheet .popover-head {
+    border-bottom: 0;
+    padding: 0 8px 6px;
+    font-size: 16px;
+  }
+  .sheet .note {
+    min-height: 56px;
+    border-radius: 10px;
+  }
+  .sheet .notes li + li {
+    border-top: 0;
+  }
+  .sheet .menu-list a {
+    min-height: 52px;
+    justify-content: center;
+    border-radius: 10px;
+  }
+  .sheet .popover-foot {
+    border-top: 0;
+    padding: 4px 8px 0;
+  }
+  /* Search opens full screen. */
+  .search-backdrop.phone {
+    padding: 0;
+    background: var(--card);
+  }
+  .search-backdrop.phone .search-dialog {
+    width: 100%;
+    max-width: none;
+    height: 100%;
+    max-height: none;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  .search-backdrop.phone .search-input {
+    padding: 10px 12px;
+  }
+  .search-backdrop.phone .search-input input {
+    min-height: 48px;
+    padding: 0 14px;
+    border: 1.5px solid var(--accent);
+    border-radius: 12px;
+  }
+  .search-backdrop.phone .search-results {
+    max-height: none;
+    flex: 1;
+  }
+  .search-backdrop.phone .search-option {
+    min-height: 52px;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 0;
   }
   .split {
     grid-template-columns: minmax(0, 1fr);
   }
-  .user small {
+  /* Before signing in: the crest and the title in a band above the form. */
+  .login {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
+    border-top-width: 5px;
+  }
+  .auth-brand {
+    gap: 14px;
+    padding: 28px 20px 24px;
+  }
+  .auth-brand .crest-140 {
+    width: 72px;
+    height: 72px;
+  }
+  .auth-title {
+    font-size: 28px;
+  }
+  .auth-sub {
+    margin-top: 2px !important;
+    font-size: 15px;
+  }
+  .auth-motto {
     display: none;
+  }
+  .auth-main {
+    justify-content: flex-start;
+    padding: 0 0 28px;
+  }
+  .card,
+  .card.wide {
+    width: 100%;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    padding: 24px 20px;
+  }
+  .card h2 {
+    font-size: 22px;
+  }
+  .auth-foot {
+    padding: 0 20px;
+  }
+  /* Fingers, not pointers: controls 44px tall, and 16px type so that the phone does not zoom in. */
+  button,
+  input,
+  select {
+    min-height: 44px;
+    font-size: 16px;
+  }
+  textarea {
+    font-size: 16px;
+  }
+  button.link,
+  input[type="checkbox"] {
+    min-height: 0;
+  }
+  a.button {
+    min-height: 44px;
+  }
+  .form-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .form-row .grow {
+    flex: none;
+  }
+  .card-block .actions button,
+  .request .actions button {
+    flex: 1 1 140px;
+  }
+  .tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  /* A table marked "cards" becomes one card a row, each cell labelled by its column. */
+  table.cards,
+  table.cards tbody,
+  table.cards tr,
+  table.cards td {
+    display: block;
+  }
+  table.cards {
+    border: 0;
+    background: none;
+  }
+  table.cards thead {
+    display: none;
+  }
+  table.cards tr {
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-card);
+    margin-bottom: 10px;
+    padding: 6px 12px;
+  }
+  table.cards td {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 6px 0;
+    text-align: right;
+  }
+  table.cards td:last-child {
+    border-bottom: 0;
+  }
+  table.cards td::before {
+    content: attr(data-label);
+    color: var(--muted);
+    text-align: left;
+    flex: none;
   }
 }
 
-/* Cards (course sites, summaries). */
+/* My account: one row per signed-in device. */
+.sessions li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--rule);
+}
+.sessions li:last-child {
+  border-bottom: 0;
+}
+.sessions .chip {
+  margin-left: 8px;
+}
+
+/* Privacy: the notice at sign-in reads at a comfortable width; corrections and their answers. */
+.card.notice-card {
+  width: min(640px, 100%);
+}
+.chip-correction-open {
+  color: var(--amber-text);
+}
+.chip-correction-corrected {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+.chip-correction-declined {
+  color: var(--danger);
+}
+.chip-risk-high {
+  color: var(--danger);
+}
+.chip-risk-medium {
+  color: var(--amber-text);
+}
+.overdue {
+  color: var(--danger);
+  font-weight: 600;
+}
+.record-section {
+  max-width: 900px;
+}
+@media print {
+  .record-section {
+    border: 0;
+    padding: 0;
+    break-inside: avoid;
+  }
+}
+
+/* Small helpers used across the new pages (item 2.07). */
+.stacked {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.spread {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+.grow {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.strong {
+  font-weight: 600;
+}
+.ink {
+  color: var(--ink);
+}
+.lead {
+  margin: 2px 0 0;
+  font-size: 14.5px;
+}
+label.inline {
+  font-weight: 500;
+}
+
+/* The heading of a page, with its main action beside it. */
+.page-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px 16px;
+  margin-bottom: 20px;
+}
+.page-head h1 {
+  margin: 0;
+}
+.eyebrow {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* Search (item 2.07): a dialog over the page. */
+.search-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: 96px;
+  background: rgba(6, 51, 31, 0.36);
+}
+.search-dialog {
+  display: flex;
+  flex-direction: column;
+  width: 640px;
+  max-width: calc(100% - 48px);
+  max-height: calc(100vh - 140px);
+  background: var(--card);
+  border-radius: 14px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.28);
+  overflow: hidden;
+}
+.search-input {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px 0 20px;
+  border-bottom: 1px solid var(--rule);
+}
+.search-input input {
+  flex: 1;
+  min-width: 0;
+  height: 58px;
+  border: 0;
+  padding: 0;
+  font-size: 16px;
+  background: transparent;
+}
+.search-input input:focus-visible {
+  outline: none;
+}
+.search-input kbd {
+  font-weight: 600;
+  color: var(--ink-3);
+  border: 1px solid #d5dbd0;
+  padding: 1px 6px;
+}
+.search-results {
+  max-height: 440px;
+  overflow-y: auto;
+  padding: 6px 8px 10px;
+}
+.search-results ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.search-group {
+  padding: 10px 12px 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.search-option {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.search-option.active {
+  background: var(--tint);
+}
+.search-title {
+  font-weight: 600;
+}
+.search-option.active .search-title {
+  font-weight: 700;
+}
+.search-sub {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.search-option.active .search-sub {
+  color: var(--ink-2);
+}
+.search-empty {
+  margin: 0;
+  padding: 16px 20px;
+  color: var(--muted);
+}
+.search-help {
+  display: flex;
+  gap: 18px;
+  margin: 0;
+  padding: 10px 20px;
+  border-top: 1px solid var(--rule);
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* Home (items 2.07 to 2.09): shortcuts, figures, then the work and what needs attention. */
+.shortcuts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.shortcuts a {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 72px;
+  padding: 14px 16px;
+  border: 1px solid #d9e0d4;
+  border-radius: var(--radius-card);
+  background: var(--card);
+  color: var(--ink);
+  text-decoration: none;
+}
+.shortcuts a:hover {
+  border-color: var(--accent);
+  background: #fbf6ec;
+}
+.shortcut-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--accent);
+}
+.shortcut-sub {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.figures {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.figure {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 14px 16px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-card);
+  background: var(--card);
+}
+.figure-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+}
+.figure-value {
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+.figure-note {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.home-columns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  align-items: flex-start;
+}
+.home-main {
+  flex: 1.6 1 440px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.home-side {
+  flex: 1 1 300px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.panel-card {
+  background: var(--card);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+}
+.panel-card.padded {
+  padding: 18px 20px;
+}
+.panel-card h2 {
+  margin: 0;
+  font-size: 16px;
+}
+.panel-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 20px;
+}
+.panel-card-head.stacked {
+  align-items: flex-start;
+  gap: 2px;
+}
+.panel-card-head a {
+  font-size: 13.5px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.panel-card-head a:hover {
+  text-decoration: underline;
+}
+.panel-empty,
+.panel-more {
+  margin: 0;
+  padding: 14px 20px;
+  border-top: 1px solid var(--rule-soft);
+  color: var(--muted);
+}
+.panel-more a {
+  font-weight: 600;
+}
+.rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.rows > li {
+  padding: 12px 20px;
+  border-top: 1px solid var(--rule-soft);
+}
+.item-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.item-tag {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.item-tag.alert {
+  color: var(--amber-text);
+}
+.bar-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 16px;
+}
+.bar-name {
+  flex: 1 1 200px;
+}
+.bar {
+  flex: 1 1 140px;
+  height: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--stripe);
+}
+.bar span {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+  background: var(--accent);
+}
+.bar-summary {
+  flex: none;
+}
+.own-request {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.initials {
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--tint);
+  color: var(--accent);
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+/* To do (item 2.07): what waits, oldest first, and for how long. */
+.todo-kind {
+  font-weight: 700;
+  color: var(--accent);
+}
+.todo-since {
+  font-weight: 600;
+  color: var(--muted);
+}
+.todo-since.late {
+  color: var(--amber-text);
+}
+.todo-item {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.todo-body {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.home-side .panel-card.padded h2 {
+  font-size: 16px;
+}
+
+@media (max-width: 760px) {
+  .shortcuts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .figures {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .home-main,
+  .home-side {
+    flex-basis: 100%;
+  }
+  .rows > li,
+  .decisions > li,
+  .panel-card-head,
+  .panel-empty,
+  .panel-more {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+  .decision-actions {
+    margin-left: 0;
+    width: 100%;
+  }
+  .decision-actions button {
+    flex: 1 1 120px;
+  }
+  .todo-body {
+    flex-wrap: wrap;
+  }
+  .todo-body button {
+    flex: 1 1 100%;
+  }
+}
+
+
+/* Course sites (item 2.07): the list of the person's courses as cards, each site's own header and tabs. */
 .cards {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
@@ -502,44 +1860,60 @@ label.inline {
 .cards .card {
   width: auto;
   gap: 6px;
+  padding: 16px 18px;
+  border-radius: var(--radius-card);
   cursor: pointer;
   text-align: left;
   color: var(--ink);
+  font-weight: 400;
+}
+.cards .card:hover {
+  background: var(--hover-row);
+  border-color: var(--accent);
 }
 .cards .card h3 {
   margin: 0;
   font-size: 16px;
+  color: var(--accent);
 }
 .pill {
   display: inline-block;
   padding: 1px 8px;
   border-radius: 10px;
-  background: var(--stripe);
-  color: var(--accent);
+  background: var(--tint);
+  color: var(--tint-ink);
   font-size: 12px;
+  font-weight: 600;
+}
+/* A site's name and code break anywhere rather than push the page wider than a phone. */
+.site-head h1,
+.site-head p {
+  overflow-wrap: anywhere;
+}
+.site-head p {
+  margin: 4px 0 0;
 }
 td input[type="number"] {
   width: 84px;
 }
-textarea {
-  font: inherit;
-  padding: 7px 9px;
-  border: 1px solid var(--rule);
-  border-radius: 4px;
-  background: var(--card);
-  color: var(--ink);
-  min-height: 88px;
-}
 .module {
   background: var(--card);
   border: 1px solid var(--rule);
-  border-radius: 6px;
-  padding: 12px 14px;
+  border-radius: var(--radius-card);
+  padding: 14px 16px;
   margin-bottom: 12px;
 }
 .module h3 {
   margin: 0 0 8px;
   font-size: 16px;
+}
+.module .panel-head {
+  flex-wrap: wrap;
+}
+/* A table wider than the screen scrolls inside its own named, focusable region. */
+.scroll-x {
+  overflow-x: auto;
+  max-width: 100%;
 }
 /* A page's cleaned HTML (courses.richtext): pictures and tables stay within a phone's width. */
 .page-body img {
@@ -552,4 +1926,72 @@ textarea {
 }
 .page-body > :first-child {
   margin-top: 0;
+}
+
+/* Progress in a course (item 2.08): the share of released items completed. */
+.progress-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 16px;
+}
+.progress-row a {
+  font-weight: 600;
+  text-decoration: none;
+}
+
+/* Writes kept on the device without a connection (item 4.02): what waits to be sent, and what was sent. */
+.sync {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.sync::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--amber);
+}
+.sync.waiting {
+  color: var(--amber-text);
+}
+.sync.sent {
+  color: #2d6a3e;
+}
+.sync.sent::before {
+  background: #2d6a3e;
+}
+.sync.refused {
+  color: var(--danger);
+}
+.sync.refused::before {
+  background: var(--danger);
+}
+.masthead .sync {
+  padding: 0 10px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+.decision-meta {
+  font-size: 12.5px;
+}
+.todo-item.overdue-item {
+  box-shadow: inset 3px 0 0 var(--danger);
+}
+/* Fingers, not pointers (item 2.07): every control on a phone is 44px tall or more, the small ones too. */
+@media (max-width: 760px) {
+  button.small-button,
+  .popover .campus-switch button,
+  .tab {
+    min-height: 44px;
+  }
+  .crumbs a {
+    display: inline-block;
+    padding: 10px 0;
+  }
 }

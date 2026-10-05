@@ -151,7 +151,7 @@ class CompletionRuleSerializer(serializers.Serializer):
     total = serializers.IntegerField()
 
 
-class ProgressSerializer(serializers.Serializer):
+class CompletionProgressSerializer(serializers.Serializer):
     complete = serializers.BooleanField(help_text="Every rule is met")
     rules = CompletionRuleSerializer(many=True)
     completed_on = serializers.DateField(allow_null=True)
@@ -242,7 +242,7 @@ class CatalogueViewSet(viewsets.ReadOnlyModelViewSet):
 
     @extend_schema(
         parameters=[OpenApiParameter("person", int, description="For course administrators: someone else")],
-        responses={200: ProgressSerializer, 403: ErrorSerializer, 404: ErrorSerializer},
+        responses={200: CompletionProgressSerializer, 403: ErrorSerializer, 404: ErrorSerializer},
         summary="How far through the course's completion rules I am (item 5.03)",
     )
     @action(detail=True, methods=["get"])

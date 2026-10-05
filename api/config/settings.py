@@ -242,9 +242,8 @@ PASSWORD_RESETS_PER_ACCOUNT = 3
 INTEGRATION_ATTEMPTS = int(env("INTEGRATION_ATTEMPTS", "3"))
 INTEGRATION_RETRY_SECONDS = float(env("INTEGRATION_RETRY_SECONDS", "5"))
 
-# Approvals (ported from the HRMS approvals engine): working days a decision may wait before a reminder,
-# and further working days before it goes on to the next person up.
-DECISION_DAYS = int(env("DECISION_DAYS", "3"))
+# Approvals (ported from the HRMS approvals engine): a decision waits DECISION_DAYS working days (set with
+# To do below) before a reminder, and ESCALATE_AFTER_DAYS more before it goes on to the next person up.
 ESCALATE_AFTER_DAYS = int(env("ESCALATE_AFTER_DAYS", "2"))
 
 # Staff development (Phase 5). A completion that expires is open for renewal this many days before it does.
@@ -258,3 +257,6 @@ CERTIFICATE_ORGANISATION = env("CERTIFICATE_ORGANISATION", "Guyana School of Agr
 CERTIFICATE_REFERENCE_PREFIX = env("CERTIFICATE_REFERENCE_PREFIX", "GSA/LMS")
 CERTIFICATE_CHECK_URL = env("CERTIFICATE_CHECK_URL", f"{PUBLIC_URL}/api/check-certificate/")
 CERTIFICATE_CHECK_FAILURES = int(env("CERTIFICATE_CHECK_FAILURES", "10"))
+# To do (items 2.07 to 2.09): days after which work to mark, and a decision, are marked overdue.
+MARKING_DAYS = int(env("MARKING_DAYS", "14"))
+DECISION_DAYS = int(env("DECISION_DAYS", "7"))

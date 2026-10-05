@@ -14,7 +14,8 @@ numbers those of the Implementation Checklist. The interface is described in ful
 | Completions | `api/courses` | 20, 38 | Completion | via `sync_ecosystem --push-training` | Recorded today only by the demonstration data; automatic completion is item 5.03 |
 | Sign-in and roles | `api/iam` | 41 | Role, RoleScope, TotpDevice, LoginAttempt | `/api/v1/auth/*` | Session sign-in; authenticator code for administrators and course administrators; lockout |
 | Audit | `api/audit` | 41 | AuditLog | (none; read in the Django admin) | Insert-only, protected by a database trigger |
-| Web app | `web/` | 27, 29 | (uses the above) | consumes `/api/v1` | My courses, the course site, notifications; installable; every journey checked at 360px |
+| Home, To do and search | `api/core` | 29 | (reads the above) | `/api/v1/home/`, `/to-do/`, `/search/?q=` | A Home for each role (items 2.07 to 2.09): a student's work due, overdue, new feedback and progress; teaching staff's work to mark, sites with nothing new for the coming week and students not seen in 14 days; site figures for course administrators and administrators. To do gathers what waits for the person, oldest first, marked overdue. Search finds only what the person may open, and people for staff only |
+| Web app | `web/` | 27, 29 | (uses the above) | consumes `/api/v1` | The HRMS's frame in the crest's colours with the LMS's amber accent (ADR 0010): Home by role, To do, search (Ctrl K), breadcrumbs, shareable addresses (a dependency-free hash router, as the HRMS's), four tabs and sheets on a phone; My courses, the course site, notifications; an offline queue for writes that are safe to send again (item 4.02); installable; every journey checked at 360px |
 
 ## Coursework rule
 
@@ -39,5 +40,5 @@ from released marks only. The rule is `assessments.services.coursework_percent`.
 ## Not built yet
 
 Quizzes ([ADR 0005](adr/0005-quizzes-built-in.md)), rubrics, practical and competency assessment, forums and
-messages, calendar, attendance ([ADR 0008](adr/0008-attendance-in-the-lms.md)), offline work, certificates,
+messages, calendar, attendance ([ADR 0008](adr/0008-attendance-in-the-lms.md)), certificates,
 packaged content, analytics and the rest of the checklist's phases 2 to 7.
