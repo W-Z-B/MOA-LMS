@@ -1,0 +1,43 @@
+{
+  "$comment": "Licence policy for components shipped in the product (docs/adr/0002-licence-policy.md). Read by scripts/check_licences.py (Python) and scripts/check_npm_licences.mjs (web). Development and test tools that never ship are reported, not gated.",
+  "permissive": [
+    "0BSD",
+    "Apache-2.0",
+    "BlueOak-1.0.0",
+    "BSD",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "CC0-1.0",
+    "HPND",
+    "ISC",
+    "MIT",
+    "MIT-0",
+    "MIT-CMU",
+    "PostgreSQL",
+    "PSF-2.0",
+    "Python-2.0",
+    "Unlicense",
+    "Zlib"
+  ],
+  "exceptions": {
+    "python": {
+      "psycopg": {
+        "licence": "LGPL-3.0-only",
+        "reason": "The PostgreSQL driver Django supports. Used unmodified as a separately installed library."
+      },
+      "psycopg-binary": {
+        "licence": "LGPL-3.0-only",
+        "reason": "Binary build of psycopg, same terms. Used unmodified."
+      },
+      "psycopg-pool": {
+        "licence": "LGPL-3.0-only",
+        "reason": "Connection pool from the psycopg project, pulled in by procrastinate. Used unmodified."
+      },
+      "pyphen": {
+        "licence": "MPL-1.1",
+        "reason": "Hyphenation used by WeasyPrint. Offered under GPL, LGPL or MPL 1.1; GSA takes it under MPL 1.1, unmodified."
+      }
+    },
+    "npm": {}
+  }
+}

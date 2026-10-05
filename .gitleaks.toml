@@ -1,0 +1,16 @@
+# Secret scan (gitleaks, run in CI over the whole history). The default rules apply in full.
+# The allowlist names values that are fake by design and may appear in tracked files:
+#   - the password every test fixture uses for its throw-away users (api/conftest.py and tests);
+#   - the placeholders of the CI and end-to-end stacks, which exist only inside short-lived containers.
+# Never add a real credential here: remove it from the history and rotate it instead.
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Fake values by design: test-fixture password and throw-away CI and e2e placeholders"
+regexes = [
+  '''^Str0ng-Passw0rd-123$''',
+  '''(?i)^(ci|e2e)[-_]only[-_]not[-_]a[-_]secret''',
+  '''^e2e-Only-Fictional-Learner-2026$''',
+]
