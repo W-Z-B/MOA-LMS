@@ -6,6 +6,8 @@ import { useCrumb } from "../../app/frame";
 import { submitAssignmentText } from "../../app/offlineQueue";
 import { SITE_TABS, type SiteTab } from "../../app/router";
 import { SendState } from "../../app/SendState";
+import { LogbookTab } from "../practicals/LogbookTab";
+import { PracticalsTab } from "../practicals/PracticalsTab";
 
 interface Props {
   siteId: number;
@@ -19,6 +21,8 @@ const TAB_LABEL: Record<SiteTab, string> = {
   assignments: "Assignments",
   gradebook: "Gradebook",
   announcements: "Announcements",
+  practicals: "Practicals",
+  logbook: "Logbook",
 };
 
 /**
@@ -86,6 +90,8 @@ export function SiteScreen({ siteId, tab, onTab }: Props) {
       {tab === "assignments" && <AssignmentsTab siteId={siteId} teaching={teaching} />}
       {tab === "gradebook" && <GradebookTab siteId={siteId} />}
       {tab === "announcements" && <AnnouncementsTab data={data} teaching={teaching} onChanged={load} />}
+      {tab === "practicals" && <PracticalsTab siteId={siteId} teaching={teaching} />}
+      {tab === "logbook" && <LogbookTab siteId={siteId} teaching={teaching} />}
     </>
   );
 }

@@ -36,6 +36,8 @@ export default defineConfig({
         "src/features/home/**",
         "src/features/todo/**",
         "src/features/courses/MyCoursesScreen.tsx",
+        // Practicals, competency and the logbook (items 3.12 to 3.15, 5.15), with the photos kept offline.
+        "src/features/practicals/**",
       ],
       exclude: ["src/**/*.test.*", "src/test/**"],
       reporter: ["text"],
