@@ -3,8 +3,17 @@
  * API responses are never cached: personnel data stays on the server, and every /api request goes
  * straight to the network. Requests are queued for retry by the page (offlineQueue.ts), not here.
  */
-const VERSION = "gsa-lms-shell-v1";
-const SHELL = ["/", "/index.html", "/manifest.webmanifest", "/favicon.svg", "/icon-maskable.svg"];
+const VERSION = "gsa-lms-shell-v2";
+// The crest and the self-hosted font are part of the frame (item 2.07), so it looks the same offline.
+const SHELL = [
+  "/",
+  "/index.html",
+  "/manifest.webmanifest",
+  "/favicon.svg",
+  "/icon-maskable.svg",
+  "/crest.png",
+  "/fonts/public-sans-latin-wght.woff2",
+];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(VERSION).then((cache) => cache.addAll(SHELL)).then(() => self.skipWaiting()));

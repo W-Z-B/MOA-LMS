@@ -49,6 +49,10 @@ class MeSerializer(serializers.Serializer):
     privacy_notice_due = serializers.IntegerField(
         allow_null=True, help_text="Version of the privacy notice still to be read, or null"
     )
+    persona = serializers.ChoiceField(
+        choices=["admin", "course_admin", "lecturer", "student", "office"], help_text="Which Home to show"
+    )
+    title = serializers.CharField(help_text="The role in words, for example 'Lecturer, AGR101'")
 
 
 class MfaEnrolSerializer(serializers.Serializer):
@@ -69,6 +73,8 @@ class EndedSerializer(serializers.Serializer):
 
 
 def _me_payload(user, session) -> dict:
+    from core.home import persona, title  # Home reads the courses, which read iam: import when used
+
     return {
         "id": user.id,
         "username": user.get_username(),
@@ -78,6 +84,8 @@ def _me_payload(user, session) -> dict:
         "mfa_required": requires_mfa(user),
         "mfa_verified": bool(session.get(MFA_SESSION_KEY, False)),
         "privacy_notice_due": notice_due(user),  # the notice version still to read (item 1.18)
+        "persona": persona(user),  # which Home to show, and the role in words (items 2.07 to 2.09)
+        "title": title(user),
         **person_payload(user),
     }
 

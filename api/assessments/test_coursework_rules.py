@@ -9,7 +9,14 @@ from decimal import Decimal
 import pytest
 from django.utils import timezone
 
-from assessments.models import Accommodation, Assignment, Extension, GradeCategory, Mark, SrmsTransfer, Submission
+from assessments.models import (
+    Accommodation,
+    Assignment,
+    Extension,
+    Mark,
+    SrmsTransfer,
+    Submission,
+)
 from assessments.rules import due_for, penalty_percent
 from assessments.services import coursework_percent, coursework_working
 from audit.models import AuditLog
@@ -26,12 +33,16 @@ def handed(assignment, person, at, mark=None, released=False):
 @pytest.mark.django_db
 def test_extensions_for_a_student_or_a_group(site, assignment, student, other_student, lecturer, client_for):
     teacher = client_for(lecturer.user)
-    Assignment.objects.filter(pk=assignment.pk).update(due_at=timezone.now() - timedelta(hours=2), allow_late=False)
+    Assignment.objects.filter(pk=assignment.pk).update(
+        due_at=timezone.now() - timedelta(hours=2), allow_late=False
+    )
     learner = client_for(student.user)
     closed = learner.post(f"/api/v1/assignments/{assignment.id}/submit/", {"text": "x"}, format="json")
     assert closed.json()["code"] == "closed"
     later = (timezone.now() + timedelta(days=2)).isoformat()
-    refused = teacher.post("/api/v1/extensions/", {"assignment": assignment.id, "due_at": later, "reason": ""}, format="json")
+    refused = teacher.post(
+        "/api/v1/extensions/", {"assignment": assignment.id, "due_at": later, "reason": ""}, format="json"
+    )
     assert refused.status_code == 400
     granted = teacher.post(
         "/api/v1/extensions/",
@@ -42,7 +53,9 @@ def test_extensions_for_a_student_or_a_group(site, assignment, student, other_st
     assert AuditLog.objects.get(entity="assessments.extension").reason == "Flooding at home"
     assert learner.get(f"/api/v1/assignments/{assignment.id}/").json()["my_due_at"].startswith(later[:16])
     handed_in = learner.post(f"/api/v1/assignments/{assignment.id}/submit/", {"text": "x"}, format="json")
-    assert handed_in.status_code == 201 and handed_in.json()["is_late"] is False and handed_in.json()["extended"]
+    assert (
+        handed_in.status_code == 201 and handed_in.json()["is_late"] is False and handed_in.json()["extended"]
+    )
     # The other student, without an extension, is missing work that counts as zero; the first is not.
     assert coursework_percent(site, other_student) == Decimal("0.00")
     duplicate = teacher.post(
@@ -53,7 +66,12 @@ def test_extensions_for_a_student_or_a_group(site, assignment, student, other_st
     assert duplicate.status_code == 400
     early = teacher.post(
         "/api/v1/extensions/",
-        {"assignment": assignment.id, "student": other_student.id, "due_at": timezone.now().isoformat(), "reason": "x"},
+        {
+            "assignment": assignment.id,
+            "student": other_student.id,
+            "due_at": timezone.now().isoformat(),
+            "reason": "x",
+        },
         format="json",
     )
     assert early.status_code == 400 and "due_at" in early.json()
@@ -70,14 +88,22 @@ def test_extensions_for_a_student_or_a_group(site, assignment, student, other_st
     assert coursework_percent(site, other_student) is None  # no longer overdue
     both = teacher.post(
         "/api/v1/extensions/",
-        {"assignment": assignment.id, "group": group.id, "student": student.id, "due_at": later, "reason": "x"},
+        {
+            "assignment": assignment.id,
+            "group": group.id,
+            "student": student.id,
+            "due_at": later,
+            "reason": "x",
+        },
         format="json",
     )
     assert both.status_code == 400
     listed = teacher.get(f"/api/v1/extensions/?assignment={assignment.id}").json()
     assert len(listed) == 2
     assert client_for(student.user).get("/api/v1/extensions/").json() == []
-    moved = teacher.patch(f"/api/v1/extensions/{granted.json()['id']}/", {"reason": "Flooding, confirmed"}, format="json")
+    moved = teacher.patch(
+        f"/api/v1/extensions/{granted.json()['id']}/", {"reason": "Flooding, confirmed"}, format="json"
+    )
     assert moved.status_code == 200
 
 
@@ -89,11 +115,21 @@ def test_accommodations_apply_everywhere_and_stay_private(
     assert teacher.post("/api/v1/accommodations/", {"person": student.id}, format="json").status_code == 403
     created = admin.post(
         "/api/v1/accommodations/",
-        {"person": student.id, "extra_time_percent": 25, "extra_days": 3, "reason": "Dyslexia assessment 2025"},
+        {
+            "person": student.id,
+            "extra_time_percent": 25,
+            "extra_days": 3,
+            "reason": "Dyslexia assessment 2025",
+        },
         format="json",
     )
     assert created.status_code == 201, created.json()
-    assert admin.post("/api/v1/accommodations/", {"person": student.id, "extra_time_percent": 400}, format="json").status_code == 400
+    assert (
+        admin.post(
+            "/api/v1/accommodations/", {"person": student.id, "extra_time_percent": 400}, format="json"
+        ).status_code
+        == 400
+    )
     assert admin.post("/api/v1/accommodations/", {"person": lecturer.id}, format="json").status_code == 400
     entry = AuditLog.objects.get(entity="assessments.accommodation")
     assert "Dyslexia" not in str(entry.after)
@@ -113,7 +149,9 @@ def test_accommodations_apply_everywhere_and_stay_private(
     quiz = Quiz.objects.create(site=site, title="Test 1", time_limit_minutes=30, is_published=True)
     assert effective(quiz, student).time_limit_minutes == 38  # 37.5 rounded up
     pk = created.json()["id"]
-    assert admin.patch(f"/api/v1/accommodations/{pk}/", {"is_active": False}, format="json").status_code == 200
+    assert (
+        admin.patch(f"/api/v1/accommodations/{pk}/", {"is_active": False}, format="json").status_code == 200
+    )
     assert effective(quiz, student).time_limit_minutes == 30
     assert admin.delete(f"/api/v1/accommodations/{pk}/").status_code == 204
     assert not Accommodation.objects.exists()
@@ -138,7 +176,9 @@ def test_late_penalties_are_applied_and_shown(site, assignment, student, lecture
     Submission.objects.filter(pk=submission.pk).update(is_late=True)
     # 2 days late: 10% of 50 = 5 marks: 40 becomes 35, 70% of the assignment.
     assert coursework_percent(site, student) == Decimal("70.00")
-    shown = client_for(student.user).get(f"/api/v1/assignments/{assignment.id}/").json()["my_submission"]["mark"]
+    shown = (
+        client_for(student.user).get(f"/api/v1/assignments/{assignment.id}/").json()["my_submission"]["mark"]
+    )
     assert (shown["raw_mark"], shown["penalty"], shown["mark"], shown["penalty_percent"]) == (
         "40.00",
         "5.00",
@@ -158,17 +198,32 @@ def test_categories_weight_the_parts_and_drop_the_lowest(site, assignment, stude
     past = now - timedelta(days=1)
     teacher = client_for(lecturer.user)
     tests = teacher.post(
-        "/api/v1/grade-categories/", {"site": site.id, "name": "Tests", "weight": "60", "drop_lowest": 1}, format="json"
+        "/api/v1/grade-categories/",
+        {"site": site.id, "name": "Tests", "weight": "60", "drop_lowest": 1},
+        format="json",
     ).json()
-    reports = teacher.post("/api/v1/grade-categories/", {"site": site.id, "name": "Reports", "weight": "40"}, format="json").json()
-    duplicate = teacher.post("/api/v1/grade-categories/", {"site": site.id, "name": "Tests", "weight": "1"}, format="json")
+    reports = teacher.post(
+        "/api/v1/grade-categories/", {"site": site.id, "name": "Reports", "weight": "40"}, format="json"
+    ).json()
+    duplicate = teacher.post(
+        "/api/v1/grade-categories/", {"site": site.id, "name": "Tests", "weight": "1"}, format="json"
+    )
     assert duplicate.status_code == 400
-    assert client_for(student.user).post(
-        "/api/v1/grade-categories/", {"site": site.id, "name": "Mine", "weight": "1"}, format="json"
-    ).status_code == 403
-    t1 = Assignment.objects.create(site=site, title="Test 1", due_at=past, max_mark=10, is_published=True, category_id=tests["id"])
-    t2 = Assignment.objects.create(site=site, title="Test 2", due_at=past, max_mark=10, is_published=True, category_id=tests["id"])
-    t3 = Assignment.objects.create(site=site, title="Test 3", due_at=past, max_mark=10, is_published=True, category_id=tests["id"])
+    assert (
+        client_for(student.user)
+        .post("/api/v1/grade-categories/", {"site": site.id, "name": "Mine", "weight": "1"}, format="json")
+        .status_code
+        == 403
+    )
+    t1 = Assignment.objects.create(
+        site=site, title="Test 1", due_at=past, max_mark=10, is_published=True, category_id=tests["id"]
+    )
+    t2 = Assignment.objects.create(
+        site=site, title="Test 2", due_at=past, max_mark=10, is_published=True, category_id=tests["id"]
+    )
+    t3 = Assignment.objects.create(
+        site=site, title="Test 3", due_at=past, max_mark=10, is_published=True, category_id=tests["id"]
+    )
     Assignment.objects.filter(pk=assignment.pk).update(category_id=reports["id"])
     handed(t1, student, past, mark=8)
     handed(t2, student, past, mark=6)  # t3 missing: zero, and dropped as the lowest
@@ -177,16 +232,28 @@ def test_categories_weight_the_parts_and_drop_the_lowest(site, assignment, stude
     assert coursework_percent(site, student) == Decimal("62.00")
     working = coursework_working(site, student)
     states = {i["title"]: i["state"] for i in working["items"]}
-    assert states == {"Test 1": "graded", "Test 2": "graded", "Test 3": "dropped", "Soil sampling report": "graded"}
+    assert states == {
+        "Test 1": "graded",
+        "Test 2": "graded",
+        "Test 3": "dropped",
+        "Soil sampling report": "graded",
+    }
     assert [c["percent"] for c in working["categories"]] == ["70.00", "50.00"]
 
     # An item in no category counts as one more category weighted by its own weight.
-    Assignment.objects.create(site=site, title="Field notes", due_at=past, max_mark=10, weight=100, is_published=True)
+    Assignment.objects.create(
+        site=site, title="Field notes", due_at=past, max_mark=10, weight=100, is_published=True
+    )
     # (60 * 0.7 + 40 * 0.5 + 100 * 0) / 200 = 31%
     assert coursework_percent(site, student) == Decimal("31.00")
     assert coursework_working(site, student)["categories"][-1]["name"] == "Not in a category"
     t3.delete()
-    assert teacher.patch(f"/api/v1/grade-categories/{tests['id']}/", {"drop_lowest": 0}, format="json").status_code == 200
+    assert (
+        teacher.patch(
+            f"/api/v1/grade-categories/{tests['id']}/", {"drop_lowest": 0}, format="json"
+        ).status_code
+        == 200
+    )
     assert teacher.get(f"/api/v1/grade-categories/?site={site.id}").json()[0]["name"] == "Tests"
     book = teacher.get(f"/api/v1/sites/{site.id}/gradebook/").json()
     assert [c["name"] for c in book["categories"]] == ["Tests", "Reports"]
@@ -195,7 +262,9 @@ def test_categories_weight_the_parts_and_drop_the_lowest(site, assignment, stude
 
 
 @pytest.mark.django_db
-def test_the_working_for_the_student_and_for_staff(site, assignment, student, other_student, lecturer, client_for):
+def test_the_working_for_the_student_and_for_staff(
+    site, assignment, student, other_student, lecturer, client_for
+):
     past = timezone.now() - timedelta(days=1)
     missed = Assignment.objects.create(site=site, title="Quiz 0", due_at=past, max_mark=10, is_published=True)
     handed(assignment, student, past, mark=40, released=False)
@@ -212,7 +281,9 @@ def test_the_working_for_the_student_and_for_staff(site, assignment, student, ot
 
 
 @pytest.mark.django_db
-def test_the_gradebook_export_is_spreadsheet_safe(site, assignment, student, other_student, lecturer, client_for):
+def test_the_gradebook_export_is_spreadsheet_safe(
+    site, assignment, student, other_student, lecturer, client_for
+):
     past = timezone.now() - timedelta(days=1)
     Assignment.objects.create(site=site, title="=HYPERLINK(1)", due_at=past, max_mark=10, is_published=True)
     handed(assignment, student, past, mark=40)
@@ -281,13 +352,19 @@ def test_the_lecturer_sends_coursework_to_the_srms(
 
 
 @pytest.mark.django_db
-def test_extensions_reach_the_late_flag_of_each_group_member(site, assignment, student, other_student, client_for):
+def test_extensions_reach_the_late_flag_of_each_group_member(
+    site, assignment, student, other_student, client_for
+):
     group = SiteGroup.objects.create(site=site, name="Team A")
     group.members.set(Membership.objects.filter(site=site, role="student"))
-    Assignment.objects.filter(pk=assignment.pk).update(is_group=True, due_at=timezone.now() - timedelta(hours=1))
+    Assignment.objects.filter(pk=assignment.pk).update(
+        is_group=True, due_at=timezone.now() - timedelta(hours=1)
+    )
     Extension.objects.create(
         assignment=assignment, student=other_student, due_at=timezone.now() + timedelta(days=1), reason="Ill"
     )
-    client_for(student.user).post(f"/api/v1/assignments/{assignment.id}/submit/", {"text": "x"}, format="json")
+    client_for(student.user).post(
+        f"/api/v1/assignments/{assignment.id}/submit/", {"text": "x"}, format="json"
+    )
     late = dict(Submission.objects.values_list("student__external_id", "is_late"))
     assert late == {"26MRP0001": True, "26MRP0002": False}

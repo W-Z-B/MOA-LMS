@@ -34,3 +34,13 @@ service worker refers to an offline queue that does not exist (item 4.02).
   ([ADR 0012](0012-new-components.md)).
 - Personal data cached on a phone is limited to the person's own courses and work, and cleared on sign-out.
 - If GSA later wants store apps, the web app can be wrapped without a rewrite; that would be a new decision.
+
+## Note on point 3, 5 October 2026 (item 4.02)
+
+How "checked against the server's clock" works for work sent later from the offline queue: the server's
+time alone decides whether work is late, as the Moodle app does, because a device's clock can be set back.
+The device's time is kept beside it (`client_submitted_at` on the submission, refused when more than ten
+minutes ahead of the server) and shown to teaching staff in the list of submissions, so a lecturer who
+accepts that the work was done in time excuses the lateness with an extension. Quiz answers already keep
+the device's time in the same way, and practical observations and logbook entries refuse a device time more
+than seven days old or ten minutes ahead.

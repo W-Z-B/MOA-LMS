@@ -20,7 +20,9 @@ MP3 = b"ID3\x04\x00\x00\x00\x00\x00\x00" + b"\x00" * 32
 
 def hand_in(client, assignment, text="My work", files=()):
     response = client.post(
-        f"/api/v1/assignments/{assignment.id}/submit/", {"text": text, "files": list(files)}, format="multipart"
+        f"/api/v1/assignments/{assignment.id}/submit/",
+        {"text": text, "files": list(files)},
+        format="multipart",
     )
     assert response.status_code == 201, response.json()
     return response.json()
@@ -41,7 +43,9 @@ def second_marker(make_person, site):
 def both(site, assignment, student, other_student, client_for):
     """Both students have handed in; returns their submission ids in student-number order."""
     first = hand_in(client_for(student.user), assignment)
-    second = hand_in(client_for(other_student.user), assignment, files=[SimpleUploadedFile("plot.pdf", b"%PDF-1.7")])
+    second = hand_in(
+        client_for(other_student.user), assignment, files=[SimpleUploadedFile("plot.pdf", b"%PDF-1.7")]
+    )
     return first["id"], second["id"]
 
 
@@ -105,11 +109,15 @@ def test_feedback_files_and_recordings(site, assignment, student, other_student,
     assert files[0]["is_audio"] is True and files[0]["kind"] == "mp3"
     disguised = SimpleUploadedFile("voice.mp3", b"<html></html>")
     assert teacher.post(url, {"file": disguised}, format="multipart").status_code == 400
-    assert learner.post(url, {"file": SimpleUploadedFile("a.mp3", MP3)}, format="multipart").status_code == 403
+    assert (
+        learner.post(url, {"file": SimpleUploadedFile("a.mp3", MP3)}, format="multipart").status_code == 403
+    )
     # The student hears it only once the mark is released.
     download = files[0]["download_url"]
     assert learner.get(download).status_code == 404
-    assert learner.get(f"/api/v1/assignments/{assignment.id}/").json()["my_submission"]["feedback_files"] == []
+    assert (
+        learner.get(f"/api/v1/assignments/{assignment.id}/").json()["my_submission"]["feedback_files"] == []
+    )
     mark(teacher, first, "40", is_released=True)
     heard = learner.get(download)
     assert heard.status_code == 200 and "Comments on your report.mp3" in heard["Content-Disposition"]
@@ -127,7 +135,10 @@ def test_download_everything_as_one_archive(site, assignment, student, other_stu
         learner,
         assignment,
         text="Notes",
-        files=[SimpleUploadedFile("report.pdf", b"%PDF-1.7 a"), SimpleUploadedFile("report.pdf", b"%PDF-1.7 b")],
+        files=[
+            SimpleUploadedFile("report.pdf", b"%PDF-1.7 a"),
+            SimpleUploadedFile("report.pdf", b"%PDF-1.7 b"),
+        ],
     )
     hand_in(client_for(other_student.user), assignment, "", [SimpleUploadedFile("Plot 7.pdf", b"%PDF-1.7 c")])
     response = client_for(lecturer.user).get(f"/api/v1/assignments/{assignment.id}/download-all/")
@@ -169,9 +180,17 @@ def test_marks_from_a_spreadsheet_are_checked_then_applied(
     )
     checked = teacher.post(url, {"file": csv_file(text)}, format="multipart").json()
     outcomes = [(r["line"], r["outcome"]) for r in checked["rows"]]
-    assert outcomes == [(2, "changed"), (3, "above_max"), (4, "no_submission"), (5, "unknown_student"), (6, "repeated")]
+    assert outcomes == [
+        (2, "changed"),
+        (3, "above_max"),
+        (4, "no_submission"),
+        (5, "unknown_student"),
+        (6, "repeated"),
+    ]
     assert checked["applied"] is False and checked["refused"] == 4 and Mark.objects.get().mark == 10
-    refused = teacher.post(url, {"file": csv_file(text), "apply": True, "token": checked["token"]}, format="multipart")
+    refused = teacher.post(
+        url, {"file": csv_file(text), "apply": True, "token": checked["token"]}, format="multipart"
+    )
     assert refused.status_code == 409 and refused.json()["code"] == "rows_refused"
 
     good = "student_no,mark,feedback\n26MRP0001,41,Clear method\n26MRP0002,=1+1,\n26MRP0002,abc,\n"
@@ -180,9 +199,13 @@ def test_marks_from_a_spreadsheet_are_checked_then_applied(
     good = "student_no,mark,feedback\n26MRP0001,41,Clear method\n26MRP0002,35.5,\n"
     checked = teacher.post(url, {"file": csv_file(good)}, format="multipart").json()
     assert checked["to_save"] == 2 and checked["refused"] == 0
-    unchecked = teacher.post(url, {"file": csv_file(good + "\n"), "apply": True, "token": "x"}, format="multipart")
+    unchecked = teacher.post(
+        url, {"file": csv_file(good + "\n"), "apply": True, "token": "x"}, format="multipart"
+    )
     assert unchecked.json()["code"] == "not_checked"
-    applied = teacher.post(url, {"file": csv_file(good), "apply": True, "token": checked["token"]}, format="multipart")
+    applied = teacher.post(
+        url, {"file": csv_file(good), "apply": True, "token": checked["token"]}, format="multipart"
+    )
     assert applied.json()["applied"] is True
     marks = {m.submission.student.external_id: (m.mark, m.source, m.is_released) for m in Mark.objects.all()}
     assert marks == {"26MRP0001": (41, "upload", False), "26MRP0002": (35.5, "upload", False)}
@@ -203,13 +226,18 @@ def test_a_group_mark_is_copied_to_each_member_with_adjustments(
     Assignment.objects.filter(pk=assignment.pk).update(is_group=True)
     teacher = client_for(lecturer.user)
     url = f"/api/v1/assignments/{assignment.id}/group-mark/"
-    assert teacher.post(url, {"group": group.id, "mark": "40"}, format="json").json()["code"] == "no_submission"
+    assert (
+        teacher.post(url, {"group": group.id, "mark": "40"}, format="json").json()["code"] == "no_submission"
+    )
     hand_in(client_for(student.user), assignment)
     response = teacher.post(
         url,
-        {"group": group.id, "mark": "40", "feedback": "Good teamwork", "adjustments": [
-            {"student_no": "26MRP0002", "adjustment": "-5"}
-        ]},
+        {
+            "group": group.id,
+            "mark": "40",
+            "feedback": "Good teamwork",
+            "adjustments": [{"student_no": "26MRP0002", "adjustment": "-5"}],
+        },
         format="json",
     )
     assert response.status_code == 200, response.json()
@@ -222,7 +250,9 @@ def test_a_group_mark_is_copied_to_each_member_with_adjustments(
     )
     assert too_high.status_code == 400 and too_high.json()["code"] == "above_max"
     stranger = teacher.post(
-        url, {"group": group.id, "mark": "40", "adjustments": [{"student_no": "X", "adjustment": "1"}]}, format="json"
+        url,
+        {"group": group.id, "mark": "40", "adjustments": [{"student_no": "X", "adjustment": "1"}]},
+        format="json",
     )
     assert stranger.status_code == 400
     Assignment.objects.filter(pk=assignment.pk).update(is_group=False)
@@ -241,8 +271,14 @@ def test_anonymous_marking_hides_names_until_release(
     book = teacher.get(f"/api/v1/sites/{site.id}/gradebook/").json()
     first, _ = both
     mark(teacher, first, "30")
-    cell = next(r for r in teacher.get(f"/api/v1/sites/{site.id}/gradebook/").json()["rows"] if r["student_no"] == "26MRP0001")
-    assert cell["marks"][str(assignment.id)]["mark"] is None and cell["marks"][str(assignment.id)]["anonymous"]
+    cell = next(
+        r
+        for r in teacher.get(f"/api/v1/sites/{site.id}/gradebook/").json()["rows"]
+        if r["student_no"] == "26MRP0001"
+    )
+    assert (
+        cell["marks"][str(assignment.id)]["mark"] is None and cell["marks"][str(assignment.id)]["anonymous"]
+    )
     assert book["rows"]
     # Spreadsheet marks are matched by pseudonym; the archive is filed by pseudonym.
     label = next(r["student_no"] for r in rows if r["id"] == first)
@@ -269,25 +305,38 @@ def test_double_marking_holds_release_until_agreed(
     Assignment.objects.filter(pk=assignment.pk).update(moderation="double")
     first_marker, other = client_for(lecturer.user), client_for(second_marker.user)
     first, second = both
-    assert other.post(f"/api/v1/submissions/{first}/second-mark/", {"mark": "30"}, format="json").json()["code"] == (
-        "not_marked"
-    )
+    assert other.post(f"/api/v1/submissions/{first}/second-mark/", {"mark": "30"}, format="json").json()[
+        "code"
+    ] == ("not_marked")
     held = mark(first_marker, first, "30", is_released=True)
     assert held.status_code == 409 and held.json()["code"] == "moderation_outstanding"
     mark(first_marker, first, "30")
     same = first_marker.post(f"/api/v1/submissions/{first}/second-mark/", {"mark": "34"}, format="json")
     assert same.json()["code"] == "same_marker"
-    assert other.post(f"/api/v1/submissions/{first}/agree/", {"mark": "32"}, format="json").json()["code"] == (
-        "no_second_mark"
+    assert other.post(f"/api/v1/submissions/{first}/agree/", {"mark": "32"}, format="json").json()[
+        "code"
+    ] == ("no_second_mark")
+    assert (
+        other.post(f"/api/v1/submissions/{first}/second-mark/", {"mark": "99"}, format="json").status_code
+        == 400
     )
-    assert other.post(f"/api/v1/submissions/{first}/second-mark/", {"mark": "99"}, format="json").status_code == 400
-    moderated = other.post(f"/api/v1/submissions/{first}/second-mark/", {"mark": "36", "note": "Generous"}, format="json")
+    moderated = other.post(
+        f"/api/v1/submissions/{first}/second-mark/", {"mark": "36", "note": "Generous"}, format="json"
+    )
     assert moderated.json()["first_mark"] == "30.00" and moderated.json()["second_mark"] == "36.00"
-    assert first_marker.post(f"/api/v1/assignments/{assignment.id}/release/").json()["code"] == "moderation_outstanding"
-    agreed = first_marker.post(f"/api/v1/submissions/{first}/agree/", {"mark": "33", "note": "Met"}, format="json")
+    assert (
+        first_marker.post(f"/api/v1/assignments/{assignment.id}/release/").json()["code"]
+        == "moderation_outstanding"
+    )
+    agreed = first_marker.post(
+        f"/api/v1/submissions/{first}/agree/", {"mark": "33", "note": "Met"}, format="json"
+    )
     assert agreed.status_code == 200 and agreed.json()["mark"]["mark"] == "33.00"
     assert agreed.json()["mark"]["source"] == "agreed"
-    assert other.post(f"/api/v1/submissions/{first}/second-mark/", {"mark": "30"}, format="json").json()["code"] == "agreed"
+    assert (
+        other.post(f"/api/v1/submissions/{first}/second-mark/", {"mark": "30"}, format="json").json()["code"]
+        == "agreed"
+    )
     history = first_marker.get(f"/api/v1/submissions/{first}/history/").json()
     assert history["moderation"]["first_mark"] == "30.00" and history["moderation"]["agreed_mark"] == "33.00"
     # The second submission is not marked yet, so release of the agreed one goes ahead.
@@ -307,14 +356,17 @@ def test_a_sample_is_second_marked(site, assignment, lecturer, second_marker, cl
     sampled = teacher.post(url, {"percent": 50}, format="json").json()["sampled"]
     assert len(sampled) == 1
     outside = first if sampled[0] == second else second
-    assert other.post(f"/api/v1/submissions/{outside}/second-mark/", {"mark": "30"}, format="json").json()["code"] == (
-        "not_sampled"
-    )
+    assert other.post(f"/api/v1/submissions/{outside}/second-mark/", {"mark": "30"}, format="json").json()[
+        "code"
+    ] == ("not_sampled")
     assert teacher.post(f"/api/v1/assignments/{assignment.id}/release/").status_code == 409
     other.post(f"/api/v1/submissions/{sampled[0]}/second-mark/", {"mark": "35"}, format="json")
     teacher.post(f"/api/v1/submissions/{sampled[0]}/agree/", {"mark": "35"}, format="json")
     assert teacher.post(f"/api/v1/assignments/{assignment.id}/release/").json() == {"released": 2}
-    assert AuditLog.objects.filter(action__in=["moderation_sampled", "second_marked", "mark_agreed"]).count() == 3
+    assert (
+        AuditLog.objects.filter(action__in=["moderation_sampled", "second_marked", "mark_agreed"]).count()
+        == 3
+    )
 
 
 @pytest.mark.django_db
@@ -323,14 +375,20 @@ def test_marks_sent_to_the_srms_are_locked(site, assignment, student, lecturer, 
     first, second = both
     mark(teacher, first, "30", is_released=True)
     SrmsTransfer.objects.create(
-        site=site, student=student, percent="60.00", outcome="accepted", sent_at=timezone.now() - timedelta(days=1)
+        site=site,
+        student=student,
+        percent="60.00",
+        outcome="accepted",
+        sent_at=timezone.now() - timedelta(days=1),
     )
     changed = mark(teacher, first, "35")
     assert changed.status_code == 409 and changed.json()["code"] == "locked_in_srms"
     assert "SRMS correction process" in changed.json()["detail"]
     assert Submission.objects.get(pk=first).mark.mark == 30
     feedback = teacher.post(
-        f"/api/v1/submissions/{first}/feedback-files/", {"file": SimpleUploadedFile("a.mp3", MP3)}, format="multipart"
+        f"/api/v1/submissions/{first}/feedback-files/",
+        {"file": SimpleUploadedFile("a.mp3", MP3)},
+        format="multipart",
     )
     assert feedback.json()["code"] == "locked_in_srms"
     checked = teacher.post(

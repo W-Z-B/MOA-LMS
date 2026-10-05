@@ -4,6 +4,8 @@ The marking screen's endpoints are in assessments.marking_api, the gradebook's i
 and extensions and accommodations in assessments.arrangements_api; their routes are joined here.
 """
 
+from datetime import timedelta
+
 from django.db import transaction
 from django.db.models import Q
 from django.http import FileResponse
@@ -133,6 +135,7 @@ class SubmissionSerializer(serializers.ModelSerializer):
             "download_url",
             "files",
             "submitted_at",
+            "client_submitted_at",
             "is_late",
             "due_at",
             "extended",
@@ -354,6 +357,10 @@ class AssignmentSerializer(serializers.ModelSerializer):
         return obj.submissions.count() if request and can_teach(request.user, obj.site) else None
 
 
+# A device clock may run a little fast; further ahead than this it is wrong (as practicals.offline).
+CLIENT_AHEAD = timedelta(minutes=10)
+
+
 class SubmitSerializer(serializers.Serializer):
     text = serializers.CharField(required=False, allow_blank=True)
     files = serializers.ListField(
@@ -368,6 +375,19 @@ class SubmitSerializer(serializers.Serializer):
         default=False,
         help_text="Required when the assignment asks for the integrity statement",
     )
+    client_submitted_at = serializers.DateTimeField(
+        required=False,
+        allow_null=True,
+        help_text="When the device handed it in, sent by the offline queue (item 4.02). Kept beside the "
+        "server time, which alone decides lateness; refused when more than 10 minutes ahead of the server.",
+    )
+
+    def validate_client_submitted_at(self, value):
+        if value is not None and value > timezone.now() + CLIENT_AHEAD:
+            raise serializers.ValidationError(
+                "The device's clock is ahead of the server. Set it right and send again."
+            )
+        return value
 
 
 class MarkSerializer(serializers.Serializer):
@@ -531,7 +551,9 @@ class AssignmentViewSet(TeachingViewSet):
                     {"code": "closed", "detail": "The due date has passed, so the work cannot be replaced."},
                     status=409,
                 )
-            own, attempt = self._hand_in(request, assignment, person, group, members, text, uploads, now, data)
+            own, attempt = self._hand_in(
+                request, assignment, person, group, members, text, uploads, now, data
+            )
         _send_receipt(person, assignment, attempt)
         return Response(SubmissionSerializer(own, context={"released_only": True}).data, status=201)
 
@@ -573,11 +595,13 @@ class AssignmentViewSet(TeachingViewSet):
             rules.attempts_of(own).order_by("-number").values_list("number", flat=True).first() or 0
         ) + 1
         hashes = [(original_name(u), rules.file_sha256(u)) for u in uploads]
+        client_at = data.validated_data.get("client_submitted_at")
         attempt = SubmissionAttempt.objects.create(
             submission=own,
             number=number,
             submitted_by=person,
             submitted_at=now,
+            client_submitted_at=client_at,
             text=text,
             is_late=now > due.at,
             receipt=rules.new_receipt(),
@@ -609,6 +633,7 @@ class AssignmentViewSet(TeachingViewSet):
                     "file": first.file.name if first else "",
                     "original_name": first.original_name if first else "",
                     "submitted_at": now,
+                    "client_submitted_at": client_at,
                     "is_late": now > member_due.at,
                     "group": group,
                     "updated_by": request.user,
@@ -627,6 +652,7 @@ class AssignmentViewSet(TeachingViewSet):
                     "files": [f.original_name for f in stored],
                     "integrity_accepted": bool(attempt.integrity_statement),
                     "group": group.id if group else None,
+                    "client_submitted_at": client_at.isoformat() if client_at else None,
                 },
             )
             if member == person:

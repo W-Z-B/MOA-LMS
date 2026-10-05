@@ -43,6 +43,7 @@ def first_attempts(apps, schema_editor):
             number=1,
             submitted_by_id=submission.student_id,
             submitted_at=submission.submitted_at,
+            client_submitted_at=submission.client_submitted_at,
             text=submission.text,
             is_late=submission.is_late,
             receipt=_receipt(),
@@ -55,6 +56,6 @@ def first_attempts(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-    dependencies = [("assessments", "0004_marking_rubrics")]
+    dependencies = [("assessments", "0005_marking_rubrics")]
 
     operations = [migrations.RunPython(first_attempts, migrations.RunPython.noop)]

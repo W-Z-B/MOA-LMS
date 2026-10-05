@@ -104,6 +104,9 @@ def _can_see_attempt(user, attempt: SubmissionAttempt) -> bool:
 class AttemptSerializer(serializers.Serializer):
     number = serializers.IntegerField()
     submitted_at = serializers.DateTimeField()
+    client_submitted_at = serializers.DateTimeField(
+        allow_null=True, help_text="The device's time, for work sent from its offline queue"
+    )
     submitted_by = serializers.CharField(help_text="Who handed in: a student number, or the pseudonym")
     is_late = serializers.BooleanField()
     receipt = serializers.CharField()
@@ -146,6 +149,7 @@ def _attempt_row(attempt, label: str, latest_id: int) -> dict:
     return {
         "number": attempt.number,
         "submitted_at": attempt.submitted_at,
+        "client_submitted_at": attempt.client_submitted_at,
         "submitted_by": label,
         "is_late": attempt.is_late,
         "receipt": attempt.receipt,

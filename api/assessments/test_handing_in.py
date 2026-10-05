@@ -109,7 +109,9 @@ def test_files_are_checked_against_the_assignment(site, assignment, student, lec
 
 
 @pytest.mark.django_db
-def test_the_integrity_statement_is_accepted_with_each_hand_in(site, assignment, student, lecturer, client_for):
+def test_the_integrity_statement_is_accepted_with_each_hand_in(
+    site, assignment, student, lecturer, client_for
+):
     learner, teacher = client_for(student.user), client_for(lecturer.user)
     teacher.patch(f"/api/v1/assignments/{assignment.id}/", {"requires_integrity": True}, format="json")
     shown = learner.get(f"/api/v1/assignments/{assignment.id}/").json()
@@ -147,7 +149,10 @@ def test_one_member_hands_in_for_the_group(site, assignment, student, other_stud
     second = submit(partner, assignment, text="Corrected")
     assert second.json()["attempts"] == 2
     # Group-ness cannot change once work is in.
-    assert teacher.patch(f"/api/v1/assignments/{assignment.id}/", {"is_group": False}, format="json").status_code == 400
+    assert (
+        teacher.patch(f"/api/v1/assignments/{assignment.id}/", {"is_group": False}, format="json").status_code
+        == 400
+    )
 
 
 @pytest.mark.django_db

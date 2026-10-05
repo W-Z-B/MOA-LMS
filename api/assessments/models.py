@@ -153,6 +153,12 @@ class Submission(TimeStampedModel):
         max_length=255, blank=True, help_text="The name the file had when handed in; used for downloads"
     )
     submitted_at = models.DateTimeField()
+    client_submitted_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When the device says it was handed in, for work sent later from its offline queue. "
+        "Server time decides lateness; this is shown to teaching staff, who may excuse it by an extension.",
+    )
     is_late = models.BooleanField(default=False)
 
     class Meta:
@@ -171,6 +177,11 @@ class SubmissionAttempt(models.Model):
     number = models.PositiveSmallIntegerField()
     submitted_by = models.ForeignKey("people.PersonRef", on_delete=models.PROTECT, related_name="+")
     submitted_at = models.DateTimeField()
+    client_submitted_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="The device's time, for work sent later from its offline queue (4.02)",
+    )
     text = models.TextField(blank=True)
     is_late = models.BooleanField(default=False)
     receipt = models.CharField(max_length=20, unique=True)
