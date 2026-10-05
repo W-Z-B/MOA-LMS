@@ -255,3 +255,7 @@ class Completion(TimeStampedModel):
 
     def __str__(self) -> str:
         return f"{self.person} completed {self.site.code}"
+
+
+# Groupings and self-sign-up (item 4.12) live in their own module; imported here so Django registers them.
+from courses.groups import Grouping, GroupSignUp  # noqa: E402, F401
