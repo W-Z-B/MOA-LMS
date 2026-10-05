@@ -242,12 +242,25 @@ class Announcement(TimeStampedModel):
 
 
 class Completion(TimeStampedModel):
-    """A person completed a site. For staff-development sites this is reported to the HRMS training record."""
+    """A person completed a site. For staff-development sites this is reported to the HRMS training record.
+
+    One row per person and site: a renewal (item 5.05) moves it to the new date and expiry, and is reported
+    to the HRMS again under a reference of its own. Each certificate issued keeps the earlier dates.
+    """
+
+    class How(models.TextChoices):
+        RULES = "rules", "The site's completion rules were met"
+        RECORDED = "recorded", "Recorded by a course administrator"
 
     site = models.ForeignKey(CourseSite, on_delete=models.CASCADE, related_name="completions")
     person = models.ForeignKey("people.PersonRef", on_delete=models.CASCADE, related_name="completions")
     completed_on = models.DateField()
+    expires_on = models.DateField(null=True, blank=True, help_text="When the training must be renewed")
+    how = models.CharField(max_length=10, choices=How.choices, default=How.RECORDED)
     certificate = models.CharField(max_length=160, blank=True)
+    external_ref = models.CharField(
+        max_length=120, blank=True, help_text="The reference the HRMS keeps it under; set when first reported"
+    )
     reported_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:

@@ -16,11 +16,14 @@ class Command(BaseCommand):
         parser.add_argument("--push-marks", action="store_true", help="Send coursework totals to the SRMS")
         parser.add_argument("--push-training", action="store_true", help="Report completions to the HRMS")
         parser.add_argument("--site", help="Limit --push-marks to one site code")
+        parser.add_argument("--staff", action="store_true", help="Read the staff directory from the HRMS")
 
     def handle(self, *args, **options):
         from integration import hrms, srms
 
         try:
+            if options["staff"]:
+                self.stdout.write(f"staff: {hrms.sync_staff(trigger='command')}")
             self.stdout.write(f"sites: {srms.sync_sites(current_only=not options['all_terms'])}")
             if options["push_marks"]:
                 sites = CourseSite.objects.filter(source=CourseSite.Source.SRMS)
@@ -29,7 +32,7 @@ class Command(BaseCommand):
                 for site in sites:
                     self.stdout.write(f"marks {site.code}: {srms.push_marks(site)}")
             if options["push_training"]:
-                self.stdout.write(f"training: {hrms.push_training()}")
+                self.stdout.write(f"training: {hrms.push_training(trigger='command')}")
         except IntegrationError as exc:
             raise CommandError(str(exc)) from exc
         self.stdout.write(self.style.SUCCESS("Ecosystem sync complete."))

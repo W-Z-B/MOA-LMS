@@ -1,6 +1,7 @@
 """HTTP client for sibling systems. Standard library only, so the ecosystem adds no dependency."""
 
 import json
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -48,3 +49,25 @@ def pages(base_url: str, key: str, path: str, *, params: dict | None = None):
         if not payload.get("next"):
             return
         payload = call(base_url, key, payload["next"])
+
+
+def unreachable(exc: IntegrationError) -> bool:
+    """Whether the failure was the network or the other system's fault (worth trying again), rather than
+    the other system refusing this one request."""
+    return exc.status is None or exc.status >= 500
+
+
+def with_retries(send, *, sleep=time.sleep):
+    """Run `send()`, trying again with a growing wait while the other system cannot be reached (item 1.23).
+
+    A refusal (HTTP 4xx) is raised at once: sending it again would be refused again.
+    """
+    attempts = max(1, settings.INTEGRATION_ATTEMPTS)
+    for attempt in range(1, attempts + 1):
+        try:
+            return send()
+        except IntegrationError as exc:
+            if not unreachable(exc) or attempt == attempts:
+                raise
+            sleep(settings.INTEGRATION_RETRY_SECONDS * 2 ** (attempt - 1))
+    raise AssertionError("unreachable")  # pragma: no cover - the loop returns or raises
