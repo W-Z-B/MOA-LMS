@@ -16,6 +16,7 @@ from django.utils import timezone
 
 from assessments.models import Assignment, Mark, Submission
 from courses.models import Announcement, Completion, ContentItem, CourseSite, Membership, Module
+from courses.richtext import text_to_html
 from integration.client import IntegrationError
 
 # Two weeks of material per course: course, module, page, body. Modules and pages keep this order.
@@ -130,11 +131,13 @@ class Command(BaseCommand):
         modules: dict[str, Module] = {}
         for order, (_, title, page, body) in enumerate((p for p in PAGES if p[0] == course), start=1):
             if title not in modules:
+                # A site made from the SRMS has the GSA standard layout: its "Week 1" becomes this week.
+                Module.objects.filter(site=site, title=title.split(":")[0]).update(title=title)
                 modules[title], _ = Module.objects.get_or_create(
                     site=site, title=title, defaults={"position": len(modules) + 1}
                 )
             ContentItem.objects.get_or_create(
-                module=modules[title], title=page, defaults={"body": body, "position": order}
+                module=modules[title], title=page, defaults={"body": text_to_html(body), "position": order}
             )
         Announcement.objects.get_or_create(
             site=site,
@@ -204,7 +207,9 @@ class Command(BaseCommand):
             module=module,
             title="What belongs in the file",
             defaults={
-                "body": "Appointment letters, contracts, leave records and certificates, in date order."
+                "body": text_to_html(
+                    "Appointment letters, contracts, leave records and certificates, in date order."
+                )
             },
         )
         for person in self._staff(STAFF_SITE["members"]):

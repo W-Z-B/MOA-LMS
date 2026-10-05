@@ -74,7 +74,7 @@ def test_file_download_is_membership_checked_and_audited(site, student, lecturer
     upload = SimpleUploadedFile("handout.pdf", b"%PDF-1.4 handout", content_type="application/pdf")
     created = teacher.post(
         "/api/v1/content/",
-        {"module": module.id, "kind": "file", "title": "Handout", "file": upload},
+        {"module": module.id, "kind": "file", "title": "Handout", "file": upload, "licence": "gsa_own"},
         format="multipart",
     )
     assert created.status_code == 201, created.content
@@ -111,11 +111,15 @@ def test_course_files_are_stored_under_random_names_and_keep_the_name_chosen(
     """Item 1.12."""
     module = Module.objects.create(site=site, title="Week 1")
     upload = SimpleUploadedFile("Asha Persaud week 1.pdf", b"%PDF-1.7 week one")
-    created = client_for(lecturer.user).post(
-        "/api/v1/content/",
-        {"module": module.id, "kind": "file", "title": "Week 1", "file": upload},
-        format="multipart",
-    ).json()
+    created = (
+        client_for(lecturer.user)
+        .post(
+            "/api/v1/content/",
+            {"module": module.id, "kind": "file", "title": "Week 1", "file": upload, "licence": "gsa_own"},
+            format="multipart",
+        )
+        .json()
+    )
     stored = ContentItem.objects.get(pk=created["id"])
     assert stored.file.name.startswith("content/") and stored.file.name.endswith(".pdf")
     assert "Asha" not in stored.file.name
@@ -130,7 +134,7 @@ def test_a_page_disguised_as_a_handout_is_refused(site, lecturer, client_for):
     upload = SimpleUploadedFile("handout.pdf", b"<html><script>steal()</script></html>")
     refused = client_for(lecturer.user).post(
         "/api/v1/content/",
-        {"module": module.id, "kind": "file", "title": "Handout", "file": upload},
+        {"module": module.id, "kind": "file", "title": "Handout", "file": upload, "licence": "gsa_own"},
         format="multipart",
     )
     assert refused.status_code == 400

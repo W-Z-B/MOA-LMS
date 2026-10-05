@@ -8,6 +8,7 @@ from django.db import transaction
 
 from assessments.services import coursework_percent
 from courses.models import CourseSite, Membership
+from courses.site_templates import apply_template
 from integration.client import call, pages
 from people.models import PersonRef
 
@@ -51,7 +52,7 @@ def sync_sites(*, current_only: bool = True) -> dict:
     counts = {"sites": 0, "lecturers": 0, "students": 0, "deactivated": 0}
     params = {"current": "1"} if current_only else None
     for offering in _srms_pages("/api/v1/integration/offerings/", params):
-        site, _ = CourseSite.objects.update_or_create(
+        site, created = CourseSite.objects.update_or_create(
             code=offering["code"],
             defaults={
                 "title": f"{offering['course_code']} {offering['title']}",
@@ -62,6 +63,8 @@ def sync_sites(*, current_only: bool = True) -> dict:
             },
         )
         counts["sites"] += 1
+        if created:
+            apply_template(site)  # the GSA standard layout for a new, empty site (item 2.17)
         if offering.get("lecturer_employee_no"):
             lecturer = _upsert_lecturer(offering["lecturer_employee_no"], directory)
             Membership.objects.update_or_create(

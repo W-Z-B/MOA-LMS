@@ -1,6 +1,17 @@
 from django.contrib import admin
 
-from courses.models import Announcement, Completion, ContentItem, CourseSite, Membership, Module
+from courses.models import (
+    Announcement,
+    Completion,
+    ContentItem,
+    CourseSite,
+    ItemCompletion,
+    Membership,
+    Module,
+    SiteGroup,
+    SiteTemplate,
+    TakedownRequest,
+)
 
 
 @admin.register(CourseSite)
@@ -16,7 +27,20 @@ class MembershipAdmin(admin.ModelAdmin):
     list_filter = ("role", "is_active")
 
 
+@admin.register(SiteTemplate)
+class SiteTemplateAdmin(admin.ModelAdmin):
+    list_display = ("name", "is_default")
+
+
+@admin.register(TakedownRequest)
+class TakedownRequestAdmin(admin.ModelAdmin):
+    list_display = ("item", "status", "created_at", "reviewed_at")
+    list_filter = ("status",)
+
+
 admin.site.register(Module)
 admin.site.register(ContentItem)
 admin.site.register(Announcement)
 admin.site.register(Completion)
+admin.site.register(SiteGroup)
+admin.site.register(ItemCompletion)

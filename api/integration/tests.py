@@ -96,6 +96,10 @@ def test_sites_and_class_lists_come_from_the_srms(seeded, ecosystem):
     lecturer = PersonRef.objects.get(kind="staff", external_id="E0001")
     assert lecturer.full_name == "Asha Persaud"  # name resolved from the HRMS
     assert Membership.objects.get(site=site, person=lecturer).role == "lecturer"
+    # A new site starts from the GSA standard layout (item 2.17), once: a later sync adds nothing.
+    titles = list(site.modules.values_list("title", flat=True))
+    assert titles[:2] == ["Course overview", "Course outline"] and titles[-1] == "Assessment"
+    site.modules.filter(title="Week 12").delete()
 
     # A student drops the course in the SRMS: the membership is deactivated, not deleted.
     ecosystem["roster"] = ROSTER[:1]
@@ -103,6 +107,7 @@ def test_sites_and_class_lists_come_from_the_srms(seeded, ecosystem):
     dropped = Membership.objects.get(site=site, person__external_id="26MRP0002")
     assert dropped.is_active is False
     assert Membership.objects.filter(site=site).count() == 3
+    assert not site.modules.filter(title="Week 12").exists() and site.modules.count() == 14
 
 
 @pytest.mark.django_db
@@ -211,7 +216,9 @@ def test_demonstration_content_follows_the_class_lists_and_is_idempotent(seeded,
     call_command("seed_demo", fictional=True, verbosity=0)
     first = counts()
     call_command("seed_demo", fictional=True, verbosity=0)
-    assert counts() == first == (2, 3, 4, 1, 2, 3, 2, 1)
+    # The SRMS site has the GSA standard layout (15 modules, 16 draft pages), its "Week 1" and "Week 2"
+    # renamed for the demonstration pages; the staff-development site has one module and one page.
+    assert counts() == first == (2, 16, 20, 1, 2, 3, 2, 1)
 
     site = CourseSite.objects.get(code=OFFERING["code"])
     assert site.is_published and site.announcements.get().author.external_id == "E0001"

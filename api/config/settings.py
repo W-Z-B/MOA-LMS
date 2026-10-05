@@ -176,6 +176,9 @@ SESSION_IDLE_MINUTES = int(env("SESSION_IDLE_MINUTES", "30"))
 UPLOAD_LIMIT_CONTENT_MB = int(env("UPLOAD_LIMIT_CONTENT_MB", "50"))
 UPLOAD_LIMIT_SUBMISSION_MB = int(env("UPLOAD_LIMIT_SUBMISSION_MB", "20"))
 UPLOAD_LIMIT_EVIDENCE_MB = int(env("UPLOAD_LIMIT_EVIDENCE_MB", "15"))  # practical photographs and scans
+# Storage allowance for each course site's files, in megabytes (item 2.20). A course administrator can set
+# a different allowance on one site. Teaching staff are warned at 80% and refused at 100%.
+SITE_STORAGE_ALLOWANCE_MB = int(env("SITE_STORAGE_ALLOWANCE_MB", "2048"))
 
 # Account lockout: this many consecutive failed logins inside the window locks the account for the window.
 LOGIN_MAX_FAILURES = int(env("LOGIN_MAX_FAILURES", "5"))
