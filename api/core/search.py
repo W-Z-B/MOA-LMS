@@ -1,5 +1,5 @@
-"""Search (items 2.07 to 2.09): one box that finds sites, content, assignments, quizzes, people and
-staff-development courses in the catalogue (item 5.02).
+"""Search (items 2.07 to 2.09): one box that finds sites, content, assignments, quizzes, forum
+threads, people and staff-development courses in the catalogue (item 5.02).
 
 Search never finds what the person could not open: each kind is looked for inside the same list its own
 page shows, so a student finds only the published, released items of their own courses, and never finds
@@ -79,6 +79,22 @@ def _quizzes(user, q: str) -> list[dict]:
     ]
 
 
+def _threads(user, q: str) -> list[dict]:
+    """Forum threads by title, in the forums the person sees (forums.services.forum_visible)."""
+    from forums.models import Thread
+    from forums.services import visible_forums
+
+    threads = Thread.objects.filter(forum__site__in=visible_sites(user), title__icontains=q).select_related(
+        "forum__site", "forum__module"
+    )
+    forums = {f.id for f in visible_forums(user, {t.forum for t in threads})}
+    shown = [t for t in threads.order_by("-last_post_at", "-id") if t.forum_id in forums]
+    return [
+        _hit(t.id, t.title, f"{t.forum.site.title} · {t.forum.title}", f"/forums/{t.forum_id}/threads/{t.id}")
+        for t in shown[:SHOWN]
+    ]
+
+
 def _people(user, q: str) -> list[dict]:
     """Staff only: the people on the sites the person teaches, or anyone for administrators and auditors.
     Each links to a site the searcher can open that the person belongs to, when there is one."""
@@ -143,6 +159,7 @@ class SearchSerializer(serializers.Serializer):
     content = HitSerializer(many=True)
     assignments = HitSerializer(many=True)
     quizzes = HitSerializer(many=True)
+    threads = HitSerializer(many=True, help_text="Forum threads, by title")
     people = HitSerializer(many=True, help_text="Always empty for a student")
     catalogue = HitSerializer(many=True, help_text="Staff-development courses; always empty for a student")
 
@@ -150,7 +167,8 @@ class SearchSerializer(serializers.Serializer):
 @extend_schema(
     parameters=[OpenApiParameter("q", OpenApiTypes.STR, description="At least two letters")],
     responses={200: SearchSerializer, 400: ErrorSerializer, 403: ErrorSerializer},
-    summary=f"Find sites, content, assignments, quizzes and people I may open, {SHOWN} of each at most",
+    summary=f"Find sites, content, assignments, quizzes, threads and people I may open, {SHOWN} of each "
+    "at most",
 )
 @api_view(["GET"])
 @permission_classes([RolePermission])
@@ -164,6 +182,7 @@ def search(request):
         "content": _content(request, q),
         "assignments": _assignments(user, q),
         "quizzes": _quizzes(user, q),
+        "threads": _threads(user, q),
         "people": _people(user, q),
         "catalogue": _catalogue(user, q),
     }

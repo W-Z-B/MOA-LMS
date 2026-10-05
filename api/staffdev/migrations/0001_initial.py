@@ -11,7 +11,7 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('courses', '0005_completion_expiry_and_reference'),
+        ('courses', '0006_completion_expiry_and_reference'),
         ('people', '0002_personref_post_unit_supervisor_invited'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]

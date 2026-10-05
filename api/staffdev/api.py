@@ -77,7 +77,7 @@ class CatalogueEntrySerializer(serializers.ModelSerializer):
         )
 
 
-class CourseSerializer(serializers.Serializer):
+class CatalogueCourseSerializer(serializers.Serializer):
     """A course in the catalogue, with where the reader stands on it."""
 
     site = serializers.IntegerField(source="site.id")
@@ -134,11 +134,11 @@ class CourseSerializer(serializers.Serializer):
         return done.expires_on if done else None
 
 
-class JoinSerializer(serializers.Serializer):
+class CatalogueJoinSerializer(serializers.Serializer):
     reason = serializers.CharField(required=False, allow_blank=True, default="", max_length=1000)
 
 
-class JoinedSerializer(serializers.Serializer):
+class CatalogueJoinedSerializer(serializers.Serializer):
     outcome = serializers.ChoiceField(choices=["enrolled", "requested"])
     request = serializers.IntegerField(allow_null=True, help_text="The enrolment request, when one was made")
 
@@ -178,7 +178,7 @@ class CompletionSerializer(serializers.ModelSerializer):
 class CatalogueViewSet(viewsets.ReadOnlyModelViewSet):
     """The staff-development catalogue: published staff-development sites with a catalogue entry."""
 
-    serializer_class = CourseSerializer
+    serializer_class = CatalogueCourseSerializer
     permission_classes = [RolePermission]
     queryset = CatalogueEntry.objects.none()
     lookup_field = "site"
@@ -213,9 +213,9 @@ class CatalogueViewSet(viewsets.ReadOnlyModelViewSet):
         return get_object_or_404(self.get_queryset(), site=site)
 
     @extend_schema(
-        request=JoinSerializer,
+        request=CatalogueJoinSerializer,
         responses={
-            201: JoinedSerializer,
+            201: CatalogueJoinedSerializer,
             403: ErrorSerializer,
             404: ErrorSerializer,
             409: ErrorSerializer,
@@ -228,7 +228,7 @@ class CatalogueViewSet(viewsets.ReadOnlyModelViewSet):
         person = person_of(request.user)
         if person is None:
             return _refused("not_staff", "Staff-development courses are for members of staff.", 403)
-        data = JoinSerializer(data=request.data)
+        data = CatalogueJoinSerializer(data=request.data)
         data.is_valid(raise_exception=True)
         try:
             result = enrolment.join(request, entry, person, reason=data.validated_data["reason"])
@@ -436,7 +436,7 @@ class EnrolmentRequestViewSet(viewsets.ReadOnlyModelViewSet):
 # Learning paths (item 5.04)
 
 
-class StepSerializer(serializers.ModelSerializer):
+class PathStepSerializer(serializers.ModelSerializer):
     title = serializers.CharField(source="site.title", read_only=True)
 
     class Meta:
@@ -451,7 +451,7 @@ class LearningPathSerializer(serializers.ModelSerializer):
         queryset=CourseSite.objects.filter(kind=CourseSite.Kind.STAFF_DEVELOPMENT),
         help_text="The path's courses, in order: staff-development site ids",
     )
-    steps = StepSerializer(many=True, read_only=True)
+    steps = PathStepSerializer(many=True, read_only=True)
 
     class Meta:
         model = LearningPath
