@@ -16,6 +16,7 @@ from audit.services import record
 from iam.models import LoginAttempt, TotpDevice
 from iam.permissions import MFA_SESSION_KEY
 from iam.services import person_payload, requires_mfa, role_codes
+from privacy.services import notice_due
 
 
 class LoginSerializer(serializers.Serializer):
@@ -36,6 +37,7 @@ def _me_payload(user, session) -> dict:
         "is_superuser": bool(user.is_superuser),
         "mfa_required": requires_mfa(user),
         "mfa_verified": bool(session.get(MFA_SESSION_KEY, False)),
+        "privacy_notice_due": notice_due(user),  # the notice version still to read (item 1.18)
         **person_payload(user),
     }
 
