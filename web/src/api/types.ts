@@ -11,6 +11,8 @@ export interface Me {
   person_id: number | null;
   person_kind: "staff" | "student" | null;
   external_id: string | null;
+  /** The privacy notice version still to be read, or null (item 1.18). */
+  privacy_notice_due?: number | null;
 }
 
 export interface Paginated<T> {

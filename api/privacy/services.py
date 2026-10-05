@@ -174,7 +174,8 @@ def _person_record(person) -> dict:
 def record_of(user) -> dict:
     """Everything the LMS holds about this person, for their own copy."""
     person = getattr(user, "person", None)
-    return _record(user, person, "What the GSA LMS holds about you. Ask from My data if anything is wrong.")
+    about = "What the GSA LMS holds about you. If anything is wrong, ask for a correction from My data."
+    return _record(user, person, about)
 
 
 def record_of_person(person) -> dict:
