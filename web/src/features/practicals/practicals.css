@@ -170,12 +170,6 @@ button.toggle[aria-pressed="true"].no {
   border-color: var(--danger);
   color: #ffffff;
 }
-button.toggle[aria-pressed="true"]::before {
-  content: "✓ ";
-}
-button.toggle.no[aria-pressed="true"]::before {
-  content: "✗ ";
-}
 .score-row {
   display: flex;
   flex-wrap: wrap;
@@ -186,10 +180,6 @@ button.toggle.score {
   min-height: 52px;
   padding: 0 8px;
   flex: 1 0 52px;
-}
-button.toggle.score[aria-pressed="true"]::before,
-button.toggle.score.no[aria-pressed="true"]::before {
-  content: "";
 }
 .criterion-comment input {
   min-height: 44px;

@@ -282,9 +282,11 @@ function Checklist({ task, student, onNext, onBack }: { task: PracticalTask; stu
                 {c.kind === "pass_fail" ? (
                   <div className="toggle-pair">
                     <button type="button" className="toggle yes" aria-pressed={m?.passed === true} onClick={() => set(c, { passed: true })}>
+                      <span aria-hidden="true">{m?.passed === true ? "✓ " : ""}</span>
                       Met
                     </button>
                     <button type="button" className="toggle no" aria-pressed={m?.passed === false} onClick={() => set(c, { passed: false })}>
+                      <span aria-hidden="true">{m?.passed === false ? "✗ " : ""}</span>
                       Not met
                     </button>
                   </div>
