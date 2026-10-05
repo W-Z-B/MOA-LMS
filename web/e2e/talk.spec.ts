@@ -121,6 +121,8 @@ test("a student writes to the teaching staff without a connection, and it is sen
   await page.getByRole("button", { name: "Send" }).click();
   await expect(page.getByText("Waiting to send. It is sent when the connection returns.").first()).toBeVisible();
   await expect(page.getByRole("banner").getByText("1 waiting to send")).toBeVisible();
+  // The header keeps everything on the screen while a write waits, even at 360px.
+  await expect(page.getByRole("button", { name: /^Signed in as / })).toBeInViewport();
   await expectAccessible(page, testInfo, "message waiting to send");
   await page.context().setOffline(false);
   await expect(page.getByText("Sent", { exact: true })).toBeVisible();

@@ -39,7 +39,7 @@ export function ConductGate({ doing, children, recheckKey = 0 }: Props) {
       <p className="muted small">
         Version {current.statement.version}. Read and accept them before you {doing}.
       </p>
-      <div className="conduct-body">
+      <div className="conduct-body" tabIndex={0} role="region" aria-label="The rules">
         {paragraphs.map((p, at) => (
           <p key={at}>{p}</p>
         ))}

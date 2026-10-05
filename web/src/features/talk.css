@@ -527,3 +527,19 @@ a.messages-link[aria-current="page"] {
     padding-left: 8px;
   }
 }
+
+/* A phone's header with writes waiting to send: the count wraps small and the name gives way, so Messages,
+   notifications and the person's menu stay on the screen at 360px. */
+@media (max-width: 760px) {
+  .frame.phone .masthead .sync {
+    max-width: 84px;
+    height: auto;
+    padding: 2px 8px;
+    font-size: 11px;
+    line-height: 1.2;
+    white-space: normal;
+  }
+  .frame.phone .masthead:has(.sync) .brand {
+    display: none;
+  }
+}

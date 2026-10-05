@@ -4,7 +4,7 @@ import { canTeach, type Paginated } from "../../api/types";
 import type { Audience, Conversation, ConversationDetail, Recipient, SiteGroup } from "../../api/types-talk";
 import { dmyTime, when } from "../../app/format";
 import { useCrumb } from "../../app/frame";
-import { sendOrQueue, usePending, type QueuedWrite } from "../../app/offlineQueue";
+import { isNetworkError, sendOrQueue, usePending, type QueuedWrite } from "../../app/offlineQueue";
 import { SendState } from "../../app/SendState";
 import { Composer } from "../forums/Composer";
 import { ConductGate } from "../forums/Conduct";
@@ -319,6 +319,7 @@ export function MessagesScreen({ conversationId, query, onNavigate }: Props) {
   const params = new URLSearchParams(query);
   const askedSite = params.get("site") ? Number(params.get("site")) : null;
   const [list, setList] = useState<Conversation[] | null>(null);
+  const hasList = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [writing, setWriting] = useState(askedSite !== null);
   const [queuedNew, setQueuedNew] = useState<string | null>(null);
@@ -327,10 +328,15 @@ export function MessagesScreen({ conversationId, query, onNavigate }: Props) {
   const load = useCallback(() => {
     get<Conversation[]>("/conversations/")
       .then((l) => {
+        hasList.current = true;
         setList(l);
         setError(null);
       })
-      .catch((err) => setError(errorMessage(err, "Could not load your messages.")));
+      // Without a connection the list last read stays: only a page with nothing to show says so.
+      .catch((err) => {
+        if (!isNetworkError(err)) setError(errorMessage(err, "Could not load your messages."));
+        else if (!hasList.current) setError("No connection. Your messages show when it returns.");
+      });
   }, []);
 
   useEffect(() => {
