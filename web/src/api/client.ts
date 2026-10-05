@@ -18,6 +18,9 @@ export class ApiError extends Error {
   }
 }
 
+/** Sent on window when the server says the session has ended; the event's detail is the reason. */
+export const SIGNED_OUT_EVENT = "gsa:signed-out";
+
 function csrfToken(): string | undefined {
   return document.cookie
     .split("; ")
@@ -38,6 +41,10 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   if (response.status === 204) return undefined as T;
   const body = await response.json().catch(() => ({}));
   if (!response.ok) {
+    if (response.status === 401 && body.code === "session_expired") {
+      // The server ended the session (idle or time limit): the app returns to sign-in and says why.
+      window.dispatchEvent(new CustomEvent(SIGNED_OUT_EVENT, { detail: body.detail }));
+    }
     const fields = typeof body === "object" && !("detail" in body) ? body : undefined;
     throw new ApiError(response.status, body.code ?? "error", body.detail ?? "Request failed", fields);
   }
@@ -50,6 +57,7 @@ export const get = <T>(path: string) => api<T>(path);
 export const post = <T>(path: string, data?: unknown) =>
   api<T>(path, { method: "POST", body: data === undefined ? undefined : encode(data) });
 export const patch = <T>(path: string, data: unknown) => api<T>(path, { method: "PATCH", body: encode(data) });
+export const remove = <T>(path: string) => api<T>(path, { method: "DELETE" });
 
 /** First human-readable message from an API error, preferring field errors. */
 export function errorMessage(err: unknown, fallback = "Something went wrong."): string {
