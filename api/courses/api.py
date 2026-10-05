@@ -9,7 +9,13 @@ from django.http import FileResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import extend_schema, inline_serializer
+from drf_spectacular.utils import (
+    OpenApiParameter,
+    extend_schema,
+    extend_schema_field,
+    extend_schema_view,
+    inline_serializer,
+)
 from rest_framework import serializers, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
@@ -340,6 +346,7 @@ class ModuleSerializer(ReleaseFields):
             validated_data["position"] = last + 1
         return super().create(validated_data)
 
+    @extend_schema_field(ContentItemSerializer(many=True))
     def get_items(self, obj) -> list[dict]:
         items = list(obj.items.all())
         role = role_on(self, obj.site)
@@ -480,6 +487,27 @@ def renumber(rows, order: list[int], what: str) -> dict:
     return before
 
 
+class SiteContentsSerializer(serializers.Serializer):
+    """Describes the contents action for the API documentation."""
+
+    site = SiteSerializer()
+    modules = ModuleSerializer(many=True)
+    announcements = AnnouncementSerializer(many=True)
+
+
+class SiteMemberSerializer(serializers.Serializer):
+    membership_id = serializers.IntegerField(help_text="Used to put the member in a group")
+    person_id = serializers.IntegerField()
+    external_id = serializers.CharField(help_text="Employee number or student number")
+    name = serializers.CharField()
+    role = serializers.ChoiceField(choices=Membership.SiteRole.choices)
+
+
+@extend_schema_view(
+    list=extend_schema(
+        parameters=[OpenApiParameter("term", OpenApiTypes.STR, description="Only sites of this term code")]
+    )
+)
 class SiteViewSet(viewsets.ModelViewSet):
     serializer_class = SiteSerializer
     permission_classes = [RolePermission]
@@ -533,6 +561,7 @@ class SiteViewSet(viewsets.ModelViewSet):
         require_teaching(self.request.user, site)
         return site
 
+    @extend_schema(responses=SiteContentsSerializer, summary="A site with its modules and announcements")
     @action(detail=True, methods=["get"])
     def contents(self, request, pk=None):
         site = self.get_object()
@@ -548,6 +577,10 @@ class SiteViewSet(viewsets.ModelViewSet):
             }
         )
 
+    @extend_schema(
+        responses=SiteMemberSerializer(many=True),
+        summary="Class list (teaching staff only)",
+    )
     @action(detail=True, methods=["get"])
     def members(self, request, pk=None):
         site = self.get_object()
@@ -1057,6 +1090,9 @@ class ContentItemViewSet(TeachingViewSet):
         return Response({"body": body, "issues": [issue.as_dict() for issue in richtext.check(body)]})
 
 
+@extend_schema_view(
+    list=extend_schema(parameters=[OpenApiParameter("site", OpenApiTypes.INT, description="Only this site")])
+)
 class AnnouncementViewSet(TeachingViewSet):
     serializer_class = AnnouncementSerializer
 

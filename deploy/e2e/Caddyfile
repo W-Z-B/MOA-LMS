@@ -1,0 +1,9 @@
+# TLS edge for the end-to-end test stack (compose.e2e.yml). Stands in for the platform edge on staging.
+{
+	admin off
+}
+
+lms-e2e {
+	tls internal
+	reverse_proxy app:8080
+}

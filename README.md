@@ -13,7 +13,9 @@ The LMS owns no person and no result. Staff come from the HRMS, students and cla
 SRMS, and coursework totals go back to the SRMS, which adds the examination mark and publishes.
 
 Same stack and licence policy as the HRMS: Django 5, Django REST Framework, PostgreSQL 16, React,
-Caddy, Docker Compose. Every component is MIT, BSD, Apache 2.0, PostgreSQL or PSF licensed.
+Caddy, Docker Compose. Only permissive licences ship, with the named LGPL and MPL exceptions of
+[ADR 0002](docs/adr/0002-licence-policy.md). Setup: [docs/SETUP.md](docs/SETUP.md); how to contribute and the
+quality gates: [CONTRIBUTING.md](CONTRIBUTING.md); decisions: [docs/adr](docs/adr/README.md).
 
 **Status:** scaffold with working API and web screens. 21 backend tests pass against PostgreSQL.
 

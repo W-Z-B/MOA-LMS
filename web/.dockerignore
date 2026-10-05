@@ -1,0 +1,6 @@
+# Used when the build context is web/ (web/Dockerfile, deploy/compose.prod.yml).
+node_modules
+dist
+coverage
+test-results
+playwright-report

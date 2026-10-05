@@ -2,6 +2,10 @@
 #   docker compose -f compose.yml -f deploy/compose.prod.yml up -d
 services:
   api:
+    build:
+      context: ./api
+      args:
+        INSTALL_DEV: "0" # runtime packages only
     command: gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 4 --timeout 60
     volumes:
       - files:/srv/files
@@ -13,15 +17,24 @@ services:
     restart: unless-stopped
 
   web:
-    # Built static bundle served by Caddy; the dev server is not used in production.
+    # Static bundle built by web/Dockerfile and copied into the volume Caddy serves; the dev server and
+    # Node are not used in production.
     build:
       context: ./web
-    command: sh -c "npm ci && npm run build && cp -r dist/. /srv/web/"
-    volumes:
+    image: gsa-lms-web
+    working_dir: /
+    command: ["publish-web"]
+    # Only the volume: the development stack mounts the source and node_modules here, which the built
+    # image does not need.
+    volumes: !override
       - web_dist:/srv/web
     restart: "no"
 
   caddy:
+    # Starts once the bundle is in place, so the first request never meets an empty volume.
+    depends_on:
+      web:
+        condition: service_completed_successfully
     volumes:
       - ./deploy/Caddyfile.prod:/etc/caddy/Caddyfile:ro
       - web_dist:/srv/web:ro

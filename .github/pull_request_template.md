@@ -1,17 +1,24 @@
 ## Summary
 
-<!-- What changes and why. Link the issue: Closes #NN -->
+<!-- What changes and why, in a few sentences. -->
 
-## Requirement
+## Checklist items
 
-<!-- F01 to F17 identifier(s) this touches -->
+<!-- The Implementation Checklist items this delivers, for example 2.07, 2.10. Name any decision record (docs/adr). -->
 
-## Checklist
+## How it was checked
 
-- [ ] Branch named `feature/<id>-<short-name>`, `fix/<short-name>` or `docs/<short-name>`
-- [ ] Tests added or updated; suite passes in the Compose stack (`docker compose run --rm api pytest -q`)
-- [ ] Migrations generated and `makemigrations --check` clean
-- [ ] No new dependency, or the licence is MIT, BSD, Apache 2.0, PostgreSQL or PSF and ADR updated
-- [ ] No secrets, personal data or real employee records in code, fixtures or screenshots
-- [ ] Writes to personnel data produce audit rows
-- [ ] Docs updated (`docs/components.md`, `docs/SETUP.md`) if behaviour or setup changed
+<!-- What you ran and saw: tests, the browser journeys, a phone screenshot. -->
+
+## Definition of done
+
+- [ ] Acceptance points met and shown on a phone and on a desktop
+- [ ] Rules and permissions covered by automatic tests, including the cases that must be refused
+- [ ] Every change to marks or submissions, and every sensitive view, appears in the audit log
+- [ ] Checked for keyboard use, screen reader labels, contrast and page weight; fits a 360px phone without sideways scrolling
+- [ ] Works, or fails clearly and safely, without signal
+- [ ] User guide page, administrator note and interface documentation (`extend_schema`) updated
+- [ ] Reviewed, every CI gate green, and running on staging with fictional data
+- [ ] Checklist item ticked and the published plan updated
+- [ ] No secrets, real personal data or real learner records in code, fixtures or screenshots
+- [ ] New dependency: licence allowed by ADR 0002 (or a named exception with its reason), lock files updated
