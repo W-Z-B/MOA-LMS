@@ -43,7 +43,7 @@ describe("classes on a course (item 4.14)", () => {
     expect(before).toHaveTextContent("Late");
     expect(within(before).getByRole("link", { name: "Recording" })).toBeInTheDocument();
     expect(await screen.findByRole("heading", { name: "Your attendance" })).toBeInTheDocument();
-    expect(screen.getByRole("region", { name: "Attendance totals" })).toHaveTextContent("100.00%");
+    expect(screen.getByRole("region", { name: "Totals by student" })).toHaveTextContent("100.00%");
     expect(screen.queryByRole("button", { name: "Add a class" })).not.toBeInTheDocument();
   });
 

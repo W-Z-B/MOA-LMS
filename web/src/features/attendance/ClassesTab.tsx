@@ -250,7 +250,7 @@ function Totals({ siteId, teaching }: Props) {
       {totals.length === 0 ? (
         <p className="muted">No attendance yet.</p>
       ) : (
-        <div className="scroll-x" tabIndex={0} role="region" aria-label="Attendance totals">
+        <div className="scroll-x" tabIndex={0} role="region" aria-label="Totals by student">
           <table>
             <thead>
               <tr>

@@ -4,6 +4,8 @@ seed_demo needs the HRMS and the SRMS to name the people and the classes. The jo
 own, so this command creates its own small cast instead: a lecturer and two students with accounts, and one
 course site taught with seed_demo's material (content, an announcement, two assignments, a released mark),
 plus what the Homes show: work due this week for Kezia and a hand-in waiting to be marked for the lecturer.
+For the forums, messages, classes and calendar journeys (items 4.08 to 4.15) it adds two forums, three
+classes (two running now) and two lab groups.
 The accounts share the password in DEMO_USER_PASSWORD. Teaching staff need an authenticator code (ADR 0013),
 so the lecturer's authenticator is enrolled from DEMO_TOTP_SECRET, a fictional secret the journeys also hold
 to compute the code. The draft privacy notice is published, so the journeys read and acknowledge it as
@@ -81,6 +83,7 @@ class Command(BaseCommand):
                     )
             SeedDemo()._teach(site)
             self._homes(site)
+            self._talk(site)
             PrivacyNotice.objects.filter(published_at__isnull=True).update(published_at=timezone.now())
         self.stdout.write(
             self.style.SUCCESS(f"Journey data ready: {len(CAST)} accounts in {site.code} ({site.title}).")
@@ -111,6 +114,68 @@ class Command(BaseCommand):
             student=tevin,
             defaults={"text": "Demonstration submission.", "submitted_at": now - timedelta(days=1)},
         )
+
+    @staticmethod
+    def _talk(site: CourseSite) -> None:
+        """Forums, classes and groups for the journeys of items 4.08 to 4.15. A question-and-answer forum
+        where Tevin has answered already (Kezia sees his answer once she posts hers), a class discussion
+        for the moderation journey, two classes running now (one for the register, one for check-in, so
+        neither journey changes the other's) and one tomorrow, and a lab group with self-sign-up."""
+        from attendance.models import ClassSession
+        from courses.groups import GroupSignUp
+        from courses.models import SiteGroup
+        from forums.models import Forum, Post, Thread
+
+        now = timezone.now()
+        users = {p.user.username: p.user for p in PersonRef.objects.filter(memberships__site=site)}
+        lecturer, kezia, tevin = users["marlon.bacchus"], users["kezia.persaud"], users["tevin.joseph"]
+        question, _ = Forum.objects.get_or_create(
+            site=site,
+            title="Questions on germination",
+            defaults={
+                "forum_type": Forum.Type.QUESTION,
+                "description": "<p>Answer each question in your own words.</p>",
+            },
+        )
+        talk, _ = Forum.objects.get_or_create(
+            site=site, title="Class discussion", defaults={"description": "<p>Anything about the course.</p>"}
+        )
+        for forum, title, opening, replies in (
+            (
+                question,
+                "Why did some seeds not germinate?",
+                "<p>In the trial, a third of the bean seeds did not come up. Give one reason.</p>",
+                [(tevin, "<p>The tray was watered too often, so the seeds rotted.</p>")],
+            ),
+            (talk, "Where do you buy your seed?", "<p>Tell the class where you buy seed, and why.</p>", []),
+        ):
+            thread, made = Thread.objects.get_or_create(
+                forum=forum, title=title, defaults={"author": lecturer, "last_post_at": now}
+            )
+            if made:
+                first = Post.objects.create(thread=thread, author=lecturer, body=opening)
+                for author, body in replies:
+                    Post.objects.create(thread=thread, parent=first, author=author, body=body)
+        for title, starts, hours, place in (
+            ("Soil science lecture", now - timedelta(minutes=30), 5, "Room 4"),
+            ("Field practical: seed sowing", now - timedelta(minutes=45), 5, "Plot 2"),
+            ("Irrigation (online)", now + timedelta(days=1), 1, ""),
+        ):
+            ClassSession.objects.get_or_create(
+                site=site,
+                title=title,
+                defaults={
+                    "starts_at": starts,
+                    "ends_at": starts + timedelta(hours=hours),
+                    "location": place,
+                    "meeting_url": "" if place else "https://meet.example.org/agr101",
+                },
+            )
+        lab_a, made = SiteGroup.objects.get_or_create(site=site, name="Lab group A")
+        if made:
+            lab_a.members.add(*site.memberships.filter(person__user=kezia))
+        lab_b, _ = SiteGroup.objects.get_or_create(site=site, name="Lab group B")
+        GroupSignUp.objects.get_or_create(group=lab_b, defaults={"max_size": 3})
 
     @staticmethod
     def _person(username, kind, external_id, first, last, role, password) -> PersonRef:
