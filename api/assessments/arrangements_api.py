@@ -30,6 +30,7 @@ class ExtensionSerializer(serializers.ModelSerializer):
         model = Extension
         fields = ("id", "assignment", "student", "student_no", "group", "due_at", "reason", "granted_by")
         read_only_fields = ("granted_by",)
+        validators = []  # one extension per student or group is checked in validate, with a clearer message
 
     def validate(self, attrs):
         assignment = attrs.get("assignment") or self.instance.assignment

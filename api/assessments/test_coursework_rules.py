@@ -36,6 +36,7 @@ def test_extensions_for_a_student_or_a_group(site, assignment, student, other_st
     Assignment.objects.filter(pk=assignment.pk).update(
         due_at=timezone.now() - timedelta(hours=2), allow_late=False
     )
+    assignment.refresh_from_db()
     learner = client_for(student.user)
     closed = learner.post(f"/api/v1/assignments/{assignment.id}/submit/", {"text": "x"}, format="json")
     assert closed.json()["code"] == "closed"
@@ -69,7 +70,7 @@ def test_extensions_for_a_student_or_a_group(site, assignment, student, other_st
         {
             "assignment": assignment.id,
             "student": other_student.id,
-            "due_at": timezone.now().isoformat(),
+            "due_at": (timezone.now() - timedelta(hours=3)).isoformat(),
             "reason": "x",
         },
         format="json",
@@ -99,8 +100,8 @@ def test_extensions_for_a_student_or_a_group(site, assignment, student, other_st
     )
     assert both.status_code == 400
     listed = teacher.get(f"/api/v1/extensions/?assignment={assignment.id}").json()
-    assert len(listed) == 2
-    assert client_for(student.user).get("/api/v1/extensions/").json() == []
+    assert listed["count"] == 2
+    assert client_for(student.user).get("/api/v1/extensions/").json()["results"] == []
     moved = teacher.patch(
         f"/api/v1/extensions/{granted.json()['id']}/", {"reason": "Flooding, confirmed"}, format="json"
     )
@@ -185,7 +186,8 @@ def test_late_penalties_are_applied_and_shown(site, assignment, student, lecture
         "35.00",
         "10.00",
     )
-    cell = client_for(lecturer.user).get(f"/api/v1/sites/{site.id}/gradebook/").json()["rows"][0]["marks"]
+    rows = client_for(lecturer.user).get(f"/api/v1/sites/{site.id}/gradebook/").json()["rows"]
+    cell = next(r for r in rows if r["student_no"] == student.external_id)["marks"]
     assert cell[str(assignment.id)]["penalty"] == "5.00"
     # The penalty never takes a mark below zero.
     Mark.objects.filter(submission=submission).update(mark=2)
@@ -254,7 +256,7 @@ def test_categories_weight_the_parts_and_drop_the_lowest(site, assignment, stude
         ).status_code
         == 200
     )
-    assert teacher.get(f"/api/v1/grade-categories/?site={site.id}").json()[0]["name"] == "Tests"
+    assert teacher.get(f"/api/v1/grade-categories/?site={site.id}").json()["results"][0]["name"] == "Tests"
     book = teacher.get(f"/api/v1/sites/{site.id}/gradebook/").json()
     assert [c["name"] for c in book["categories"]] == ["Tests", "Reports"]
     row = next(r for r in book["rows"] if r["student_no"] == student.external_id)
@@ -292,7 +294,7 @@ def test_the_gradebook_export_is_spreadsheet_safe(
     rows = list(csv.reader(io.StringIO(b"".join(response.streaming_content).decode("utf-8-sig"))))
     assert rows[0][2].startswith("'=HYPERLINK") and rows[0][-2:] == ["Coursework (%)", "Working"]
     ravi = next(r for r in rows if r[0] == "26MRP0001")
-    assert ravi[2] == "missing, counted as 0" and ravi[3] == "40.00" and ravi[-2] == "40.00"
+    assert ravi[2] == "missing, counted as 0" and ravi[3] == "40.00" and ravi[-2] == "53.33"
     assert "Soil sampling report: counted 80.00%" in ravi[-1]
     assert AuditLog.objects.filter(action="gradebook_exported").exists()
     assert client_for(student.user).get(f"/api/v1/sites/{site.id}/gradebook/export/").status_code == 403

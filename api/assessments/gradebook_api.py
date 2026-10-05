@@ -209,7 +209,7 @@ def export(request, pk: int):
 
     def lines():
         writer = csv.writer(_Echo())
-        yield "﻿" + writer.writerow(header)
+        yield "﻿" + writer.writerow([_cell(c) for c in header])
         for row in book["rows"]:
             person = members.get(row["student_no"])
             work = coursework_working(site, person)
