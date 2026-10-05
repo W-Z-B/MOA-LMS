@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     "people",
     "courses",
     "assessments",
+    "privacy",
 ]
 
 MIDDLEWARE = [
@@ -196,3 +197,6 @@ HRMS_API_KEY = env("HRMS_API_KEY", "")
 SRMS_API_URL = env("SRMS_API_URL", "")
 SRMS_API_KEY = env("SRMS_API_KEY", "")
 INTEGRATION_TIMEOUT_SECONDS = int(env("INTEGRATION_TIMEOUT_SECONDS", "15"))
+
+# Privacy (items 1.18, 1.19): days within which a correction request is to be answered.
+PRIVACY_RESPONSE_DAYS = int(env("PRIVACY_RESPONSE_DAYS", "30"))

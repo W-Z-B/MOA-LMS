@@ -17,12 +17,14 @@ class Role(TimeStampedModel):
     LECTURER = "lecturer"
     STUDENT = "student"
     AUDITOR = "auditor"
+    DPO = "dpo"
     CODES = (
         (ADMINISTRATOR, "System Administrator"),
         (COURSE_ADMIN, "Course Administrator"),
         (LECTURER, "Lecturer or Instructor"),
         (STUDENT, "Student"),
         (AUDITOR, "Auditor"),
+        (DPO, "Data Protection Officer"),
     )
     # Lecturers too (decision D14): they release marks that become results in the SRMS.
     MFA_REQUIRED = frozenset({ADMINISTRATOR, COURSE_ADMIN, LECTURER})
@@ -96,3 +98,22 @@ class UserSession(models.Model):
 
     def __str__(self) -> str:
         return f"{self.user} since {self.created_at:%Y-%m-%d %H:%M}"
+
+
+class AccessReview(models.Model):
+    """A sign-off that someone went through who holds a role and who teaches which site, and confirmed it
+    (item 1.21). The access-review list is what was read; this row is the evidence that it was checked."""
+
+    reviewed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+")
+    reviewed_at = models.DateTimeField(auto_now_add=True)
+    role_holders = models.PositiveIntegerField(help_text="How many role grants the list held when signed off")
+    teaching_staff = models.PositiveIntegerField(
+        help_text="How many teaching memberships the list held when signed off"
+    )
+    notes = models.TextField(blank=True, help_text="What was changed or queried as a result")
+
+    class Meta:
+        ordering = ["-reviewed_at"]
+
+    def __str__(self) -> str:
+        return f"Access review {self.reviewed_at:%d/%m/%Y} by {self.reviewed_by}"
