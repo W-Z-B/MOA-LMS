@@ -417,7 +417,8 @@ function GradebookTab({ siteId }: { siteId: number }) {
   if (!book) return <p className="loading">Loading…</p>;
   if (book.rows.length === 0) return <p className="muted">No students in this course.</p>;
   return (
-    <div style={{ overflowX: "auto" }}>
+    // Focusable and named, so a keyboard user can scroll a gradebook wider than the screen.
+    <div style={{ overflowX: "auto" }} tabIndex={0} role="region" aria-label="Gradebook">
       <table>
         <thead>
           <tr>
