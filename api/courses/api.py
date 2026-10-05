@@ -3,6 +3,8 @@
 from django.db import transaction
 from django.http import FileResponse
 from django.shortcuts import get_object_or_404
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_field, extend_schema_view
 from rest_framework import serializers, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
@@ -11,6 +13,7 @@ from rest_framework.response import Response
 from rest_framework.routers import DefaultRouter
 
 from audit.services import record, snapshot
+from core.serializers import ErrorSerializer
 from courses.access import ADMIN, can_teach, person_of, site_role, visible_sites
 from courses.models import Announcement, ContentItem, CourseSite, Membership, Module
 from iam.permissions import RolePermission
@@ -45,10 +48,10 @@ class ContentItemSerializer(serializers.ModelSerializer):
             "is_published",
         )
 
-    def get_filename(self, obj):
+    def get_filename(self, obj) -> str | None:
         return obj.file.name.rsplit("/", 1)[-1] if obj.file else None
 
-    def get_download_url(self, obj):
+    def get_download_url(self, obj) -> str | None:
         return f"/api/v1/content/{obj.id}/download/" if obj.file else None
 
 
@@ -59,6 +62,7 @@ class ModuleSerializer(serializers.ModelSerializer):
         model = Module
         fields = ("id", "site", "title", "position", "items")
 
+    @extend_schema_field(ContentItemSerializer(many=True))
     def get_items(self, obj):
         items = obj.items.all()
         if not self.context.get("teaching", False):
@@ -96,13 +100,33 @@ class SiteSerializer(serializers.ModelSerializer):
         )
         read_only_fields = ("source",)
 
-    def get_my_role(self, obj):
+    def get_my_role(self, obj) -> str | None:
         return site_role(self.context["request"].user, obj)
 
-    def get_members(self, obj):
+    def get_members(self, obj) -> int:
         return obj.memberships.filter(is_active=True).count()
 
 
+class SiteContentsSerializer(serializers.Serializer):
+    """Describes the contents action for the API documentation."""
+
+    site = SiteSerializer()
+    modules = ModuleSerializer(many=True)
+    announcements = AnnouncementSerializer(many=True)
+
+
+class SiteMemberSerializer(serializers.Serializer):
+    person_id = serializers.IntegerField()
+    external_id = serializers.CharField(help_text="Employee number or student number")
+    name = serializers.CharField()
+    role = serializers.ChoiceField(choices=Membership.SiteRole.choices)
+
+
+@extend_schema_view(
+    list=extend_schema(
+        parameters=[OpenApiParameter("term", OpenApiTypes.STR, description="Only sites of this term code")]
+    )
+)
 class SiteViewSet(viewsets.ModelViewSet):
     serializer_class = SiteSerializer
     permission_classes = [RolePermission]
@@ -130,6 +154,7 @@ class SiteViewSet(viewsets.ModelViewSet):
             site = serializer.save(updated_by=self.request.user)
             record(self.request, "update", site, before=before, after=snapshot(site))
 
+    @extend_schema(responses=SiteContentsSerializer, summary="A site with its modules and announcements")
     @action(detail=True, methods=["get"])
     def contents(self, request, pk=None):
         site = self.get_object()
@@ -143,6 +168,10 @@ class SiteViewSet(viewsets.ModelViewSet):
             }
         )
 
+    @extend_schema(
+        responses=SiteMemberSerializer(many=True),
+        summary="Class list (teaching staff only)",
+    )
     @action(detail=True, methods=["get"])
     def members(self, request, pk=None):
         site = self.get_object()
@@ -232,6 +261,13 @@ class ContentItemViewSet(TeachingViewSet):
     def site_from_data(self, data):
         return data["module"].site
 
+    @extend_schema(
+        responses={
+            (200, "application/octet-stream"): OpenApiTypes.BINARY,
+            404: ErrorSerializer,
+        },
+        summary="Download the item's file (audited)",
+    )
     @action(detail=True, methods=["get"])
     def download(self, request, pk=None):
         item = get_object_or_404(self.get_queryset(), pk=pk)
@@ -247,6 +283,9 @@ class ContentItemViewSet(TeachingViewSet):
         )
 
 
+@extend_schema_view(
+    list=extend_schema(parameters=[OpenApiParameter("site", OpenApiTypes.INT, description="Only this site")])
+)
 class AnnouncementViewSet(TeachingViewSet):
     serializer_class = AnnouncementSerializer
 

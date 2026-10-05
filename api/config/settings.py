@@ -118,6 +118,11 @@ SPECTACULAR_SETTINGS = {
     "DESCRIPTION": "Learning Management System, Guyana School of Agriculture",
     "VERSION": "0.1.0",
     "SERVE_INCLUDE_SCHEMA": False,
+    # Choice sets that appear under the same field name in several places get one stable name each.
+    "ENUM_NAME_OVERRIDES": {
+        "SiteKindEnum": "courses.models.CourseSite.Kind",
+        "ContentKindEnum": "courses.models.ContentItem.Kind",
+    },
 }
 
 CORS_ALLOWED_ORIGINS = [f"https://{h}" for h in ALLOWED_HOSTS if h not in {"localhost", "127.0.0.1", "api"}]

@@ -2,11 +2,14 @@
 
 from django.urls import path
 from django.utils import timezone
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import serializers
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from core.serializers import ErrorSerializer
 from notifications.models import Notification
 
 
@@ -16,6 +19,25 @@ class NotificationSerializer(serializers.ModelSerializer):
         fields = ("id", "kind", "title", "body", "link", "created_at", "read_at")
 
 
+class NotificationListSerializer(serializers.Serializer):
+    unread = serializers.IntegerField(help_text="How many are unread in all")
+    results = NotificationSerializer(many=True)
+
+
+class MarkedSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    read = serializers.BooleanField()
+
+
+class MarkedAllSerializer(serializers.Serializer):
+    marked = serializers.IntegerField(help_text="How many were marked as read")
+
+
+@extend_schema(
+    parameters=[OpenApiParameter("unread", OpenApiTypes.STR, enum=["1"], description="1 lists unread only")],
+    responses=NotificationListSerializer,
+    summary="My notifications, unread first (at most 100)",
+)
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def list_notifications(request):
@@ -27,6 +49,9 @@ def list_notifications(request):
     return Response({"unread": unread, "results": NotificationSerializer(rows, many=True).data})
 
 
+@extend_schema(
+    request=None, responses={200: MarkedSerializer, 404: ErrorSerializer}, summary="Mark one as read"
+)
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def mark_read(request, pk: int):
@@ -38,6 +63,7 @@ def mark_read(request, pk: int):
     return Response({"id": pk, "read": True})
 
 
+@extend_schema(request=None, responses=MarkedAllSerializer, summary="Mark all of mine as read")
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def mark_all_read(request):
