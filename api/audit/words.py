@@ -27,6 +27,7 @@ RECORDS = {
     "privacy.retentionrule": "Retention rule",
     "privacy.disposalrun": "Disposal run",
     "privacy.breach": "Data breach",
+    "integration.integrationrun": "Integration run",
 }
 ACTIONS = {
     "create": "Added",
@@ -61,6 +62,12 @@ ACTIONS = {
     "disposed": "Destroyed under the retention schedule",
     "purged": "Old logs removed",
     "breach_closed": "Breach closed",
+    "account_invited": "Invited to choose a password",
+    "account_closed": "Account closed",
+    "password_link_sent": "Password link sent",
+    "password_set": "Password chosen through a link",
+    "password_changed": "Password changed",
+    "password_change_failed": "Password change refused",
 }
 # Account events: in the audit viewer and in the sign-ins of a person's record, not among their actions.
 ACCOUNT_EVENTS = (
@@ -68,6 +75,10 @@ ACCOUNT_EVENTS = (
     "logout",
     "mfa_verified",
     "mfa_failed",
+    "password_link_sent",
+    "password_set",
+    "password_changed",
+    "password_change_failed",
     "notice_acknowledged",
     "record_viewed",
     "record_downloaded",

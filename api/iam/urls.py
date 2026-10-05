@@ -1,6 +1,6 @@
 from django.urls import path
 
-from iam import review, views
+from iam import account_views, review, views
 
 urlpatterns = [
     path("login/", views.login_view, name="auth-login"),
@@ -13,4 +13,11 @@ urlpatterns = [
     path("sessions/<int:pk>/", views.end_session_view, name="auth-session-end"),
     path("access-review/", review.access_review_view, name="auth-access-review"),
     path("access-review/sign-off/", review.access_review_sign_off, name="auth-access-review-sign-off"),
+    path("password/forgot/", views.forgot_password_view, name="auth-password-forgot"),
+    path("password/check/", views.check_link_view, name="auth-password-check"),
+    path("password/set/", views.set_password_view, name="auth-password-set"),
+    path("password/change/", views.change_password_view, name="auth-password-change"),
+    path("accounts/uninvited/", account_views.uninvited_view, name="auth-accounts-uninvited"),
+    path("accounts/invite/", account_views.invite_all_view, name="auth-accounts-invite"),
+    path("accounts/invite/<int:person_id>/", account_views.invite_one_view, name="auth-accounts-invite-one"),
 ]

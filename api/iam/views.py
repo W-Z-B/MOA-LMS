@@ -1,9 +1,15 @@
-"""Session login, logout, current user, TOTP multi-factor enrolment and verification, and the list of
-signed-in devices."""
+"""Session login, logout, current user, TOTP multi-factor enrolment and verification, the list of
+signed-in devices, and passwords: a link to choose one on a new account or when forgotten (item 1.22), and a
+change by the signed-in person."""
+
+from datetime import timedelta
 
 import pyotp
 from django.conf import settings
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.db import transaction
 from django.utils import timezone
 from django.views.decorators.csrf import ensure_csrf_cookie
 from drf_spectacular.utils import extend_schema
@@ -15,10 +21,19 @@ from rest_framework.response import Response
 from audit.services import record
 from core.net import client_ip
 from core.serializers import ErrorSerializer
-from iam.models import LoginAttempt, TotpDevice, UserSession
+from iam.accounts import (
+    LINK_KINDS,
+    accounts_for,
+    link_kind,
+    never_used,
+    send_invitation,
+    send_reset,
+    user_from_link,
+)
+from iam.models import LoginAttempt, PasswordResetRequest, TotpDevice, UserSession
 from iam.permissions import MFA_SESSION_KEY
 from iam.services import account_locked, address_blocked, person_payload, requires_mfa, role_codes
-from iam.sessions import describe_device, end_sessions
+from iam.sessions import close_sessions, describe_device, end_sessions
 from privacy.services import notice_due
 
 
@@ -239,4 +254,170 @@ def end_other_sessions_view(request):
     others = UserSession.objects.filter(user=request.user).exclude(session_key=request.session.session_key)
     ended = end_sessions(others)
     record(request, "sessions_ended", request.user, after={"ended": ended})
+    return Response({"ended": ended})
+
+
+# ---------------------------------------------------------------------------------------------------------
+# Passwords (item 1.22, ported from the HRMS): a link to choose one on a new account or when forgotten, and
+# a change by the signed-in person.
+
+
+class ForgotPasswordSerializer(serializers.Serializer):
+    login = serializers.CharField(max_length=254, help_text="Username or email address")
+
+
+class PasswordLinkSerializer(serializers.Serializer):
+    uid = serializers.CharField(max_length=64)
+    token = serializers.CharField(max_length=128)
+
+
+class PasswordSetSerializer(PasswordLinkSerializer):
+    password = serializers.CharField(trim_whitespace=False, max_length=128)
+
+
+class LinkSerializer(serializers.Serializer):
+    username = serializers.CharField()
+    kind = serializers.ChoiceField(choices=LINK_KINDS)
+
+
+class PasswordChangeSerializer(serializers.Serializer):
+    current_password = serializers.CharField(trim_whitespace=False, max_length=128)
+    new_password = serializers.CharField(trim_whitespace=False, max_length=128)
+
+
+class DetailSerializer(serializers.Serializer):
+    detail = serializers.CharField()
+
+
+LINK_ON_ITS_WAY = (
+    "If that is the username or email address of an account, a link to choose a new password is on its way "
+    "to the email address on the account. The link works once."
+)
+INVALID_LINK = {
+    "code": "invalid_link",
+    "detail": "This link has expired or has already been used. Ask for a new one from the sign-in page.",
+}
+
+
+def _window_start():
+    return timezone.now() - timedelta(minutes=settings.LOGIN_LOCKOUT_MINUTES)
+
+
+def _check_new_password(password: str, user, field: str) -> None:
+    try:
+        validate_password(password, user)
+    except DjangoValidationError as exc:
+        raise serializers.ValidationError({field: list(exc.messages)}) from exc
+
+
+@extend_schema(
+    request=ForgotPasswordSerializer,
+    responses={200: DetailSerializer, 429: ErrorSerializer},
+    summary="Ask for a link to choose a new password",
+)
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def forgot_password_view(request):
+    """The answer is the same whether or not an account matches, so it never tells who has an account.
+
+    One address may ask PASSWORD_RESETS_PER_ADDRESS times in the lockout window, and one account is sent
+    PASSWORD_RESETS_PER_ACCOUNT links in it; asking more often sends nothing more.
+    """
+    data = ForgotPasswordSerializer(data=request.data)
+    data.is_valid(raise_exception=True)
+    address = client_ip(request)
+    since = _window_start()
+    asked = PasswordResetRequest.objects.filter(source_ip=address, at__gte=since).count() if address else 0
+    if asked >= settings.PASSWORD_RESETS_PER_ADDRESS:
+        return Response(
+            {
+                "code": "too_many_attempts",
+                "detail": "Too many requests from this network. "
+                f"Try again in {settings.LOGIN_LOCKOUT_MINUTES} minutes.",
+            },
+            status=status.HTTP_429_TOO_MANY_REQUESTS,
+        )
+    found = accounts_for(data.validated_data["login"])
+    if not found:
+        PasswordResetRequest.objects.create(user=None, source_ip=address)
+    for user in found:
+        already = PasswordResetRequest.objects.filter(user=user, at__gte=since).count()
+        PasswordResetRequest.objects.create(user=user, source_ip=address)
+        if already >= settings.PASSWORD_RESETS_PER_ACCOUNT:
+            continue  # enough links are on their way; more would only fill the inbox
+        kind = "invitation" if never_used(user) else "reset"
+        emailed = send_invitation(user) if kind == "invitation" else send_reset(user)
+        record(request, "password_link_sent", user, after={"kind": kind, "emailed": emailed, "asked": "self"})
+    return Response({"detail": LINK_ON_ITS_WAY})
+
+
+@extend_schema(
+    request=PasswordLinkSerializer,
+    responses={200: LinkSerializer, 400: ErrorSerializer},
+    summary="Whether a password link still works, and the username it is for",
+)
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def check_link_view(request):
+    data = PasswordLinkSerializer(data=request.data)
+    data.is_valid(raise_exception=True)
+    user = user_from_link(data.validated_data["uid"])
+    kind = link_kind(user, data.validated_data["token"])
+    if kind is None:
+        return Response(INVALID_LINK, status=status.HTTP_400_BAD_REQUEST)
+    return Response({"username": user.get_username(), "kind": kind})
+
+
+@extend_schema(
+    request=PasswordSetSerializer,
+    responses={200: LinkSerializer, 400: ErrorSerializer},
+    summary="Choose a password through an emailed link (an invitation or a reset)",
+)
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def set_password_view(request):
+    """Sets the password, ends every session the account had, and lifts a lockout: the link proves the
+    person. The link then stops working, because it was signed over the old password."""
+    data = PasswordSetSerializer(data=request.data)
+    data.is_valid(raise_exception=True)
+    user = user_from_link(data.validated_data["uid"])
+    kind = link_kind(user, data.validated_data["token"])
+    if kind is None:
+        return Response(INVALID_LINK, status=status.HTTP_400_BAD_REQUEST)
+    _check_new_password(data.validated_data["password"], user, "password")
+    with transaction.atomic():
+        user.set_password(data.validated_data["password"])
+        user.save(update_fields=["password"])
+        LoginAttempt.objects.create(username=user.get_username(), source_ip=client_ip(request), success=True)
+        ended = close_sessions(user)
+        record(request, "password_set", user, after={"link": kind, "sessions_ended": ended})
+    return Response({"username": user.get_username(), "kind": kind})
+
+
+@extend_schema(
+    request=PasswordChangeSerializer,
+    responses={200: EndedSerializer, 400: ErrorSerializer},
+    summary="Change my password; my other sessions end, this one stays signed in",
+)
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def change_password_view(request):
+    data = PasswordChangeSerializer(data=request.data)
+    data.is_valid(raise_exception=True)
+    user = request.user
+    if not user.check_password(data.validated_data["current_password"]):
+        record(request, "password_change_failed", user)
+        return Response(
+            {"code": "wrong_password", "detail": "Your current password is not right."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    _check_new_password(data.validated_data["new_password"], user, "new_password")
+    with transaction.atomic():
+        user.set_password(data.validated_data["new_password"])
+        user.save(update_fields=["password"])
+        current = request.session.session_key
+        ended = end_sessions(UserSession.objects.filter(user=user).exclude(session_key=current))
+        update_session_auth_hash(request, user)  # a new session key, so this browser stays signed in
+        UserSession.objects.filter(session_key=current).update(session_key=request.session.session_key)
+        record(request, "password_changed", user, after={"sessions_ended": ended})
     return Response({"ended": ended})

@@ -185,7 +185,7 @@ def dispose(request, item, rule) -> None:
 
 def purge(today: date | None = None) -> dict[str, int]:
     """Every night: delete the logs that the automatic rules say are old enough. No review needed."""
-    from iam.models import LoginAttempt
+    from iam.models import LoginAttempt, PasswordResetRequest
     from notifications.models import Notification
     from privacy.models import RetentionRule
 
@@ -196,6 +196,8 @@ def purge(today: date | None = None) -> dict[str, int]:
         with transaction.atomic():
             if rule.code == "login-attempts":
                 count = LoginAttempt.objects.filter(at__lt=cut).delete()[0]
+                # Requests for a password link are kept as long as sign-in attempts (item 1.22).
+                count += PasswordResetRequest.objects.filter(at__lt=cut).delete()[0]
             elif rule.code == "notifications":
                 count = Notification.objects.filter(created_at__lt=cut).delete()[0]
             else:  # pragma: no cover - a rule the code does not know is left alone
