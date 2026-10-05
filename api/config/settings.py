@@ -162,6 +162,17 @@ if not DEBUG:
     SECURE_HSTS_SECONDS = 31536000
     SECURE_CONTENT_TYPE_NOSNIFF = True
     X_FRAME_OPTIONS = "DENY"
+
+# `manage.py check --deploy` runs in CI and must pass with no warnings. These three are deliberate:
+SILENCED_SYSTEM_CHECKS = [
+    # W008 SECURE_SSL_REDIRECT: Caddy redirects HTTP to HTTPS in every deployment; a redirect here
+    # would also break the container health checks, which call gunicorn directly over HTTP.
+    "security.W008",
+    # W005 and W021 (HSTS subdomains and preload): GSA's domain and its other services are not known
+    # yet. Caddy sends a one-year HSTS header for this host; widen it once the domain is confirmed.
+    "security.W005",
+    "security.W021",
+]
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_AGE = 8 * 60 * 60  # working day
 

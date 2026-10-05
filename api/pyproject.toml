@@ -10,9 +10,32 @@ ignore = ["S101"]  # assert is fine in tests
 [tool.ruff.lint.per-file-ignores]
 "**/tests.py" = ["S105", "S106"]  # test fixtures use literal passwords
 "**/tests/*.py" = ["S105", "S106"]
+"**/test_*.py" = ["S105", "S106"]
 "conftest.py" = ["S105", "S106"]
 
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "config.settings"
 python_files = ["tests.py", "test_*.py"]
 addopts = "-p no:cacheprovider"
+
+# Coverage of application code (tests, migrations and entry points left out). `pytest --cov` fails below
+# fail_under. 82 is the level measured on 5 October 2026 (82.21%), rounded down; it ratchets up to the
+# gold standard's 88 (docs/adr/0009-quality-tooling.md). Raise it as tests are added, never lower it
+# without a reason in the pull request.
+[tool.coverage.run]
+source = ["."]
+branch = true
+omit = [
+    "*/migrations/*",
+    "*/tests.py",
+    "*/test_*.py",
+    "conftest.py",
+    "manage.py",
+    "config/wsgi.py",
+    "config/asgi.py",
+]
+
+[tool.coverage.report]
+fail_under = 82
+skip_covered = true
+show_missing = true
