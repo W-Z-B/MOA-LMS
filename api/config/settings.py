@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     "people",
     "courses",
     "assessments",
+    "practicals",
 ]
 
 MIDDLEWARE = [
@@ -171,6 +172,7 @@ SESSION_IDLE_MINUTES = int(env("SESSION_IDLE_MINUTES", "30"))
 # over 60 MB before it reaches the application.
 UPLOAD_LIMIT_CONTENT_MB = int(env("UPLOAD_LIMIT_CONTENT_MB", "50"))
 UPLOAD_LIMIT_SUBMISSION_MB = int(env("UPLOAD_LIMIT_SUBMISSION_MB", "20"))
+UPLOAD_LIMIT_EVIDENCE_MB = int(env("UPLOAD_LIMIT_EVIDENCE_MB", "15"))  # practical photographs and scans
 
 # Account lockout: this many consecutive failed logins inside the window locks the account for the window.
 LOGIN_MAX_FAILURES = int(env("LOGIN_MAX_FAILURES", "5"))
