@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     "people",
     "courses",
     "assessments",
+    "quizzes",
 ]
 
 MIDDLEWARE = [
@@ -118,6 +119,7 @@ SPECTACULAR_SETTINGS = {
     "DESCRIPTION": "Learning Management System, Guyana School of Agriculture",
     "VERSION": "0.1.0",
     "SERVE_INCLUDE_SCHEMA": False,
+    "ENUM_NAME_OVERRIDES": {"QuizReviewEnum": "quizzes.models.Quiz.Review"},
 }
 
 CORS_ALLOWED_ORIGINS = [f"https://{h}" for h in ALLOWED_HOSTS if h not in {"localhost", "127.0.0.1", "api"}]
