@@ -62,7 +62,7 @@ class Command(BaseCommand):
             raise CommandError("Set DEMO_USER_PASSWORD (12 characters or more) for the journey accounts.")
         secret = os.environ.get("DEMO_TOTP_SECRET", "")
         if not re.fullmatch(r"[A-Z2-7]{32}", secret):
-            raise CommandError("Set DEMO_TOTP_SECRET to 32 base32 characters (A to Z, 2 to 7) for the lecturer.")
+            raise CommandError("Set DEMO_TOTP_SECRET to 32 base32 characters (A to Z, 2 to 7).")
         call_command("seed", verbosity=0)
         with transaction.atomic():
             site, _ = CourseSite.objects.get_or_create(

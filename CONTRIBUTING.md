@@ -48,7 +48,7 @@ The production security check needs a `DJANGO_SECRET_KEY` of at least 50 charact
 sets a placeholder.
 
 The backend coverage floor ratchets: when a pull request raises coverage, raise `fail_under` to the new
-level rounded down, until it reaches 88 ([ADR 0009](docs/adr/0009-quality-tooling.md)).
+level rounded down; it is never lowered without a reason ([ADR 0009](docs/adr/0009-quality-tooling.md)).
 
 ## 4. Dependencies
 

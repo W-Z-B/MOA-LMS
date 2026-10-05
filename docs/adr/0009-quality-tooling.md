@@ -35,10 +35,11 @@ page-weight budget for the application shell (160 KB compressed); licence gates 
 each after its own tests; pip-audit and npm audit; browser journeys with accessibility and reflow checks;
 gitleaks; every production image built, the web bundle included, and checked to carry no test tools.
 
-**Coverage floor:** `fail_under` in `api/pyproject.toml` starts at 82, the level measured on 5 October 2026
-(82.21 percent of lines and branches), so the gate is green on the day it is switched on. It ratchets: each
-pull request that adds tests raises it to the new level rounded down, until it reaches the gold standard's
-88 (item 7.05). It is never lowered without a reason in the pull request.
+**Coverage floor:** `fail_under` in `api/pyproject.toml` is the level last measured, rounded down, so the gate is
+green on the day it is switched on and ratchets from there. It was 82.21 percent of lines and branches on the
+scaffold on 5 October 2026; with the security, privacy, quiz and practical work merged the same day it is
+90.12 percent, so the floor is 90, above the gold standard's 88 (item 7.05). Each pull request that adds
+tests raises it to the new level rounded down. It is never lowered without a reason in the pull request.
 
 **Journey data:** the LMS's demonstration data needs the HRMS and the SRMS. The journeys run the LMS on its
 own, so `seed_journeys --fictional` creates a small fictional cast with accounts and teaches one course site

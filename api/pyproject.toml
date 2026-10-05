@@ -19,9 +19,10 @@ python_files = ["tests.py", "test_*.py"]
 addopts = "-p no:cacheprovider"
 
 # Coverage of application code (tests, migrations and entry points left out). `pytest --cov` fails below
-# fail_under. 82 is the level measured on 5 October 2026 (82.21%), rounded down; it ratchets up to the
-# gold standard's 88 (docs/adr/0009-quality-tooling.md). Raise it as tests are added, never lower it
-# without a reason in the pull request.
+# fail_under. 90 is the level measured on 5 October 2026 (90.12%, with the security, privacy, quizzes and
+# practicals work merged), rounded down; it started at 82 and has passed the gold standard's floor of 88
+# (docs/adr/0009-quality-tooling.md). Raise it as tests are added, never lower it without a reason in the
+# pull request.
 [tool.coverage.run]
 source = ["."]
 branch = true
@@ -36,6 +37,6 @@ omit = [
 ]
 
 [tool.coverage.report]
-fail_under = 82
+fail_under = 90
 skip_covered = true
 show_missing = true
