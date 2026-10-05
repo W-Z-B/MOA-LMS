@@ -9,6 +9,7 @@ from django.db.models.fields.files import FieldFile
 
 from audit.models import AuditLog
 from core.fields import EncryptedTextField
+from core.net import client_ip
 
 MASK = "***"
 
@@ -40,12 +41,9 @@ def snapshot(instance) -> dict:
 def record(request, action: str, instance, *, before=None, after=None, entity_id=None) -> AuditLog:
     user = getattr(request, "user", None)
     actor = user if user is not None and getattr(user, "is_authenticated", False) else None
-    forwarded = request.META.get("HTTP_X_FORWARDED_FOR", "") if hasattr(request, "META") else ""
-    source_ip = (
-        forwarded.split(",")[0].strip() or request.META.get("REMOTE_ADDR")
-        if hasattr(request, "META")
-        else None
-    )
+    # A service key stands in for request.user without being a person: it is never stored as the actor.
+    if actor is not None and getattr(actor, "pk", None) is None:
+        actor = None
     return AuditLog.objects.create(
         actor=actor,
         action=action,
@@ -53,5 +51,5 @@ def record(request, action: str, instance, *, before=None, after=None, entity_id
         entity_id=entity_id if entity_id is not None else instance.pk,
         before=before,
         after=after,
-        source_ip=source_ip or None,
+        source_ip=client_ip(request),
     )

@@ -24,7 +24,8 @@ class Role(TimeStampedModel):
         (STUDENT, "Student"),
         (AUDITOR, "Auditor"),
     )
-    MFA_REQUIRED = frozenset({ADMINISTRATOR, COURSE_ADMIN})
+    # Lecturers too (decision D14): they release marks that become results in the SRMS.
+    MFA_REQUIRED = frozenset({ADMINISTRATOR, COURSE_ADMIN, LECTURER})
 
     code = models.CharField(max_length=40, unique=True, choices=CODES)
     name = models.CharField(max_length=80)
@@ -61,6 +62,8 @@ class TotpDevice(TimeStampedModel):
 
 
 class LoginAttempt(models.Model):
+    """Every login attempt, used to hold back an account, or a network address, after repeated failures."""
+
     username = models.CharField(max_length=150, db_index=True)
     source_ip = models.GenericIPAddressField(null=True, blank=True)
     at = models.DateTimeField(auto_now_add=True, db_index=True)
@@ -68,6 +71,28 @@ class LoginAttempt(models.Model):
 
     class Meta:
         ordering = ["-at"]
+        indexes = [models.Index(fields=["source_ip", "at"], name="loginattempt_ip_at")]
 
     def __str__(self) -> str:
         return f"{self.username} {'ok' if self.success else 'failed'} at {self.at:%Y-%m-%d %H:%M}"
+
+
+class UserSession(models.Model):
+    """One signed-in browser or phone, so people can see where they are signed in and end a session.
+
+    Created on sign-in and deleted on sign-out (iam.sessions); the middleware keeps last_seen_at current
+    and ends sessions that are idle or too old.
+    """
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="user_sessions")
+    session_key = models.CharField(max_length=40, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_seen_at = models.DateTimeField()
+    ip = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.CharField(max_length=200, blank=True)
+
+    class Meta:
+        ordering = ["-last_seen_at"]
+
+    def __str__(self) -> str:
+        return f"{self.user} since {self.created_at:%Y-%m-%d %H:%M}"
