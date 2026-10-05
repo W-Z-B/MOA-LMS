@@ -28,7 +28,10 @@ def coursework_percent(site, person, *, released_only: bool = False, now=None) -
     A quiz counts like an assignment: its grade (by the quiz's grading method) as a share of its maximum.
     A closed quiz with no attempt counts as zero. An attempt awaiting marking (or, for the student's own
     view, awaiting release) is pending and does not count.
+    A practical task with a weight counts by its latest observation; a closed task never observed counts
+    as zero; a task not yet observed (or not released, for the student's own view) is pending.
     """
+    from practicals.services import coursework_items
     from quizzes.services import is_closed, quiz_grade
 
     now = now or timezone.now()
@@ -50,6 +53,10 @@ def coursework_percent(site, person, *, released_only: bool = False, now=None) -
             weight_total += quiz.weight
         elif grade.state == "none" and is_closed(quiz, person, now):
             weight_total += quiz.weight
+    for weight, fraction in coursework_items(site, person, released_only=released_only, now=now):
+        if fraction is not None:
+            earned += weight * fraction
+            weight_total += weight
     if weight_total == 0:
         return None
     return (earned / weight_total * 100).quantize(TWO_PLACES, rounding=ROUND_HALF_UP)
