@@ -533,3 +533,15 @@ textarea {
   margin: 0 0 8px;
   font-size: 16px;
 }
+/* A page's cleaned HTML (courses.richtext): pictures and tables stay within a phone's width. */
+.page-body img {
+  max-width: 100%;
+  height: auto;
+}
+.page-body table {
+  display: block;
+  overflow-x: auto;
+}
+.page-body > :first-child {
+  margin-top: 0;
+}
