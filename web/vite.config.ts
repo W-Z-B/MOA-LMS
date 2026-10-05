@@ -36,6 +36,13 @@ export default defineConfig({
         "src/features/home/**",
         "src/features/todo/**",
         "src/features/courses/MyCoursesScreen.tsx",
+        // Assignments, marking, rubrics, the gradebook, accommodations and notification settings (wave 3).
+        "src/features/assignments/**",
+        "src/features/marking/**",
+        "src/features/rubrics/**",
+        "src/features/gradebook/**",
+        "src/features/accommodations/**",
+        "src/features/notifications/**",
       ],
       exclude: ["src/**/*.test.*", "src/test/**"],
       reporter: ["text"],

@@ -108,12 +108,13 @@ export async function sendOrQueue<T>(item: Omit<QueuedWrite, "id" | "createdAt">
  * A student's typed answer to an assignment. Work with a file attached is sent only with a connection. The
  * server's clock decides whether it is late; the device's time goes with it, for teaching staff to see.
  */
-export const submitAssignmentText = <T>(assignmentId: number, title: string, text: string) =>
+export const submitAssignmentText = <T>(assignmentId: number, title: string, text: string, integrityAccepted = false) =>
   sendOrQueue<T>({
     kind: "assignment",
     method: "POST",
     path: `/assignments/${assignmentId}/submit/`,
-    body: { text, client_submitted_at: new Date().toISOString() },
+    // The academic integrity statement, when the assignment asks for it, is accepted with the answer (3.22).
+    body: { text, client_submitted_at: new Date().toISOString(), ...(integrityAccepted ? { integrity_accepted: true } : {}) },
     label: `Answer to ${title}`,
   });
 

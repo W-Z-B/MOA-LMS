@@ -9,6 +9,7 @@ import { LoginScreen } from "./features/auth/LoginScreen";
 import { MyCoursesScreen } from "./features/courses/MyCoursesScreen";
 import { SiteScreen } from "./features/courses/SiteScreen";
 import { HomeScreen } from "./features/home/HomeScreen";
+import { markingScreen } from "./features/marking/routes";
 import { ComingSoon } from "./features/placeholder/ComingSoon";
 import { MyDataScreen } from "./features/privacy/MyDataScreen";
 import { PrivacyNoticeScreen } from "./features/privacy/PrivacyNoticeScreen";
@@ -73,10 +74,13 @@ export default function App() {
   // Every page has an address of its own (item 2.10), down to a course site's tab: #/sites/4/gradebook.
   const site = siteAddress(path);
   const campus = usesCampusSwitch(me) ? campusCode : null;
+  // Marking, rubrics, accommodations and notification settings have addresses of their own.
+  const marking = markingScreen(path, navigate);
   let screen;
   // Everyone opens on their own Home (item 2.07): what waits for them, and the pages their role uses.
   if (path === "/") screen = <HomeScreen me={me} onNavigate={navigate} />;
   else if (path === "/to-do") screen = <ToDoScreen onNavigate={navigate} />;
+  else if (marking) screen = marking;
   else if (site)
     screen = (
       <SiteScreen
