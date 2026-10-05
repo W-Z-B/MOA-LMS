@@ -1,4 +1,4 @@
-import { COURSE, PEOPLE, expect, expectAccessible, signIn, signOut, test } from "./support";
+import { COURSE, PEOPLE, expect, expectAccessible, password, signIn, signOut, test } from "./support";
 
 /** Item 0.20: the first journeys, sign-in, My courses and a course site, on desktop and a 360px phone. */
 
@@ -13,8 +13,22 @@ test("the sign-in page is accessible and refuses a wrong password", async ({ pag
   await expect(page.getByRole("alert")).toHaveText("Username or password is incorrect.");
 });
 
+test("a lecturer cannot go past sign-in without the authenticator code", async ({ page }) => {
+  await page.goto("/");
+  await page.getByLabel("Username").fill(PEOPLE.lecturer.username);
+  await page.getByLabel("Password", { exact: true }).fill(password());
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.getByLabel("Authenticator code").fill("000000");
+  await page.getByRole("button", { name: "Verify" }).click();
+  await expect(page.getByRole("alert")).toHaveText("The code is not valid.");
+  await expect(page.getByRole("heading", { name: "My courses" })).toHaveCount(0);
+});
+
 test("a student finds their course, reads the content, and sees their released mark", async ({ page }, testInfo) => {
-  await signIn(page, PEOPLE.student.username);
+  const noticeShown = await signIn(page, PEOPLE.student.username);
+  // The student reads the privacy notice at their first sign-in (the desktop run comes first), never again.
+  if (testInfo.project.name === "desktop" && testInfo.retry === 0) expect(noticeShown).toBe(true);
+  if (testInfo.project.name === "phone") expect(noticeShown).toBe(false);
   const course = page.getByRole("button", { name: new RegExp(COURSE.title) });
   await expect(course).toContainText(COURSE.code);
   await expect(course).toContainText("Student");
@@ -46,8 +60,8 @@ test("a student finds their course, reads the content, and sees their released m
   await signOut(page);
 });
 
-test("the lecturer sees the whole class in the gradebook", async ({ page }, testInfo) => {
-  await signIn(page, PEOPLE.lecturer.username);
+test("the lecturer gives an authenticator code and sees the whole class in the gradebook", async ({ page }, testInfo) => {
+  await signIn(page, PEOPLE.lecturer.username, { code: true });
   await page.getByRole("button", { name: new RegExp(COURSE.title) }).click();
   await expect(page.getByRole("button", { name: "Unpublish" })).toBeVisible();
   await page.getByRole("tab", { name: "Gradebook" }).click();

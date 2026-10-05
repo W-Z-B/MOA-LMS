@@ -4,6 +4,8 @@
 name: gsa-lms-e2e
 
 x-e2e-password: &password ${E2E_PASSWORD:-e2e-Only-Fictional-Learner-2026}
+# The fictional lecturer's authenticator secret (base32): seed_journeys enrols it, the journeys compute codes.
+x-e2e-totp: &totp ${E2E_TOTP_SECRET:-JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP}
 
 services:
   db:
@@ -36,6 +38,7 @@ services:
       TZ: America/Guyana
       PORT: "8080"
       DEMO_USER_PASSWORD: *password
+      DEMO_TOTP_SECRET: *totp
     volumes:
       - e2e_files:/srv/files
     depends_on:
@@ -71,6 +74,7 @@ services:
     environment:
       E2E_BASE_URL: https://lms-e2e
       E2E_PASSWORD: *password
+      E2E_TOTP_SECRET: *totp
       CI: ${CI:-}
       HOME: /tmp
     volumes:

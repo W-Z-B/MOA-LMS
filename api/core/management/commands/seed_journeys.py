@@ -3,21 +3,27 @@
 seed_demo needs the HRMS and the SRMS to name the people and the classes. The journeys run the LMS on its
 own, so this command creates its own small cast instead: a lecturer and two students with accounts, and one
 course site taught with seed_demo's material (content, an announcement, two assignments, a released mark).
-The accounts share the password in DEMO_USER_PASSWORD. Never run it on a database that holds real records.
+The accounts share the password in DEMO_USER_PASSWORD. Teaching staff need an authenticator code (ADR 0013),
+so the lecturer's authenticator is enrolled from DEMO_TOTP_SECRET, a fictional secret the journeys also hold
+to compute the code. The draft privacy notice is published, so the journeys read and acknowledge it as
+everyone does at their first sign-in. Never run it on a database that holds real records.
 Idempotent: running it again changes nothing.
 """
 
 import os
+import re
 
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
+from django.utils import timezone
 
 from core.management.commands.seed_demo import Command as SeedDemo
 from courses.models import CourseSite, Membership
-from iam.models import Role, RoleScope
+from iam.models import Role, RoleScope, TotpDevice
 from people.models import PersonRef
+from privacy.models import PrivacyNotice
 
 SITE = {
     "code": "AGR101-2026-27-S1-MRP",
@@ -54,6 +60,9 @@ class Command(BaseCommand):
         password = os.environ.get("DEMO_USER_PASSWORD", "")
         if len(password) < 12:
             raise CommandError("Set DEMO_USER_PASSWORD (12 characters or more) for the journey accounts.")
+        secret = os.environ.get("DEMO_TOTP_SECRET", "")
+        if not re.fullmatch(r"[A-Z2-7]{32}", secret):
+            raise CommandError("Set DEMO_TOTP_SECRET to 32 base32 characters (A to Z, 2 to 7) for the lecturer.")
         call_command("seed", verbosity=0)
         with transaction.atomic():
             site, _ = CourseSite.objects.get_or_create(
@@ -63,7 +72,12 @@ class Command(BaseCommand):
             for username, kind, external_id, first, last, role, site_role in CAST:
                 person = self._person(username, kind, external_id, first, last, role, password)
                 Membership.objects.get_or_create(site=site, person=person, defaults={"role": site_role})
+                if site_role == "lecturer":
+                    TotpDevice.objects.get_or_create(
+                        user=person.user, defaults={"secret": secret, "confirmed_at": timezone.now()}
+                    )
             SeedDemo()._teach(site)
+            PrivacyNotice.objects.filter(published_at__isnull=True).update(published_at=timezone.now())
         self.stdout.write(
             self.style.SUCCESS(f"Journey data ready: {len(CAST)} accounts in {site.code} ({site.title}).")
         )

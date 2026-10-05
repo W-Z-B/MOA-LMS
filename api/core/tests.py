@@ -1,7 +1,10 @@
+import pyotp
 import pytest
 from django.core.exceptions import ImproperlyConfigured
 
 from core import crypto
+
+JOURNEY_TOTP = "JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP"  # fictional, as in compose.e2e.yml
 
 
 def test_encrypt_decrypt_round_trip():
@@ -40,6 +43,10 @@ def test_journey_data_needs_fictional_and_a_password(monkeypatch):
     monkeypatch.setenv("DEMO_USER_PASSWORD", "short")
     with pytest.raises(CommandError, match="DEMO_USER_PASSWORD"):
         call_command("seed_journeys", "--fictional")
+    monkeypatch.setenv("DEMO_USER_PASSWORD", "e2e-Only-Fictional-Learner-2026")
+    monkeypatch.setenv("DEMO_TOTP_SECRET", "not-base32")
+    with pytest.raises(CommandError, match="DEMO_TOTP_SECRET"):
+        call_command("seed_journeys", "--fictional")
 
 
 @pytest.mark.django_db
@@ -51,6 +58,7 @@ def test_journey_data_signs_in_and_teaches_one_course(monkeypatch):
     from courses.models import CourseSite
 
     monkeypatch.setenv("DEMO_USER_PASSWORD", "e2e-Only-Fictional-Learner-2026")
+    monkeypatch.setenv("DEMO_TOTP_SECRET", JOURNEY_TOTP)
     call_command("seed_journeys", "--fictional", verbosity=0)
     call_command("seed_journeys", "--fictional", verbosity=0)  # idempotent
 
@@ -68,5 +76,18 @@ def test_journey_data_signs_in_and_teaches_one_course(monkeypatch):
     )
     assert response.status_code == 200
     assert response.json()["person_kind"] == "student"
+    assert response.json()["mfa_required"] is False  # students need no authenticator code
+    assert response.json()["privacy_notice_due"] == 1  # the notice is published, so it is read first
     sites = client.get("/api/v1/sites/").json()["results"]
     assert [(s["title"], s["my_role"]) for s in sites] == [("Introduction to Crop Production", "student")]
+
+    # The lecturer must give a code, computed from the fictional secret the journeys hold.
+    lecturer = APIClient()
+    me = lecturer.post(
+        "/api/v1/auth/login/",
+        {"username": "marlon.bacchus", "password": "e2e-Only-Fictional-Learner-2026"},
+        format="json",
+    ).json()
+    assert me["mfa_required"] is True and me["mfa_verified"] is False
+    code = pyotp.TOTP(JOURNEY_TOTP).now()
+    assert lecturer.post("/api/v1/auth/mfa/verify/", {"code": code}, format="json").json()["mfa_verified"]

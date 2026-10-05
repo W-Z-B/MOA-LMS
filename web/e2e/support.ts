@@ -1,5 +1,6 @@
 /** Helpers shared by the journeys: signing in as the fictional journey cast, and the accessibility check. */
 
+import { createHmac } from "node:crypto";
 import AxeBuilder from "@axe-core/playwright";
 import { test as base, expect, type Page, type TestInfo } from "@playwright/test";
 
@@ -25,6 +26,7 @@ export { expect };
 /** Accounts from seed_journeys (fictional people). Their shared password comes from the environment. */
 export const PEOPLE = {
   student: { username: "kezia.persaud", name: "Kezia Persaud", studentNo: "S2026901" },
+  // Teaching staff give an authenticator code; the secret is fictional and held by the test stack.
   lecturer: { username: "marlon.bacchus", name: "Marlon Bacchus" },
 } as const;
 
@@ -37,12 +39,60 @@ export function password(): string {
   return value;
 }
 
-export async function signIn(page: Page, username: string) {
+/**
+ * The current six-digit code of an authenticator app holding a base32 secret (RFC 6238: HMAC-SHA1, 30-second
+ * steps). A dozen lines of Node rather than another dependency.
+ */
+export function totp(secret: string, at = Date.now()): string {
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+  let bits = "";
+  for (const char of secret.replace(/=+$/, "").toUpperCase()) bits += alphabet.indexOf(char).toString(2).padStart(5, "0");
+  const key = Buffer.from((bits.match(/.{8}/g) ?? []).map((byte) => parseInt(byte, 2)));
+  const counter = Buffer.alloc(8);
+  counter.writeBigUInt64BE(BigInt(Math.floor(at / 1000 / 30)));
+  const hmac = createHmac("sha1", key).update(counter).digest();
+  const offset = hmac[hmac.length - 1] & 0x0f;
+  return String((hmac.readUInt32BE(offset) & 0x7fffffff) % 1_000_000).padStart(6, "0");
+}
+
+/** The fictional lecturer's authenticator secret (DEMO_TOTP_SECRET of the test stack). */
+function totpSecret(): string {
+  const value = process.env.E2E_TOTP_SECRET;
+  if (!value) throw new Error("Set E2E_TOTP_SECRET to the DEMO_TOTP_SECRET of the test stack.");
+  return value;
+}
+
+/** The privacy notice's title (privacy/notice_text.py), read and acknowledged once by each person. */
+export const NOTICE_TITLE = "How the GSA LMS uses your personal data";
+
+/**
+ * After signing in, the first time: the privacy notice in force is read and acknowledged (item 1.18).
+ * Returns whether it was shown.
+ */
+export async function passNotice(page: Page): Promise<boolean> {
+  const read = page.getByRole("button", { name: "I have read this notice" });
+  const inside = page.getByRole("heading", { name: "My courses", level: 1 });
+  await expect(read.or(inside).first()).toBeVisible();
+  const shown = await read.isVisible();
+  if (shown) {
+    await expect(page.getByRole("heading", { name: NOTICE_TITLE, level: 1 })).toBeVisible();
+    await read.click();
+  }
+  await expect(inside).toBeVisible();
+  return shown;
+}
+
+/** Sign in; teaching staff then give their authenticator code (ADR 0013). Returns whether the notice was shown. */
+export async function signIn(page: Page, username: string, { code = false } = {}): Promise<boolean> {
   await page.goto("/");
   await page.getByLabel("Username").fill(username);
   await page.getByLabel("Password", { exact: true }).fill(password());
   await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page.getByRole("heading", { name: "My courses", level: 1 })).toBeVisible();
+  if (code) {
+    await page.getByLabel("Authenticator code").fill(totp(totpSecret()));
+    await page.getByRole("button", { name: "Verify" }).click();
+  }
+  return passNotice(page);
 }
 
 export async function signOut(page: Page) {
