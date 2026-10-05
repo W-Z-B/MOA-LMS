@@ -1,6 +1,13 @@
+import type { Page } from "@playwright/test";
 import { COURSE, PEOPLE, expect, expectAccessible, password, signIn, signOut, test } from "./support";
 
 /** Item 0.20: the first journeys, sign-in, My courses and a course site, on desktop and a 360px phone. */
+
+/** My courses is a shortcut on every Home (item 2.07). */
+async function openMyCourses(page: Page) {
+  await page.getByRole("navigation", { name: "Shortcuts" }).getByRole("link", { name: /My courses/ }).click();
+  await expect(page.getByRole("heading", { name: "My courses", level: 1 })).toBeVisible();
+}
 
 test("the sign-in page is accessible and refuses a wrong password", async ({ page }, testInfo) => {
   await page.goto("/");
@@ -21,7 +28,7 @@ test("a lecturer cannot go past sign-in without the authenticator code", async (
   await page.getByLabel("Authenticator code").fill("000000");
   await page.getByRole("button", { name: "Verify" }).click();
   await expect(page.getByRole("alert")).toHaveText("The code is not valid.");
-  await expect(page.getByRole("heading", { name: "My courses" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Home" })).toHaveCount(0);
 });
 
 test("a student finds their course, reads the content, and sees their released mark", async ({ page }, testInfo) => {
@@ -29,6 +36,7 @@ test("a student finds their course, reads the content, and sees their released m
   // The student reads the privacy notice at their first sign-in (the desktop run comes first), never again.
   if (testInfo.project.name === "desktop" && testInfo.retry === 0) expect(noticeShown).toBe(true);
   if (testInfo.project.name === "phone") expect(noticeShown).toBe(false);
+  await openMyCourses(page);
   const course = page.getByRole("button", { name: new RegExp(COURSE.title) });
   await expect(course).toContainText(COURSE.code);
   await expect(course).toContainText("Student");
@@ -54,6 +62,13 @@ test("a student finds their course, reads the content, and sees their released m
   await expect(rows.nth(1)).toContainText(PEOPLE.student.studentNo);
   await expect(rows.nth(1)).toContainText("76.00");
   await expectAccessible(page, testInfo, "gradebook");
+  // Each tab has an address of its own that can be shared (item 2.10): it opens on the same tab, under its
+  // breadcrumb back to Home.
+  await expect(page).toHaveURL(/#\/sites\/\d+\/gradebook$/);
+  await page.reload();
+  await expect(page.getByRole("tab", { name: "Gradebook" })).toHaveAttribute("aria-selected", "true");
+  const crumbs = page.getByRole("navigation", { name: "Breadcrumb" });
+  await expect(crumbs.getByRole("listitem")).toHaveText(["Home", "My courses", COURSE.title]);
 
   await page.getByRole("tab", { name: "Announcements" }).click();
   await expect(page.getByRole("heading", { name: "Welcome to the course" })).toBeVisible();
@@ -62,6 +77,7 @@ test("a student finds their course, reads the content, and sees their released m
 
 test("the lecturer gives an authenticator code and sees the whole class in the gradebook", async ({ page }, testInfo) => {
   await signIn(page, PEOPLE.lecturer.username, { code: true });
+  await openMyCourses(page);
   await page.getByRole("button", { name: new RegExp(COURSE.title) }).click();
   await expect(page.getByRole("button", { name: "Unpublish" })).toBeVisible();
   await page.getByRole("tab", { name: "Gradebook" }).click();

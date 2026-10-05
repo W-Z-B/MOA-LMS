@@ -1,19 +1,33 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { errorMessage, get, patch, post } from "../../api/client";
 import { canTeach, type Assignment, type Gradebook, type Licence, type Paginated, type SiteContents, type Submission } from "../../api/types";
+import { useCrumb } from "../../app/frame";
+import { submitAssignmentText } from "../../app/offlineQueue";
+import { SITE_TABS, type SiteTab } from "../../app/router";
+import { SendState } from "../../app/SendState";
 
 interface Props {
   siteId: number;
-  onNavigate: (to: string) => void;
+  /** The tab named in the address (item 2.10), so each can be shared: #/sites/4/assignments. */
+  tab: SiteTab;
+  onTab: (tab: SiteTab) => void;
 }
 
-type Tab = "content" | "assignments" | "gradebook" | "announcements";
+const TAB_LABEL: Record<SiteTab, string> = {
+  content: "Content",
+  assignments: "Assignments",
+  gradebook: "Gradebook",
+  announcements: "Announcements",
+};
 
-/** One course site: content, assignments, gradebook and announcements. Teaching staff get the authoring forms. */
-export function SiteScreen({ siteId, onNavigate }: Props) {
-  const [tab, setTab] = useState<Tab>("content");
+/**
+ * One course site: content, assignments, gradebook and announcements. Teaching staff get the authoring forms.
+ * Its name is the last breadcrumb (Home / My courses / the site), and each tab has an address of its own.
+ */
+export function SiteScreen({ siteId, tab, onTab }: Props) {
   const [data, setData] = useState<SiteContents | null>(null);
   const [error, setError] = useState<string | null>(null);
+  useCrumb(data?.site.title);
 
   const load = useCallback(() => {
     get<SiteContents>(`/sites/${siteId}/contents/`)
@@ -26,7 +40,12 @@ export function SiteScreen({ siteId, onNavigate }: Props) {
 
   useEffect(load, [load]);
 
-  if (error) return <p className="error">{error}</p>;
+  if (error)
+    return (
+      <p role="alert" className="error">
+        {error}
+      </p>
+    );
   if (!data) return <p className="loading">Opening course…</p>;
   const teaching = canTeach(data.site.my_role);
 
@@ -42,13 +61,8 @@ export function SiteScreen({ siteId, onNavigate }: Props) {
 
   return (
     <>
-      <p>
-        <button className="link" style={{ color: "var(--accent)" }} onClick={() => onNavigate("/")}>
-          My courses
-        </button>
-      </p>
-      <div className="panel-head">
-        <div>
+      <div className="page-head site-head">
+        <div className="stacked">
           <h1>{data.site.title}</h1>
           <p className="muted">
             {data.site.code} · {data.site.members} members · coursework {data.site.coursework_weight}% of the final mark
@@ -61,9 +75,9 @@ export function SiteScreen({ siteId, onNavigate }: Props) {
         )}
       </div>
       <div className="tabs" role="tablist">
-        {(["content", "assignments", "gradebook", "announcements"] as Tab[]).map((t) => (
-          <button key={t} role="tab" aria-selected={tab === t} className={tab === t ? "tab active" : "tab"} onClick={() => setTab(t)}>
-            {t[0].toUpperCase() + t.slice(1)}
+        {SITE_TABS.map((t) => (
+          <button key={t} role="tab" aria-selected={tab === t} className={tab === t ? "tab active" : "tab"} onClick={() => onTab(t)}>
+            {TAB_LABEL[t]}
           </button>
         ))}
       </div>
@@ -411,17 +425,30 @@ function Submit({ assignment, onChanged }: { assignment: Assignment; onChanged: 
   const [text, setText] = useState(mine?.text ?? "");
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [queued, setQueued] = useState<string | null>(null);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
-    const body = new FormData();
-    if (text) body.set("text", text);
-    if (file) body.set("file", file);
+    setError(null);
     try {
-      await post(`/assignments/${assignment.id}/submit/`, body);
-      onChanged();
+      if (file) {
+        // A file cannot be kept on the device: work with one attached needs a connection.
+        const body = new FormData();
+        if (text) body.set("text", text);
+        body.set("file", file);
+        await post(`/assignments/${assignment.id}/submit/`, body);
+        onChanged();
+        return;
+      }
+      // A typed answer is safe to send again (it replaces work not yet marked), so without a connection it
+      // waits on this device and is sent when the connection returns (item 4.02).
+      const sent = await submitAssignmentText(assignment.id, assignment.title, text);
+      if (sent.queued) setQueued(sent.item.id);
+      else onChanged();
     } catch (err) {
-      setError(errorMessage(err, "Could not submit."));
+      setError(
+        err instanceof TypeError ? "No connection. Attach the file again when you are back online." : errorMessage(err, "Could not submit."),
+      );
     }
   }
 
@@ -457,6 +484,7 @@ function Submit({ assignment, onChanged }: { assignment: Assignment; onChanged: 
         <button type="submit" disabled={!text && !file}>
           Submit
         </button>
+        <SendState id={queued} />
       </div>
     </form>
   );
@@ -492,60 +520,67 @@ function Marking({ assignment, onChanged }: { assignment: Assignment; onChanged:
   if (rows.length === 0) return <p className="muted">Nothing submitted yet.</p>;
   return (
     <>
-      {error && <p className="error">{error}</p>}
-      <table>
-        <thead>
-          <tr>
-            <th>Student</th>
-            <th>Work</th>
-            <th className="num">Mark / {assignment.max_mark}</th>
-            <th>Feedback</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => {
-            const entry = marks[row.id] ?? { mark: row.mark?.mark ?? "", feedback: row.mark?.feedback ?? "" };
-            return (
-              <tr key={row.id}>
-                <td>
-                  {row.student_no} {row.student_name} {row.is_late && <span className="pill">Late</span>}
-                </td>
-                <td>
-                  {row.text && <span style={{ whiteSpace: "pre-wrap" }}>{row.text}</span>}{" "}
-                  {row.download_url && <a href={row.download_url}>{row.filename}</a>}
-                </td>
-                <td className="num">
-                  <input
-                    type="number"
-                    min={0}
-                    max={Number(assignment.max_mark)}
-                    step="0.5"
-                    aria-label={`Mark for ${row.student_no}`}
-                    value={entry.mark}
-                    onChange={(e) => setMarks({ ...marks, [row.id]: { ...entry, mark: e.target.value } })}
-                  />
-                </td>
-                <td>
-                  <input
-                    aria-label={`Feedback for ${row.student_no}`}
-                    value={entry.feedback}
-                    onChange={(e) => setMarks({ ...marks, [row.id]: { ...entry, feedback: e.target.value } })}
-                  />
-                </td>
-                <td className="actions">
-                  <button className="secondary" onClick={() => save(row, false)} disabled={!entry.mark}>
-                    Save
-                  </button>
-                  <button onClick={() => save(row, true)} disabled={!entry.mark}>
-                    {row.mark?.is_released ? "Update" : "Release"}
-                  </button>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+      {error && (
+        <p role="alert" className="error">
+          {error}
+        </p>
+      )}
+      {/* Focusable and named, so a keyboard user can scroll a table wider than a phone. */}
+      <div className="scroll-x" tabIndex={0} role="region" aria-label={`Submissions for ${assignment.title}`}>
+        <table>
+          <thead>
+            <tr>
+              <th>Student</th>
+              <th>Work</th>
+              <th className="num">Mark / {assignment.max_mark}</th>
+              <th>Feedback</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => {
+              const entry = marks[row.id] ?? { mark: row.mark?.mark ?? "", feedback: row.mark?.feedback ?? "" };
+              return (
+                <tr key={row.id}>
+                  <td>
+                    {row.student_no} {row.student_name} {row.is_late && <span className="pill">Late</span>}
+                  </td>
+                  <td>
+                    {row.text && <span style={{ whiteSpace: "pre-wrap" }}>{row.text}</span>}{" "}
+                    {row.download_url && <a href={row.download_url}>{row.filename}</a>}
+                  </td>
+                  <td className="num">
+                    <input
+                      type="number"
+                      min={0}
+                      max={Number(assignment.max_mark)}
+                      step="0.5"
+                      aria-label={`Mark for ${row.student_no}`}
+                      value={entry.mark}
+                      onChange={(e) => setMarks({ ...marks, [row.id]: { ...entry, mark: e.target.value } })}
+                    />
+                  </td>
+                  <td>
+                    <input
+                      aria-label={`Feedback for ${row.student_no}`}
+                      value={entry.feedback}
+                      onChange={(e) => setMarks({ ...marks, [row.id]: { ...entry, feedback: e.target.value } })}
+                    />
+                  </td>
+                  <td className="actions">
+                    <button className="secondary" onClick={() => save(row, false)} disabled={!entry.mark}>
+                      Save
+                    </button>
+                    <button onClick={() => save(row, true)} disabled={!entry.mark}>
+                      {row.mark?.is_released ? "Update" : "Release"}
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </>
   );
 }
@@ -568,7 +603,7 @@ function GradebookTab({ siteId }: { siteId: number }) {
   if (book.rows.length === 0) return <p className="muted">No students in this course.</p>;
   return (
     // Focusable and named, so a keyboard user can scroll a gradebook wider than the screen.
-    <div style={{ overflowX: "auto" }} tabIndex={0} role="region" aria-label="Gradebook">
+    <div className="scroll-x" tabIndex={0} role="region" aria-label="Gradebook">
       <table>
         <thead>
           <tr>

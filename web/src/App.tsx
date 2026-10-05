@@ -1,15 +1,18 @@
 import { useCallback, useEffect, useState } from "react";
 import { SIGNED_OUT_EVENT, get } from "./api/client";
 import type { Me } from "./api/types";
+import { usesCampusSwitch } from "./app/people";
 import { Shell } from "./app/Shell";
-import { useHashRoute } from "./app/router";
+import { siteAddress, useHashRoute } from "./app/router";
 import { AccountScreen } from "./features/account/AccountScreen";
 import { LoginScreen } from "./features/auth/LoginScreen";
 import { MyCoursesScreen } from "./features/courses/MyCoursesScreen";
 import { SiteScreen } from "./features/courses/SiteScreen";
+import { HomeScreen } from "./features/home/HomeScreen";
 import { ComingSoon } from "./features/placeholder/ComingSoon";
 import { MyDataScreen } from "./features/privacy/MyDataScreen";
 import { PrivacyNoticeScreen } from "./features/privacy/PrivacyNoticeScreen";
+import { ToDoScreen } from "./features/todo/ToDoScreen";
 
 const CAMPUS_KEY = "gsa-lms.campus";
 
@@ -67,10 +70,23 @@ export default function App() {
     );
   if (me.privacy_notice_due) return <PrivacyNoticeScreen onAcknowledged={noticeRead} />;
 
-  const site = path.match(/^\/sites\/(\d+)/);
+  // Every page has an address of its own (item 2.10), down to a course site's tab: #/sites/4/gradebook.
+  const site = siteAddress(path);
+  const campus = usesCampusSwitch(me) ? campusCode : null;
   let screen;
-  if (site) screen = <SiteScreen key={site[1]} siteId={Number(site[1])} onNavigate={navigate} />;
-  else if (path === "/" || path.startsWith("/sites")) screen = <MyCoursesScreen campusCode={campusCode} onNavigate={navigate} />;
+  // Everyone opens on their own Home (item 2.07): what waits for them, and the pages their role uses.
+  if (path === "/") screen = <HomeScreen me={me} onNavigate={navigate} />;
+  else if (path === "/to-do") screen = <ToDoScreen onNavigate={navigate} />;
+  else if (site)
+    screen = (
+      <SiteScreen
+        key={site.id}
+        siteId={site.id}
+        tab={site.tab}
+        onTab={(tab) => navigate(tab === "content" ? `/sites/${site.id}` : `/sites/${site.id}/${tab}`)}
+      />
+    );
+  else if (path === "/courses" || path === "/sites") screen = <MyCoursesScreen campusCode={campus} onNavigate={navigate} />;
   else if (path === "/account") screen = <AccountScreen />;
   else if (path.startsWith("/my-data")) screen = <MyDataScreen />;
   else if (path.startsWith("/admin"))
