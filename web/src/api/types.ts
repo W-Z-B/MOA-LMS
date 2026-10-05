@@ -11,6 +11,8 @@ export interface Me {
   person_id: number | null;
   person_kind: "staff" | "student" | null;
   external_id: string | null;
+  /** The privacy notice version still to be read, or null (item 1.18). */
+  privacy_notice_due?: number | null;
 }
 
 export interface Paginated<T> {
@@ -134,3 +136,12 @@ export interface Gradebook {
 }
 
 export const canTeach = (role: SiteRole) => role === "admin" || role === "lecturer" || role === "assistant";
+
+export interface SignedInSession {
+  id: number;
+  device: string;
+  ip: string | null;
+  created_at: string;
+  last_seen_at: string;
+  current: boolean;
+}

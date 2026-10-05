@@ -1,6 +1,7 @@
 """Assignments, submissions, marking and the gradebook."""
 
 from django.db import transaction
+from django.db.models import Q
 from django.http import FileResponse
 from django.shortcuts import get_object_or_404
 from django.urls import path
@@ -17,9 +18,10 @@ from assessments.models import Assignment, Mark, Submission
 from assessments.services import gradebook
 from audit.services import record
 from core.serializers import ErrorSerializer
-from courses.access import can_teach, person_of, site_role, visible_sites
+from core.uploads import SUBMISSION, original_name, validate_upload
+from courses.access import TaughtRecord, can_teach, person_of, site_role, taught_sites, visible_sites
 from courses.api import TeachingViewSet
-from courses.models import Membership
+from courses.models import CourseSite, Membership
 from iam.permissions import RolePermission
 
 
@@ -32,6 +34,7 @@ class ReleasedMarkSerializer(serializers.Serializer):
 
 
 class AssignmentSerializer(serializers.ModelSerializer):
+    site = TaughtRecord(CourseSite)
     my_submission = serializers.SerializerMethodField()
     submissions_count = serializers.SerializerMethodField()
 
@@ -52,8 +55,7 @@ class AssignmentSerializer(serializers.ModelSerializer):
             "submissions_count",
         )
 
-    @extend_schema_field(serializers.DictField(allow_null=True, help_text="The caller's own submission"))
-    def get_my_submission(self, obj):
+    def get_my_submission(self, obj) -> dict | None:
         request = self.context.get("request")
         person = person_of(request.user) if request else None
         if person is None:
@@ -69,7 +71,7 @@ class AssignmentSerializer(serializers.ModelSerializer):
 class SubmissionSerializer(serializers.ModelSerializer):
     student_no = serializers.CharField(source="student.external_id", read_only=True)
     student_name = serializers.CharField(source="student.full_name", read_only=True)
-    filename = serializers.SerializerMethodField()
+    filename = serializers.SerializerMethodField(help_text="The name the file had when it was handed in")
     download_url = serializers.SerializerMethodField()
     mark = serializers.SerializerMethodField()
 
@@ -89,13 +91,13 @@ class SubmissionSerializer(serializers.ModelSerializer):
         )
 
     def get_filename(self, obj) -> str | None:
-        return obj.file.name.rsplit("/", 1)[-1] if obj.file else None
+        return (obj.original_name or obj.file.name.rsplit("/", 1)[-1]) if obj.file else None
 
     def get_download_url(self, obj) -> str | None:
         return f"/api/v1/submissions/{obj.id}/download/" if obj.file else None
 
     @extend_schema_field(ReleasedMarkSerializer(allow_null=True))
-    def get_mark(self, obj):
+    def get_mark(self, obj) -> dict | None:
         mark = getattr(obj, "mark", None)
         if mark is None or (self.context.get("released_only") and not mark.is_released):
             return None
@@ -104,7 +106,14 @@ class SubmissionSerializer(serializers.ModelSerializer):
 
 class SubmitSerializer(serializers.Serializer):
     text = serializers.CharField(required=False, allow_blank=True)
-    file = serializers.FileField(required=False)
+    file = serializers.FileField(
+        required=False,
+        help_text="A PDF, a photograph, or a Word, Excel or PowerPoint file without macros; at most "
+        "UPLOAD_LIMIT_SUBMISSION_MB (20 MB by default)",
+    )
+
+    def validate_file(self, upload):
+        return validate_upload(upload, SUBMISSION)
 
     def validate(self, attrs):
         if not attrs.get("text") and not attrs.get("file"):
@@ -160,8 +169,7 @@ class AssignmentViewSet(TeachingViewSet):
         site = self.request.query_params.get("site")
         if site:
             qs = qs.filter(site_id=site)
-        teaching_sites = [s.id for s in visible_sites(user) if can_teach(user, s)]
-        return qs.filter(is_published=True) | qs.filter(site_id__in=teaching_sites)
+        return qs.filter(is_published=True) | qs.filter(site__in=taught_sites(user))
 
     def site_of(self, instance):
         return instance.site
@@ -171,12 +179,17 @@ class AssignmentViewSet(TeachingViewSet):
 
     @extend_schema(
         request={"multipart/form-data": SubmitSerializer, "application/json": SubmitSerializer},
-        responses={201: SubmissionSerializer, 409: ErrorSerializer},
-        summary="Submit or replace my work (students of the site)",
+        responses={
+            201: SubmissionSerializer,
+            400: ErrorSerializer,
+            403: ErrorSerializer,
+            409: ErrorSerializer,
+        },
+        summary="Hand in work for an assignment, or replace work not yet marked",
     )
     @action(detail=True, methods=["post"])
     def submit(self, request, pk=None):
-        assignment = self.get_object()
+        assignment = self.get_object()  # an assignment the student cannot open reads as unknown (404)
         person = person_of(request.user)
         if person is None or site_role(request.user, assignment.site) != Membership.SiteRole.STUDENT:
             raise PermissionDenied("Only students of this course can submit.")
@@ -190,6 +203,7 @@ class AssignmentViewSet(TeachingViewSet):
             return Response({"code": "closed", "detail": "The deadline has passed."}, status=409)
         data = SubmitSerializer(data=request.data)
         data.is_valid(raise_exception=True)
+        upload = data.validated_data.get("file")
         with transaction.atomic():
             existing = Submission.objects.filter(assignment=assignment, student=person).first()
             if existing and hasattr(existing, "mark"):
@@ -202,7 +216,8 @@ class AssignmentViewSet(TeachingViewSet):
                 student=person,
                 defaults={
                     "text": data.validated_data.get("text", ""),
-                    "file": data.validated_data.get("file") or "",
+                    "file": upload or "",
+                    "original_name": original_name(upload) if upload else "",
                     "submitted_at": now,
                     "is_late": late,
                     "updated_by": request.user,
@@ -211,7 +226,10 @@ class AssignmentViewSet(TeachingViewSet):
             record(request, "submit", submission, after={"assignment": assignment.id, "late": late})
         return Response(SubmissionSerializer(submission, context={"released_only": True}).data, status=201)
 
-    @extend_schema(responses=SubmissionSerializer(many=True), summary="All submissions (teaching staff)")
+    @extend_schema(
+        responses={200: SubmissionSerializer(many=True), 403: ErrorSerializer},
+        summary="All submissions (teaching staff)",
+    )
     @action(detail=True, methods=["get"])
     def submissions(self, request, pk=None):
         assignment = self.get_object()
@@ -220,15 +238,27 @@ class AssignmentViewSet(TeachingViewSet):
         return Response(SubmissionSerializer(rows, many=True).data)
 
 
+def visible_submissions(user):
+    """A student's own submissions, and every submission on the sites the user teaches. Any other
+    submission reads as unknown."""
+    person = person_of(user)
+    mine = Q(student=person) if person is not None else Q(pk__in=[])
+    return Submission.objects.filter(mine | Q(assignment__site__in=taught_sites(user))).select_related(
+        "assignment__site", "student"
+    )
+
+
 @extend_schema(
     request=MarkSerializer,
-    responses=SubmissionSerializer,
-    summary="Mark a submission, and release the mark when ready (teaching staff)",
+    responses={200: SubmissionSerializer, 400: ErrorSerializer, 403: ErrorSerializer, 404: ErrorSerializer},
+    summary="Mark a submission, and release the mark to the student when ready",
 )
 @api_view(["POST"])
 @permission_classes([RolePermission])
 def mark_submission(request, pk: int):
-    submission = get_object_or_404(Submission.objects.select_related("assignment__site", "student"), pk=pk)
+    # The site is settled before the mark is looked at (item 1.15): a submission on a site the caller does
+    # not teach on is unknown to them, unless it is their own, which they still may not mark.
+    submission = get_object_or_404(visible_submissions(request.user), pk=pk)
     site = submission.assignment.site
     if not can_teach(request.user, site):
         raise PermissionDenied("Only the site's teaching staff can mark.")
@@ -264,25 +294,24 @@ def mark_submission(request, pk: int):
 
 @extend_schema(
     responses={(200, "application/octet-stream"): OpenApiTypes.BINARY, 404: ErrorSerializer},
-    summary="Download a submitted file (the student or the teaching staff; audited)",
+    summary="Download the file handed in, under the name it had",
 )
 @api_view(["GET"])
 @permission_classes([RolePermission])
 def download_submission(request, pk: int):
-    submission = get_object_or_404(Submission.objects.select_related("assignment__site", "student"), pk=pk)
-    own = person_of(request.user) is not None and submission.student_id == person_of(request.user).id
-    if not own and not can_teach(request.user, submission.assignment.site):
-        raise PermissionDenied("You cannot open this submission.")
+    submission = get_object_or_404(visible_submissions(request.user), pk=pk)
     if not submission.file:
         return Response({"code": "no_file", "detail": "This submission has no file."}, status=404)
     record(request, "download", submission)
     return FileResponse(
-        submission.file.open("rb"), as_attachment=True, filename=submission.file.name.rsplit("/", 1)[-1]
+        submission.file.open("rb"),
+        as_attachment=True,
+        filename=submission.original_name or submission.file.name.rsplit("/", 1)[-1],
     )
 
 
 @extend_schema(
-    responses=GradebookSerializer,
+    responses={200: GradebookSerializer, 403: ErrorSerializer, 404: ErrorSerializer},
     summary="Gradebook: the whole class for teaching staff, own released marks for a student",
 )
 @api_view(["GET"])

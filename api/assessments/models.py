@@ -4,6 +4,7 @@ from django.db import models
 from django.db.models import Q
 
 from core.models import TimeStampedModel
+from core.uploads import submission_name
 
 
 class Assignment(TimeStampedModel):
@@ -35,7 +36,10 @@ class Submission(TimeStampedModel):
     assignment = models.ForeignKey(Assignment, on_delete=models.CASCADE, related_name="submissions")
     student = models.ForeignKey("people.PersonRef", on_delete=models.PROTECT, related_name="submissions")
     text = models.TextField(blank=True)
-    file = models.FileField(upload_to="submissions/%Y/%m/", blank=True)
+    file = models.FileField(upload_to=submission_name, blank=True)
+    original_name = models.CharField(
+        max_length=255, blank=True, help_text="The name the file had when handed in; used for downloads"
+    )
     submitted_at = models.DateTimeField()
     is_late = models.BooleanField(default=False)
 

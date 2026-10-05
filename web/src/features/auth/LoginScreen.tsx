@@ -4,10 +4,12 @@ import type { Me } from "../../api/types";
 
 interface Props {
   onSignedIn: (me: Me) => void;
+  /** Why the server ended the last session, if it did. */
+  notice?: string | null;
 }
 
-/** Login, then TOTP verification for privileged roles (with first-time enrolment). */
-export function LoginScreen({ onSignedIn }: Props) {
+/** Login, then the authenticator code for lecturers and administrators (with first-time enrolment). */
+export function LoginScreen({ onSignedIn, notice }: Props) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
@@ -58,6 +60,11 @@ export function LoginScreen({ onSignedIn }: Props) {
       <form className="card" onSubmit={stage === "credentials" ? submitCredentials : submitCode}>
         <h1>GSA LMS</h1>
         <p className="muted">Guyana School of Agriculture, Learning Management System</p>
+        {notice && stage === "credentials" && (
+          <p role="status" className="notice">
+            {notice}
+          </p>
+        )}
         {stage === "credentials" ? (
           <>
             <label>
@@ -79,7 +86,7 @@ export function LoginScreen({ onSignedIn }: Props) {
           <>
             {provisioning && (
               <p className="notice">
-                First sign-in with a privileged role: add this account to your authenticator app, then enter the
+                First sign-in with a role that needs an authenticator code: add this account to your authenticator app, then enter the
                 six-digit code. <code className="wrap">{provisioning}</code>
               </p>
             )}

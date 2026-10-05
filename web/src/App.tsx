@@ -1,12 +1,15 @@
-import { useEffect, useState } from "react";
-import { get } from "./api/client";
+import { useCallback, useEffect, useState } from "react";
+import { SIGNED_OUT_EVENT, get } from "./api/client";
 import type { Me } from "./api/types";
 import { Shell } from "./app/Shell";
 import { useHashRoute } from "./app/router";
+import { AccountScreen } from "./features/account/AccountScreen";
 import { LoginScreen } from "./features/auth/LoginScreen";
 import { MyCoursesScreen } from "./features/courses/MyCoursesScreen";
 import { SiteScreen } from "./features/courses/SiteScreen";
 import { ComingSoon } from "./features/placeholder/ComingSoon";
+import { MyDataScreen } from "./features/privacy/MyDataScreen";
+import { PrivacyNoticeScreen } from "./features/privacy/PrivacyNoticeScreen";
 
 const CAMPUS_KEY = "gsa-lms.campus";
 
@@ -22,11 +25,23 @@ export default function App() {
   const [me, setMe] = useState<Me | null | undefined>(undefined);
   const [path, navigate] = useHashRoute();
   const [campusCode, setCampusCode] = useState<string | null>(readCampus);
+  const [signedOutReason, setSignedOutReason] = useState<string | null>(null);
+  // Item 1.18: the privacy notice in force is read before anything else, once per version.
+  const noticeRead = useCallback(() => setMe((m) => (m ? { ...m, privacy_notice_due: null } : m)), []);
 
   useEffect(() => {
     get<Me>("/auth/me/")
       .then(setMe)
       .catch(() => setMe(null));
+  }, []);
+
+  useEffect(() => {
+    const signedOut = (event: Event) => {
+      setSignedOutReason((event as CustomEvent<string>).detail);
+      setMe(null);
+    };
+    window.addEventListener(SIGNED_OUT_EVENT, signedOut);
+    return () => window.removeEventListener(SIGNED_OUT_EVENT, signedOut);
   }, []);
 
   function changeCampus(code: string | null) {
@@ -40,12 +55,24 @@ export default function App() {
   }
 
   if (me === undefined) return <p className="loading">Loading GSA LMS…</p>;
-  if (me === null || (me.mfa_required && !me.mfa_verified)) return <LoginScreen onSignedIn={setMe} />;
+  if (me === null || (me.mfa_required && !me.mfa_verified))
+    return (
+      <LoginScreen
+        notice={signedOutReason}
+        onSignedIn={(signedIn) => {
+          setSignedOutReason(null);
+          setMe(signedIn);
+        }}
+      />
+    );
+  if (me.privacy_notice_due) return <PrivacyNoticeScreen onAcknowledged={noticeRead} />;
 
   const site = path.match(/^\/sites\/(\d+)/);
   let screen;
   if (site) screen = <SiteScreen key={site[1]} siteId={Number(site[1])} onNavigate={navigate} />;
   else if (path === "/" || path.startsWith("/sites")) screen = <MyCoursesScreen campusCode={campusCode} onNavigate={navigate} />;
+  else if (path === "/account") screen = <AccountScreen />;
+  else if (path.startsWith("/my-data")) screen = <MyDataScreen />;
   else if (path.startsWith("/admin"))
     screen = <ComingSoon title="Admin" sprint="a later sprint" requirement="site creation and ecosystem sync controls" />;
   else screen = <ComingSoon title="Not found" sprint="a later sprint" requirement="unknown route" />;

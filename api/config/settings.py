@@ -26,7 +26,8 @@ CSRF_TRUSTED_ORIGINS = [f"https://{h}" for h in ALLOWED_HOSTS if h not in {"loca
 FIELD_ENCRYPTION_KEY = env("FIELD_ENCRYPTION_KEY", "")
 
 INSTALLED_APPS = [
-    "django.contrib.admin",
+    # The admin, with sign-in only through the web app (lockout and authenticator): iam/admin_site.py
+    "iam.admin_apps.LmsAdminConfig",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
@@ -47,6 +48,8 @@ INSTALLED_APPS = [
     "people",
     "courses",
     "assessments",
+    "privacy",
+    "quizzes",
 ]
 
 MIDDLEWARE = [
@@ -56,6 +59,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "iam.middleware.SessionActivityMiddleware",  # idle and absolute time-outs; the session list
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -111,7 +115,11 @@ REST_FRAMEWORK = {
     "PAGE_SIZE": 50,
     "DEFAULT_THROTTLE_CLASSES": ["rest_framework.throttling.UserRateThrottle"],
     "DEFAULT_THROTTLE_RATES": {"user": "600/minute"},
+    "EXCEPTION_HANDLER": "core.exceptions.api_exception_handler",
 }
+
+# The OpenAPI schema and Swagger UI: public in development, signed-in people only elsewhere.
+API_DOCS_PUBLIC = env_bool("API_DOCS_PUBLIC", DEBUG)
 
 SPECTACULAR_SETTINGS = {
     "TITLE": "GSA LMS API",
@@ -122,6 +130,7 @@ SPECTACULAR_SETTINGS = {
     "ENUM_NAME_OVERRIDES": {
         "SiteKindEnum": "courses.models.CourseSite.Kind",
         "ContentKindEnum": "courses.models.ContentItem.Kind",
+        "QuizReviewEnum": "quizzes.models.Quiz.Review",
     },
 }
 
@@ -174,11 +183,19 @@ SILENCED_SYSTEM_CHECKS = [
     "security.W021",
 ]
 SESSION_COOKIE_HTTPONLY = True
-SESSION_COOKIE_AGE = 8 * 60 * 60  # working day
+SESSION_COOKIE_AGE = 8 * 60 * 60  # working day: the absolute limit, enforced by iam.middleware
+SESSION_IDLE_MINUTES = int(env("SESSION_IDLE_MINUTES", "30"))
+
+# Upload limits in megabytes, checked with the file's type in core.uploads. Caddy refuses any request body
+# over 60 MB before it reaches the application.
+UPLOAD_LIMIT_CONTENT_MB = int(env("UPLOAD_LIMIT_CONTENT_MB", "50"))
+UPLOAD_LIMIT_SUBMISSION_MB = int(env("UPLOAD_LIMIT_SUBMISSION_MB", "20"))
 
 # Account lockout: this many consecutive failed logins inside the window locks the account for the window.
 LOGIN_MAX_FAILURES = int(env("LOGIN_MAX_FAILURES", "5"))
 LOGIN_LOCKOUT_MINUTES = int(env("LOGIN_LOCKOUT_MINUTES", "15"))
+# Failed sign-ins from one network address, across all accounts, before that address waits out the window.
+LOGIN_MAX_FAILURES_PER_ADDRESS = int(env("LOGIN_MAX_FAILURES_PER_ADDRESS", "20"))
 
 LOGGING = {
     "version": 1,
@@ -198,3 +215,6 @@ HRMS_API_KEY = env("HRMS_API_KEY", "")
 SRMS_API_URL = env("SRMS_API_URL", "")
 SRMS_API_KEY = env("SRMS_API_KEY", "")
 INTEGRATION_TIMEOUT_SECONDS = int(env("INTEGRATION_TIMEOUT_SECONDS", "15"))
+
+# Privacy (items 1.18, 1.19): days within which a correction request is to be answered.
+PRIVACY_RESPONSE_DAYS = int(env("PRIVACY_RESPONSE_DAYS", "30"))
