@@ -237,3 +237,7 @@ MESSAGING_STUDENT_TO_STUDENT = env_bool("MESSAGING_STUDENT_TO_STUDENT", False)
 # student checking in after the start counts as late.
 ATTENDANCE_CODE_SECONDS = int(env("ATTENDANCE_CODE_SECONDS", "60"))
 ATTENDANCE_LATE_AFTER_MINUTES = int(env("ATTENDANCE_LATE_AFTER_MINUTES", "10"))
+
+# To do (items 2.07 to 2.09): days after which work to mark, and a decision, are marked overdue.
+MARKING_DAYS = int(env("MARKING_DAYS", "14"))
+DECISION_DAYS = int(env("DECISION_DAYS", "7"))

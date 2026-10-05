@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { ApiError, post } from "../../api/client";
 import type { Me } from "../../api/types";
+import { AuthFrame } from "./AuthFrame";
 
 interface Props {
   onSignedIn: (me: Me) => void;
@@ -56,10 +57,17 @@ export function LoginScreen({ onSignedIn, notice }: Props) {
   }
 
   return (
-    <div className="login">
+    <AuthFrame>
       <form className="card" onSubmit={stage === "credentials" ? submitCredentials : submitCode}>
-        <h1>GSA LMS</h1>
-        <p className="muted">Guyana School of Agriculture, Learning Management System</p>
+        <h1 className="card-eyebrow">GSA LMS</h1>
+        <div className="stacked">
+          <h2>{stage === "credentials" ? "Sign in" : "Authenticator code"}</h2>
+          <p className="muted">
+            {stage === "credentials"
+              ? "Use your GSA account: staff and students alike."
+              : "Open the authenticator app on your phone and type the 6-digit code it shows for GSA LMS."}
+          </p>
+        </div>
         {notice && stage === "credentials" && (
           <p role="status" className="notice">
             {notice}
@@ -94,7 +102,9 @@ export function LoginScreen({ onSignedIn, notice }: Props) {
               Authenticator code
               <input
                 id="mfa-code"
+                className="code-input"
                 inputMode="numeric"
+                autoComplete="one-time-code"
                 pattern="[0-9]*"
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
@@ -109,10 +119,10 @@ export function LoginScreen({ onSignedIn, notice }: Props) {
             {error}
           </p>
         )}
-        <button type="submit" disabled={busy}>
+        <button type="submit" className="wide" disabled={busy}>
           {stage === "credentials" ? "Sign in" : "Verify"}
         </button>
       </form>
-    </div>
+    </AuthFrame>
   );
 }

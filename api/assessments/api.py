@@ -1,5 +1,7 @@
 """Assignments, submissions, marking and the gradebook."""
 
+from datetime import timedelta
+
 from django.db import transaction
 from django.db.models import Q
 from django.http import FileResponse
@@ -86,6 +88,7 @@ class SubmissionSerializer(serializers.ModelSerializer):
             "filename",
             "download_url",
             "submitted_at",
+            "client_submitted_at",
             "is_late",
             "mark",
         )
@@ -104,6 +107,10 @@ class SubmissionSerializer(serializers.ModelSerializer):
         return {"mark": str(mark.mark), "feedback": mark.feedback, "is_released": mark.is_released}
 
 
+# A device clock may run a little fast; further ahead than this it is wrong (as practicals.offline).
+CLIENT_AHEAD = timedelta(minutes=10)
+
+
 class SubmitSerializer(serializers.Serializer):
     text = serializers.CharField(required=False, allow_blank=True)
     file = serializers.FileField(
@@ -111,9 +118,22 @@ class SubmitSerializer(serializers.Serializer):
         help_text="A PDF, a photograph, or a Word, Excel or PowerPoint file without macros; at most "
         "UPLOAD_LIMIT_SUBMISSION_MB (20 MB by default)",
     )
+    client_submitted_at = serializers.DateTimeField(
+        required=False,
+        allow_null=True,
+        help_text="When the device handed it in, sent by the offline queue (item 4.02). Kept beside the "
+        "server time, which alone decides lateness; refused when more than 10 minutes ahead of the server.",
+    )
 
     def validate_file(self, upload):
         return validate_upload(upload, SUBMISSION)
+
+    def validate_client_submitted_at(self, value):
+        if value is not None and value > timezone.now() + CLIENT_AHEAD:
+            raise serializers.ValidationError(
+                "The device's clock is ahead of the server. Set it right and send again."
+            )
+        return value
 
     def validate(self, attrs):
         if not attrs.get("text") and not attrs.get("file"):
@@ -219,11 +239,23 @@ class AssignmentViewSet(TeachingViewSet):
                     "file": upload or "",
                     "original_name": original_name(upload) if upload else "",
                     "submitted_at": now,
+                    "client_submitted_at": data.validated_data.get("client_submitted_at"),
                     "is_late": late,
                     "updated_by": request.user,
                 },
             )
-            record(request, "submit", submission, after={"assignment": assignment.id, "late": late})
+            record(
+                request,
+                "submit",
+                submission,
+                after={
+                    "assignment": assignment.id,
+                    "late": late,
+                    "client_submitted_at": submission.client_submitted_at.isoformat()
+                    if submission.client_submitted_at
+                    else None,
+                },
+            )
         return Response(SubmissionSerializer(submission, context={"released_only": True}).data, status=201)
 
     @extend_schema(

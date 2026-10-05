@@ -30,6 +30,19 @@ export const PEOPLE = {
   lecturer: { username: "marlon.bacchus", name: "Marlon Bacchus" },
 } as const;
 
+/** Whether the journey runs in the phone project (360px, touch). */
+export const onPhone = (testInfo: TestInfo) => testInfo.project.name === "phone";
+
+/** Open a page the way people do: from search, Ctrl K on a desktop or the Search tab on a phone. */
+export async function search(page: Page, testInfo: TestInfo, words: string) {
+  if (onPhone(testInfo)) await page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: "Search" }).click();
+  else await page.keyboard.press("Control+K");
+  const box = page.getByRole("dialog", { name: "Search" }).getByRole("combobox");
+  await expect(box).toBeFocused();
+  await box.fill(words);
+  return page.getByRole("dialog", { name: "Search" });
+}
+
 /** The course site seed_journeys teaches. */
 export const COURSE = { code: "AGR101-2026-27-S1-MRP", title: "Introduction to Crop Production" } as const;
 
@@ -71,7 +84,8 @@ export const NOTICE_TITLE = "How the GSA LMS uses your personal data";
  */
 export async function passNotice(page: Page): Promise<boolean> {
   const read = page.getByRole("button", { name: "I have read this notice" });
-  const inside = page.getByRole("heading", { name: "My courses", level: 1 });
+  // Everyone opens on their own Home (item 2.07).
+  const inside = page.getByRole("heading", { name: "Home", level: 1 });
   await expect(read.or(inside).first()).toBeVisible();
   const shown = await read.isVisible();
   if (shown) {
@@ -95,7 +109,9 @@ export async function signIn(page: Page, username: string, { code = false } = {}
   return passNotice(page);
 }
 
+/** Sign out from the person's menu behind their initials (the "Me" sheet on a phone). */
 export async function signOut(page: Page) {
+  await page.getByRole("button", { name: /^Signed in as / }).click();
   await page.getByRole("button", { name: "Sign out" }).click();
   await expect(page.getByRole("button", { name: "Sign in" })).toBeVisible();
 }

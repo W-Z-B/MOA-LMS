@@ -112,3 +112,38 @@ def test_coursework_is_weighted_and_overdue_missing_work_counts_as_zero(
     assert coursework_percent(site, student) == Decimal("70.00")
     # The other student missed the overdue quiz (zero) and the report is not due yet (does not count).
     assert coursework_percent(site, other_student) == Decimal("0.00")
+
+
+@pytest.mark.django_db
+def test_work_sent_later_from_the_offline_queue_is_late_by_server_time_with_the_device_time_kept(
+    site, assignment, student, lecturer, client_for
+):
+    """Item 4.02: the server's clock alone decides lateness (a device's clock can be set back); the device's
+    time is kept beside it and shown to teaching staff, who may excuse it by an extension."""
+    from audit.models import AuditLog
+
+    learner = client_for(student.user)
+    url = f"/api/v1/assignments/{assignment.id}/submit/"
+    ahead = (timezone.now() + timedelta(minutes=30)).isoformat()
+    refused = learner.post(url, {"text": "From the field", "client_submitted_at": ahead}, format="json")
+    assert refused.status_code == 400 and "client_submitted_at" in refused.json()
+
+    Assignment.objects.filter(pk=assignment.pk).update(due_at=timezone.now() - timedelta(hours=1))
+    written = timezone.now() - timedelta(hours=3)  # before the deadline, by the phone's clock
+    sent = learner.post(
+        url, {"text": "From the field", "client_submitted_at": written.isoformat()}, format="json"
+    )
+    assert sent.status_code == 201
+    assert sent.json()["is_late"] is True
+    submission = Submission.objects.get(assignment=assignment, student=student)
+    assert abs((submission.client_submitted_at - written).total_seconds()) < 1
+    entry = AuditLog.objects.filter(action="submit", entity_id=submission.id).latest("at")
+    assert entry.after["client_submitted_at"] is not None and entry.after["late"] is True
+
+    rows = client_for(lecturer.user).get(f"/api/v1/assignments/{assignment.id}/submissions/").json()
+    assert rows[0]["is_late"] is True and rows[0]["client_submitted_at"] is not None
+
+    # Sent with a connection, there is no device time to show.
+    Submission.objects.all().delete()
+    plain = learner.post(url, {"text": "At my desk"}, format="json").json()
+    assert plain["client_submitted_at"] is None
