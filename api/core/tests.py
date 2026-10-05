@@ -28,3 +28,45 @@ def test_seed_is_idempotent(seeded):
     before = (Role.objects.count(), CampusRef.objects.count())
     call_command("seed", "--country", "GY", verbosity=0)
     assert (Role.objects.count(), CampusRef.objects.count()) == before == (5, 2)
+
+
+@pytest.mark.django_db
+def test_journey_data_needs_fictional_and_a_password(monkeypatch):
+    from django.core.management import CommandError, call_command
+
+    monkeypatch.setenv("DEMO_USER_PASSWORD", "e2e-Only-Fictional-Learner-2026")
+    with pytest.raises(CommandError, match="--fictional"):
+        call_command("seed_journeys")
+    monkeypatch.setenv("DEMO_USER_PASSWORD", "short")
+    with pytest.raises(CommandError, match="DEMO_USER_PASSWORD"):
+        call_command("seed_journeys", "--fictional")
+
+
+@pytest.mark.django_db
+def test_journey_data_signs_in_and_teaches_one_course(monkeypatch):
+    from django.core.management import call_command
+    from rest_framework.test import APIClient
+
+    from assessments.models import Assignment, Mark
+    from courses.models import CourseSite
+
+    monkeypatch.setenv("DEMO_USER_PASSWORD", "e2e-Only-Fictional-Learner-2026")
+    call_command("seed_journeys", "--fictional", verbosity=0)
+    call_command("seed_journeys", "--fictional", verbosity=0)  # idempotent
+
+    site = CourseSite.objects.get()
+    assert site.is_published and site.source == CourseSite.Source.LOCAL
+    assert site.memberships.count() == 3
+    assert Assignment.objects.filter(site=site).count() == 2
+    assert Mark.objects.filter(submission__assignment__site=site, is_released=True).count() == 2
+
+    client = APIClient()
+    response = client.post(
+        "/api/v1/auth/login/",
+        {"username": "kezia.persaud", "password": "e2e-Only-Fictional-Learner-2026"},
+        format="json",
+    )
+    assert response.status_code == 200
+    assert response.json()["person_kind"] == "student"
+    sites = client.get("/api/v1/sites/").json()["results"]
+    assert [(s["title"], s["my_role"]) for s in sites] == [("Introduction to Crop Production", "student")]
