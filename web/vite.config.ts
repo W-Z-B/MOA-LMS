@@ -36,6 +36,10 @@ export default defineConfig({
         "src/features/home/**",
         "src/features/todo/**",
         "src/features/courses/MyCoursesScreen.tsx",
+        // --- accounts, staff development and the console ---
+        "src/features/account/**",
+        "src/features/learning/**",
+        "src/features/admin/**",
       ],
       exclude: ["src/**/*.test.*", "src/test/**"],
       reporter: ["text"],

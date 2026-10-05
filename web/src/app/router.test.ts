@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import type { Me } from "../api/types";
 import { PAGES, pageOf, pagesFor, siteAddress, useHashRoute } from "./router";
 
-const person = (roles: string[], is_superuser = false): Me => ({
+const person = (roles: string[], is_superuser = false, person_kind: Me["person_kind"] = "staff"): Me => ({
   id: 1,
   username: "asha.persaud",
   name: "Asha Persaud",
@@ -12,23 +12,26 @@ const person = (roles: string[], is_superuser = false): Me => ({
   mfa_required: false,
   mfa_verified: true,
   person_id: 1,
-  person_kind: "staff",
+  person_kind,
   external_id: "E0001",
 });
 
 describe("pages by role", () => {
-  it("gives everyone Home, To do, their courses, their data and their account", () => {
+  it("gives everyone Home, To do, their courses, their data and their account, and staff their development", () => {
     const own = ["Home", "To do", "My courses", "My data", "My account"];
-    expect(pagesFor(person(["student"])).map((p) => p.label)).toEqual(own);
-    expect(pagesFor(person(["lecturer"])).map((p) => p.label)).toEqual(own);
-    expect(pagesFor(person([])).map((p) => p.label)).toEqual(own);
+    expect(pagesFor(person(["student"], false, "student")).map((p) => p.label)).toEqual(own);
+    expect(pagesFor(person([], false, null)).map((p) => p.label)).toEqual(own);
+    expect(pagesFor(person(["lecturer"])).map((p) => p.label)).toEqual([...own, "Staff development"]);
+    expect(pagesFor(person([])).map((p) => p.label)).toEqual([...own, "Staff development"]);
   });
 
-  it("gives Admin to administrators and course administrators only, and says what every page is for", () => {
+  it("gives Admin to those the console has a section for, and says what every page is for", () => {
     expect(pagesFor(person(["course_admin"]))).toEqual(PAGES);
-    expect(pagesFor(person(["administrator"]))).toEqual(PAGES);
+    expect(pagesFor(person(["administrator"], false, null))).toEqual(PAGES);
     expect(pagesFor(person([], true))).toEqual(PAGES);
-    expect(pagesFor(person(["auditor"])).map((p) => p.label)).not.toContain("Admin");
+    expect(pagesFor(person(["auditor"], false, null)).map((p) => p.label)).toContain("Admin");
+    expect(pagesFor(person(["dpo"], false, null)).map((p) => p.label)).toEqual(["Home", "To do", "My courses", "My data", "My account", "Admin"]);
+    expect(pagesFor(person(["lecturer"])).map((p) => p.label)).not.toContain("Admin");
     expect(PAGES.every((p) => p.desc.length > 0)).toBe(true);
   });
 
@@ -38,6 +41,9 @@ describe("pages by role", () => {
     expect(pageOf("/courses")?.label).toBe("My courses");
     expect(pageOf("/my-data")?.label).toBe("My data");
     expect(pageOf("/to-do?x=1")?.label).toBe("To do");
+    expect(pageOf("/staff-development/requests/4")?.label).toBe("Staff development");
+    expect(pageOf("/certificates")?.label).toBe("Staff development");
+    expect(pageOf("/admin/audit")?.label).toBe("Admin");
     expect(pageOf("/sitesx")).toBeUndefined();
     expect(pageOf("/")).toBeUndefined();
   });

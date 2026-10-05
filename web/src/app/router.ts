@@ -4,7 +4,8 @@
  */
 
 import { useEffect, useState } from "react";
-import { ADMIN_ROLES, hasAnyRole, type Me } from "../api/types";
+import { hasAnyRole, type Me } from "../api/types";
+import { CONSOLE_ROLES, usesLearning } from "../api/types-staff";
 
 const read = () => window.location.hash.replace(/^#/, "") || "/";
 
@@ -25,6 +26,8 @@ export interface Page {
   desc: string;
   /** Who may open it; everyone when absent. */
   roles?: readonly string[];
+  /** Who may open it, when that is more than a role: staff development is for members of staff. */
+  for?: (me: Me) => boolean;
   /** Addresses that belong to this page too, for the breadcrumb: a course site is under My courses. */
   under?: readonly string[];
   /** A placeholder for a later release: it has an address, but search does not offer it yet. */
@@ -41,12 +44,21 @@ export const PAGES: readonly Page[] = [
   { path: "/to-do", label: "To do", desc: "Work due, work to mark and requests waiting for you" },
   { path: "/courses", label: "My courses", desc: "Your course sites: content, assignments and marks", under: ["/sites"] },
   { path: "/my-data", label: "My data", desc: "What the LMS holds about you, and corrections" },
-  { path: "/account", label: "My account", desc: "Authenticator and signed-in devices" },
-  { path: "/admin", label: "Admin", desc: "Site creation and ecosystem sync", roles: ADMIN_ROLES, later: true },
+  { path: "/account", label: "My account", desc: "Password, sign-in email and signed-in devices" },
+  // --- staff development and the console ---
+  {
+    path: "/learning",
+    label: "Staff development",
+    desc: "Courses to join, learning paths, required training and certificates",
+    for: usesLearning,
+    under: ["/staff-development", "/certificates"],
+  },
+  { path: "/admin", label: "Admin", desc: "Accounts, audit log, integration runs, privacy and access review", roles: CONSOLE_ROLES },
 ];
 
 /** The pages this person may open. */
-export const pagesFor = (me: Me) => PAGES.filter((page) => !page.roles || hasAnyRole(me, page.roles));
+export const pagesFor = (me: Me) =>
+  PAGES.filter((page) => (!page.roles || hasAnyRole(me, page.roles)) && (!page.for || page.for(me)));
 
 /** The page an address belongs to: the longest page path (or path it stands for) the address starts with. */
 export function pageOf(path: string): Page | undefined {

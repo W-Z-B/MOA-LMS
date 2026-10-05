@@ -18,7 +18,11 @@ export function AuthFrame({ children }: { children: ReactNode }) {
       </header>
       <main className="auth-main">
         {children}
-        <p className="auth-foot">Every mark and every change to a course is written to the audit log.</p>
+        <p className="auth-foot">
+          Every mark and every change to a course is written to the audit log.{" "}
+          {/* Anyone shown a certificate checks it here, without signing in (item 5.09). */}
+          <a href="/api/check-certificate/">Check a GSA certificate</a>
+        </p>
       </main>
     </div>
   );
