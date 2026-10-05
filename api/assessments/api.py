@@ -119,6 +119,9 @@ class SubmissionSerializer(serializers.ModelSerializer):
     accommodation_applies = serializers.SerializerMethodField(
         help_text="For markers only: an accommodation applies (never the reason); null for the student"
     )
+    srms_locked_at = serializers.SerializerMethodField(
+        help_text="When the SRMS took the student's coursework: the mark is locked from then (item 3.18)"
+    )
     mark = serializers.SerializerMethodField()
     feedback_files = serializers.SerializerMethodField()
 
@@ -142,6 +145,7 @@ class SubmissionSerializer(serializers.ModelSerializer):
             "attempts",
             "receipt",
             "accommodation_applies",
+            "srms_locked_at",
             "mark",
             "feedback_files",
         )
@@ -198,6 +202,10 @@ class SubmissionSerializer(serializers.ModelSerializer):
 
     def get_accommodation_applies(self, obj) -> bool | None:
         return None if self.context.get("released_only") else rules.accommodation_applies(obj.student)
+
+    def get_srms_locked_at(self, obj) -> str | None:
+        lock = rules.srms_lock(obj.assignment.site, obj.student)
+        return lock.sent_at.isoformat() if lock else None
 
     @extend_schema_field(ReleasedMarkSerializer(allow_null=True))
     def get_mark(self, obj) -> dict | None:
@@ -423,16 +431,40 @@ class GradebookCategorySerializer(serializers.Serializer):
     drop_lowest = serializers.IntegerField()
 
 
+class GradebookColumnSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    title = serializers.CharField()
+    weight = serializers.CharField()
+    category = serializers.IntegerField(allow_null=True)
+
+
+class GradebookItemCellSerializer(serializers.Serializer):
+    state = serializers.CharField(help_text="graded, zero, pending, not_due or dropped")
+    percent = serializers.CharField(allow_null=True)
+
+
+class GradebookSrmsSerializer(serializers.Serializer):
+    outcome = serializers.CharField(help_text="What the SRMS last answered: accepted, locked or unknown")
+    percent = serializers.CharField(help_text="The coursework total sent")
+    sent_at = serializers.DateTimeField()
+    locked_since = serializers.DateTimeField(
+        allow_null=True, help_text="Since when the student's marks on the site are locked (item 3.18)"
+    )
+
+
 class GradebookRowSerializer(serializers.Serializer):
     person_id = serializers.IntegerField()
     student_no = serializers.CharField()
     name = serializers.CharField()
     marks = serializers.DictField(child=GradebookCellSerializer(), help_text="Keyed by assignment id")
     quizzes = serializers.DictField(child=serializers.JSONField(), help_text="Keyed by quiz id")
+    practicals = serializers.DictField(child=GradebookItemCellSerializer(), help_text="Keyed by task id")
+    forums = serializers.DictField(child=GradebookItemCellSerializer(), help_text="Keyed by forum id")
     categories = serializers.DictField(
         child=serializers.CharField(allow_null=True), help_text="Percent per category id"
     )
     coursework_percent = serializers.CharField(allow_null=True, help_text="Weighted, as a string")
+    srms = GradebookSrmsSerializer(allow_null=True, help_text="The last sending to the SRMS, if any")
 
 
 class GradebookSerializer(serializers.Serializer):
@@ -442,6 +474,8 @@ class GradebookSerializer(serializers.Serializer):
     categories = GradebookCategorySerializer(many=True)
     assignments = GradebookAssignmentSerializer(many=True)
     quizzes = serializers.ListField(child=serializers.JSONField())
+    practicals = GradebookColumnSerializer(many=True, help_text="Practical tasks that count")
+    forums = GradebookColumnSerializer(many=True, help_text="Graded forums that count")
     rows = GradebookRowSerializer(many=True)
 
 

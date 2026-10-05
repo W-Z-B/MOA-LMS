@@ -20,7 +20,7 @@ from django.shortcuts import get_object_or_404
 from django.urls import path
 from django.utils import timezone
 from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import serializers
 from rest_framework.decorators import api_view, parser_classes, permission_classes
 from rest_framework.exceptions import PermissionDenied
@@ -264,9 +264,28 @@ def receipt(request, code: str):
     return Response(ReceiptSerializer(data).data)
 
 
+# Kinds a browser shows by itself, beside the mark (item 2.23): a PDF in its own viewer, a photograph as an
+# image. Every other kind is downloaded. The upload check (core.uploads) made sure the name tells the kind.
+SHOWN_INLINE = {
+    ".pdf": "application/pdf",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".png": "image/png",
+    ".webp": "image/webp",
+}
+
+
 @extend_schema(
+    parameters=[
+        OpenApiParameter(
+            "inline",
+            OpenApiTypes.STR,
+            enum=["1"],
+            description="1 shows a PDF or a photograph in the page rather than downloading it",
+        )
+    ],
     responses={(200, "application/octet-stream"): OpenApiTypes.BINARY, 404: ErrorSerializer},
-    summary="Download one file of a hand-in, under the name it had",
+    summary="Download one file of a hand-in under the name it had, or show a PDF or photograph in the page",
 )
 @api_view(["GET"])
 @permission_classes([RolePermission])
@@ -276,8 +295,21 @@ def download_file(request, pk: int):
     )
     if stored is None or not _can_see_attempt(request.user, stored.attempt):
         return Response({"code": "not_found", "detail": "No such file."}, status=404)
-    record(request, "download", stored.attempt.submission, after={"file": stored.original_name})
-    return FileResponse(stored.file.open("rb"), as_attachment=True, filename=stored.original_name)
+    shown = SHOWN_INLINE.get(PurePath(stored.original_name).suffix.lower())
+    inline = request.query_params.get("inline") == "1" and shown is not None
+    record(
+        request,
+        "download",
+        stored.attempt.submission,
+        after={"file": stored.original_name, **({"shown": True} if inline else {})},
+    )
+    if not inline:
+        return FileResponse(stored.file.open("rb"), as_attachment=True, filename=stored.original_name)
+    response = FileResponse(stored.file.open("rb"), filename=stored.original_name, content_type=shown)
+    # Only this application's own pages may hold it in a frame: the marking screen's <object>.
+    response["X-Frame-Options"] = "SAMEORIGIN"
+    response["Content-Security-Policy"] = "frame-ancestors 'self'"
+    return response
 
 
 # ---------------------------------------------------------------------------------------------------------

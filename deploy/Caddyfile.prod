@@ -26,15 +26,16 @@
 		try_files {path} /index.html
 		# The web app loads only its own scripts, styles and data. Keep in step with
 		# deploy/railway/Caddyfile.
-		header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+		header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; manifest-src 'self'; worker-src 'self'; media-src 'self' blob:; object-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
 		file_server
 	}
 
 	header {
 		Strict-Transport-Security "max-age=31536000"
 		X-Content-Type-Options "nosniff"
-		X-Frame-Options "DENY"
+		# A default only: the API lets this application frame a hand-in it shows beside the mark (2.23).
+		?X-Frame-Options "DENY"
 		Referrer-Policy "strict-origin-when-cross-origin"
-		Permissions-Policy "camera=(self), geolocation=(self), microphone=(), payment=(), usb=()"
+		Permissions-Policy "camera=(self), geolocation=(self), microphone=(self), payment=(), usb=()"
 	}
 }
