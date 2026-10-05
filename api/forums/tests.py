@@ -107,12 +107,28 @@ def test_forum_fields_are_checked(site, teacher, make_forum):
     assert wrong.status_code == 400
     weighted = teacher.post("/api/v1/forums/", {"site": site.id, "title": "x", "weight": "2"}, format="json")
     assert weighted.status_code == 400 and "weight" in weighted.json()
-    graded = teacher.post(
+    from rubrics.models import Rubric
+
+    rubric = Rubric.objects.create(site=site, title="Debate")
+    elsewhere = Rubric.objects.create(site=other, title="Elsewhere")
+    foreign = teacher.post(
         "/api/v1/forums/",
-        {"site": site.id, "title": "Graded", "forum_type": "graded", "weight": "2", "rubric_id": 7},
+        {
+            "site": site.id,
+            "title": "Graded",
+            "forum_type": "graded",
+            "weight": "2",
+            "rubric_id": elsewhere.id,
+        },
         format="json",
     )
-    assert graded.status_code == 201 and graded.json()["rubric_id"] == 7
+    assert foreign.status_code == 400 and "rubric_id" in foreign.json()
+    graded = teacher.post(
+        "/api/v1/forums/",
+        {"site": site.id, "title": "Graded", "forum_type": "graded", "weight": "2", "rubric_id": rubric.id},
+        format="json",
+    )
+    assert graded.status_code == 201 and graded.json()["rubric_id"] == rubric.id
     forum = make_forum()
     moved = teacher.patch(f"/api/v1/forums/{forum.id}/", {"site": other.id}, format="json")
     assert moved.status_code in (400, 403)
@@ -396,7 +412,9 @@ def test_a_graded_forum_counts_in_coursework_by_the_participation_mark(
     site, make_forum, teacher, learner, student, other_student
 ):
     from forums.services import coursework_items
+    from rubrics.models import Rubric
 
+    rubric = Rubric.objects.create(site=site, title="Participation")
     plain = make_forum()
     assert teacher.get(f"/api/v1/forums/{plain.id}/marks/").json()["code"] == "not_graded"
     forum = make_forum(
@@ -404,7 +422,7 @@ def test_a_graded_forum_counts_in_coursework_by_the_participation_mark(
         forum_type=Forum.Type.GRADED,
         weight=Decimal(2),
         max_mark=Decimal(10),
-        rubric_id=4,
+        rubric=rubric,
     )
     make_forum(title="Practice", forum_type=Forum.Type.GRADED, weight=Decimal(0))
     start(learner, forum)
@@ -425,8 +443,10 @@ def test_a_graded_forum_counts_in_coursework_by_the_participation_mark(
         ).status_code
         == 400
     )
+    stray = teacher.post(f"/api/v1/forums/{forum.id}/marks/", {**body, "rubric_id": 999999}, format="json")
+    assert stray.status_code == 400
     given = teacher.post(f"/api/v1/forums/{forum.id}/marks/", body, format="json").json()
-    assert given["mark"] == "8.00" and given["posts"] == 1 and given["rubric_id"] == 4
+    assert given["mark"] == "8.00" and given["posts"] == 1 and given["rubric_id"] == rubric.id
     assert AuditLog.objects.filter(entity="forums.participationmark", action="mark").count() == 1
     assert coursework_items(site, student) == [(Decimal(2), Decimal("0.8"))]
     assert coursework_items(site, student, released_only=True) == [(Decimal(2), None)]

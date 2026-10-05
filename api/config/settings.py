@@ -58,6 +58,7 @@ INSTALLED_APPS = [
     "messaging",
     "attendance",
     "calendars",
+    "rubrics",
 ]
 
 MIDDLEWARE = [
@@ -139,6 +140,8 @@ SPECTACULAR_SETTINGS = {
         "SiteKindEnum": "courses.models.CourseSite.Kind",
         "ContentKindEnum": "courses.models.ContentItem.Kind",
         "QuizReviewEnum": "quizzes.models.Quiz.Review",
+        "RubricKindEnum": "rubrics.models.Rubric.Kind",
+        "NotificationKindEnum": "notifications.models.Notification.Kind",
     },
 }
 

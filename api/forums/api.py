@@ -23,6 +23,7 @@ from rest_framework.exceptions import APIException, NotFound, PermissionDenied
 from rest_framework.response import Response
 from rest_framework.routers import DefaultRouter
 
+from assessments.models import GradeCategory
 from audit.services import record, snapshot
 from core.serializers import ErrorSerializer
 from courses import richtext
@@ -43,6 +44,7 @@ from forums.models import (
 from iam.permissions import RolePermission
 from iam.services import SITE_ADMIN_ROLES, has_role
 from people.models import PersonRef
+from rubrics.models import Rubric
 
 
 class Refused(APIException):
@@ -106,6 +108,16 @@ class ForumSerializer(serializers.ModelSerializer):
     body_format = serializers.ChoiceField(choices=["html", "text"], default="html", write_only=True)
     subscribed = serializers.SerializerMethodField()
     threads = serializers.SerializerMethodField(help_text="How many threads it has")
+    rubric_id = serializers.PrimaryKeyRelatedField(
+        source="rubric",
+        queryset=Rubric.objects.filter(site__isnull=False),
+        required=False,
+        allow_null=True,
+        help_text="One of the course's rubrics (rubrics.Rubric); copy a library rubric to the course first",
+    )
+    grade_category = serializers.PrimaryKeyRelatedField(
+        queryset=GradeCategory.objects.all(), required=False, allow_null=True, help_text="Gradebook category"
+    )
 
     class Meta:
         model = Forum
@@ -122,6 +134,7 @@ class ForumSerializer(serializers.ModelSerializer):
             "weight",
             "max_mark",
             "rubric_id",
+            "grade_category",
             "subscribed",
             "threads",
             "created_at",
@@ -137,6 +150,10 @@ class ForumSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({"module": ["Choose a module of the same course."]})
         if any(g.site_id != site.id for g in attrs.get("groups", [])):
             raise serializers.ValidationError({"groups": ["Choose groups of the same course."]})
+        if attrs.get("rubric") is not None and attrs["rubric"].site_id != site.id:
+            raise serializers.ValidationError({"rubric_id": ["Choose a rubric of the same course."]})
+        if attrs.get("grade_category") is not None and attrs["grade_category"].site_id != site.id:
+            raise serializers.ValidationError({"grade_category": ["Choose a category of the same course."]})
         kind = attrs.get("forum_type", getattr(self.instance, "forum_type", Forum.Type.GENERAL))
         weight = attrs.get("weight", getattr(self.instance, "weight", 0))
         if weight and kind != Forum.Type.GRADED:
@@ -389,6 +406,11 @@ class ForumViewSet(TeachingViewSet):
             raise serializers.ValidationError({"student": ["Choose a student of this course."]})
         if v["mark"] > forum.max_mark:
             raise serializers.ValidationError({"mark": [f"The mark is out of {forum.max_mark}."]})
+        if (
+            v.get("rubric_id") is not None
+            and not Rubric.objects.filter(pk=v["rubric_id"], site=forum.site).exists()
+        ):
+            raise serializers.ValidationError({"rubric_id": ["Choose a rubric of this course."]})
         with transaction.atomic():
             existing = ParticipationMark.objects.filter(forum=forum, student=student).first()
             before = snapshot(existing) if existing else None

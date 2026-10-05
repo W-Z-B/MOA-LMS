@@ -10,8 +10,11 @@ from rest_framework import serializers
 
 from core.uploads import (
     CONTENT,
+    FEEDBACK,
     SUBMISSION,
     content_name,
+    feedback_name,
+    narrowed,
     original_name,
     sniff,
     submission_name,
@@ -107,3 +110,60 @@ def test_stored_names_are_random_and_keep_only_the_extension():
 def test_the_original_name_never_carries_a_folder():
     assert original_name(upload("C:\\Users\\ravi\\report.docx", b"")) == "report.docx"
     assert original_name(upload("week 1/notes.pdf", b"")) == "notes.pdf"
+
+
+MP3_TAGGED = b"ID3\x04\x00\x00\x00\x00\x00\x00" + b"\x00" * 20
+MP3_FRAME = b"\xff\xfb\x90\x64" + b"\x00" * 20
+M4A = b"\x00\x00\x00\x20ftypM4A \x00\x00\x00\x00M4A mp42isom"
+MP4_AUDIO = b"\x00\x00\x00\x20ftypmp42\x00\x00\x00\x00mp42isom"
+OGG = b"OggS\x00\x02" + b"\x00" * 20
+WEBM = b"\x1a\x45\xdf\xa3\x9f\x42\x86\x81\x01\x42\xf7\x81\x01\x42\xf2\x81\x04\x42\xf3\x81\x08\x42\x82\x84webm"
+MATROSKA = b"\x1a\x45\xdf\xa3\x9f\x42\x86\x81\x01\x42\x82\x88matroska"
+
+
+@pytest.mark.parametrize(
+    ("name", "content", "kind"),
+    [
+        ("feedback.mp3", MP3_TAGGED, "mp3"),
+        ("feedback.mp3", MP3_FRAME, "mp3"),
+        ("Voice memo.m4a", M4A, "m4a"),
+        ("recording.mp4", MP4_AUDIO, "m4a"),
+        ("note.ogg", OGG, "ogg"),
+        ("note.opus", OGG, "ogg"),
+        ("recorded in the page.webm", WEBM, "webm"),
+        ("marked.pdf", PDF, "pdf"),
+    ],
+)
+def test_feedback_takes_recordings_judged_by_their_contents(name, content, kind):
+    """Item 2.24: spoken feedback recorded on a phone or in the browser."""
+    file = upload(name, content)
+    assert sniff(file) == kind
+    assert validate_upload(file, FEEDBACK) is file
+
+
+@pytest.mark.parametrize(
+    ("name", "content", "message"),
+    [
+        ("feedback.mp3", b"<html></html>", "do not match its name"),
+        ("video.webm", MATROSKA, "do not match its name"),
+        ("note.ogg", MP3_TAGGED, "do not match its name"),
+        ("feedback.wav", b"RIFF\x00\x00\x00\x00WAVE", "sound recording"),
+    ],
+)
+def test_feedback_refuses_what_is_not_a_recording(name, content, message):
+    with pytest.raises(serializers.ValidationError) as refused:
+        validate_upload(upload(name, content), FEEDBACK)
+    assert message in str(refused.value.detail[0])
+
+
+def test_students_cannot_hand_in_recordings_and_an_assignment_can_narrow_the_kinds():
+    with pytest.raises(serializers.ValidationError):
+        validate_upload(upload("feedback.mp3", MP3_TAGGED), SUBMISSION)
+    only_pdf = narrowed(SUBMISSION, ["pdf"])
+    assert only_pdf.accepts == "PDF" and only_pdf.limit_mb == SUBMISSION.limit_mb
+    assert narrowed(SUBMISSION, ["pdf", "docx", "jpeg"]).accepts == "PDF, JPG or Word (.docx)"
+    assert narrowed(SUBMISSION, []) is SUBMISSION and narrowed(SUBMISSION, ["mp3"]) is SUBMISSION
+    with pytest.raises(serializers.ValidationError) as refused:
+        validate_upload(upload("photo.jpg", JPEG), only_pdf)
+    assert "Send PDF." in str(refused.value.detail[0])
+    assert re.fullmatch(r"feedback/\d{4}/\d{2}/[0-9a-f]{32}\.m4a", feedback_name(None, "Voice memo.M4A"))

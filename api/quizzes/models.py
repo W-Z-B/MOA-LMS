@@ -193,6 +193,14 @@ class Quiz(TimeStampedModel):
         default=True,
         help_text="Release a result as soon as it is fully marked; otherwise the lecturer releases it",
     )
+    grade_category = models.ForeignKey(
+        "assessments.GradeCategory",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="quizzes",
+        help_text="The gradebook category it counts in (item 2.28)",
+    )
     feedback_bands = models.JSONField(
         default=list, blank=True, help_text='Overall feedback: [{"min_percent": 80, "feedback": "..."}]'
     )

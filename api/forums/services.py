@@ -159,17 +159,26 @@ def coursework_items(
     practicals.services.coursework_items, meant to be added to assessments.services.coursework_percent's
     items: sum(weight * fraction) / sum(weight) over the items whose fraction is not None.
     """
+    return [
+        (forum.weight, fraction)
+        for forum, fraction, _ in coursework_forums(site, student, released_only=released_only)
+    ]
+
+
+def coursework_forums(site, student, *, released_only: bool = False) -> list[tuple]:
+    """coursework_items with the forum and its state, for the working of the total (items 2.28, 2.30):
+    (forum, fraction, state), state being "graded", or "pending" while no mark is given or released."""
     from forums.models import ParticipationMark
 
     forums = site.forums.filter(is_published=True, forum_type=Forum.Type.GRADED, weight__gt=0)
     marks = {m.forum_id: m for m in ParticipationMark.objects.filter(forum__in=forums, student=student)}
-    items: list[tuple[Decimal, Decimal | None]] = []
+    items: list[tuple] = []
     for forum in forums:
         mark = marks.get(forum.id)
         if mark is None or (released_only and not mark.is_released):
-            items.append((forum.weight, None))
+            items.append((forum, None, "pending"))
         else:
-            items.append((forum.weight, min(mark.mark / forum.max_mark, Decimal(1))))
+            items.append((forum, min(mark.mark / forum.max_mark, Decimal(1)), "graded"))
     return items
 
 

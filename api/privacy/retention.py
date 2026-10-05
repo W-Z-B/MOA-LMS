@@ -165,6 +165,13 @@ def dispose(request, item, rule) -> None:
         before = _evidence(submission)
         if submission.file:
             submission.file.delete(save=False)
+        # Every hand-in kept in the history goes too (item 2.21); its receipt and fingerprint stay.
+        from assessments.models import SubmissionFile
+
+        for stored in SubmissionFile.objects.filter(attempt__submission=submission):
+            stored.file.delete(save=False)
+        SubmissionFile.objects.filter(attempt__submission=submission).delete()
+        submission.attempts.update(text="")
         if (
             rule.code == "submitted-work"
         ):  # the work goes; the record that it was handed in, and its mark, stay
