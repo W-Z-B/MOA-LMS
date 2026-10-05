@@ -4,6 +4,8 @@ seed_demo needs the HRMS and the SRMS to name the people and the classes. The jo
 own, so this command creates its own small cast instead: a lecturer and two students with accounts, and one
 course site taught with seed_demo's material (content, an announcement, two assignments, a released mark),
 plus what the Homes show: work due this week for Kezia and a hand-in waiting to be marked for the lecturer.
+For copying a course (item 2.18) the lecturer also teaches last year's offering of a second course, with dated
+content and an assignment, and this year's offering of it, empty and unpublished.
 The accounts share the password in DEMO_USER_PASSWORD. Teaching staff need an authenticator code (ADR 0013),
 so the lecturer's authenticator is enrolled from DEMO_TOTP_SECRET, a fictional secret the journeys also hold
 to compute the code. The draft privacy notice is published, so the journeys read and acknowledge it as
@@ -13,7 +15,7 @@ Idempotent: running it again changes nothing.
 
 import os
 import re
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
@@ -23,7 +25,7 @@ from django.utils import timezone
 
 from assessments.models import Assignment, Submission
 from core.management.commands.seed_demo import Command as SeedDemo
-from courses.models import CourseSite, Membership
+from courses.models import ContentItem, CourseSite, Membership, Module
 from iam.models import Role, RoleScope, TotpDevice
 from people.models import PersonRef
 from privacy.models import PrivacyNotice
@@ -34,6 +36,22 @@ SITE = {
     "term_code": "2026-27-S1",
     "campus_code": "MRP",
     "description": "How crops grow, from seed to harvest.",
+}
+
+# Last year's offering of a second course and this year's, for copying a course with its dates moved.
+EARLIER = {
+    "code": "AGR102-2025-26-S1-MRP",
+    "title": "Soils and Plant Nutrition (2025-26)",
+    "term_code": "2025-26-S1",
+    "campus_code": "MRP",
+    "description": "Last year's offering, to copy from.",
+}
+NEXT = {
+    "code": "AGR102-2026-27-S1-MRP",
+    "title": "Soils and Plant Nutrition",
+    "term_code": "2026-27-S1",
+    "campus_code": "MRP",
+    "description": "This year's offering, empty until it is copied.",
 }
 
 # username, kind, external id, first name, last name, system role, role in the site
@@ -81,6 +99,7 @@ class Command(BaseCommand):
                     )
             SeedDemo()._teach(site)
             self._homes(site)
+            self._to_copy(Membership.objects.get(site=site, role="lecturer").person)
             PrivacyNotice.objects.filter(published_at__isnull=True).update(published_at=timezone.now())
         self.stdout.write(
             self.style.SUCCESS(f"Journey data ready: {len(CAST)} accounts in {site.code} ({site.title}).")
@@ -110,6 +129,47 @@ class Command(BaseCommand):
             assignment=calendar,
             student=tevin,
             defaults={"text": "Demonstration submission.", "submitted_at": now - timedelta(days=1)},
+        )
+
+    @staticmethod
+    def _to_copy(lecturer: PersonRef) -> None:
+        """Last year's offering of AGR102, with a module shown from a date, a page and an assignment, and this
+        year's, empty: the lecturer copies one into the other with every date moved (item 2.18)."""
+        local = timezone.get_current_timezone()
+        earlier, _ = CourseSite.objects.get_or_create(
+            code=EARLIER["code"],
+            defaults={
+                **{k: v for k, v in EARLIER.items() if k != "code"},
+                "source": "local",
+                "is_published": True,
+            },
+        )
+        later, _ = CourseSite.objects.get_or_create(
+            code=NEXT["code"], defaults={**{k: v for k, v in NEXT.items() if k != "code"}, "source": "local"}
+        )
+        for site in (earlier, later):
+            Membership.objects.get_or_create(site=site, person=lecturer, defaults={"role": "lecturer"})
+        module, _ = Module.objects.get_or_create(
+            site=earlier,
+            title="Week 1: Soil texture",
+            defaults={"position": 1, "available_from": datetime(2025, 10, 6, 8, 0, tzinfo=local)},
+        )
+        ContentItem.objects.get_or_create(
+            module=module,
+            title="Sand, silt and clay",
+            defaults={"body": "<p>Feel the soil between your fingers: sand is gritty, silt smooth.</p>"},
+        )
+        Assignment.objects.get_or_create(
+            site=earlier,
+            title="Soil texture report",
+            defaults={
+                "instructions": "Describe the texture of three soils from the farm.",
+                "opens_at": datetime(2025, 10, 1, 13, 0, tzinfo=local),
+                "due_at": datetime(2025, 10, 15, 13, 0, tzinfo=local),
+                "max_mark": 20,
+                "weight": 1,
+                "is_published": True,
+            },
         )
 
     @staticmethod
