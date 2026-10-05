@@ -176,3 +176,35 @@ def test_the_portfolio_holds_only_what_is_signed_off_or_released(
     # The portfolio is kept after the course ends: a membership no longer active still exports.
     Membership.objects.filter(person=student).update(is_active=False)
     assert len(learner.get("/api/v1/portfolio/").json()["sites"]) == 1
+
+
+@pytest.mark.django_db
+def test_a_sign_off_from_the_phone_keeps_the_phones_time(site, student, lecturer, client_for):
+    """The web app sends the phone's time with every decision; it is kept in the audit log as text."""
+    from datetime import datetime
+
+    made = (
+        client_for(student.user)
+        .post(
+            "/api/v1/logbook/",
+            {
+                "site": site.id,
+                "work_date": now_iso()[:10],
+                "unit_type": "pond",
+                "task": "Fed fingerlings",
+                "hours": "1.5",
+                "client_recorded_at": now_iso(minutes=-30),
+            },
+            format="json",
+        )
+        .json()
+    )
+    at = now_iso(minutes=-1)
+    signed = client_for(lecturer.user).post(
+        f"/api/v1/logbook/{made['id']}/review/",
+        {"decision": "sign", "client_recorded_at": at},
+        format="json",
+    )
+    assert signed.status_code == 200 and signed.json()["status"] == "signed"
+    kept = AuditLog.objects.get(entity="practicals.logbookentry", action="sign").after["client_recorded_at"]
+    assert datetime.fromisoformat(kept) == datetime.fromisoformat(at)
