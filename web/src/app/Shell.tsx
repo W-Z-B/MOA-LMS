@@ -10,6 +10,7 @@ import { NotificationsBell } from "./NotificationsBell";
 import { usesCampusSwitch } from "./people";
 import { SearchPalette } from "./SearchPalette";
 import { PendingCount } from "./SendState";
+import { clearFieldCopies } from "../features/practicals/fieldCopy";
 
 interface Props {
   me: Me;
@@ -123,6 +124,7 @@ export function Shell({ me, path, onNavigate, onLogout, campusCode, onCampusChan
 
   async function signOut() {
     await post("/auth/logout/").catch(() => undefined);
+    clearFieldCopies(); // no class list kept for the field stays on the phone (ADR 0011)
     onLogout();
   }
 
