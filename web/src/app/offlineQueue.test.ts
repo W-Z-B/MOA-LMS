@@ -25,7 +25,7 @@ describe("offline queue (item 4.02)", () => {
   it("sends a typed answer at once when there is a connection, and keeps nothing", async () => {
     const server = fakeServer({ "POST /assignments/3/submit/": { status: 201, body: { id: 8 } } });
     await expect(submitAssignmentText(3, "Soil report", "My answer")).resolves.toEqual({ queued: false, result: { id: 8 } });
-    expect(server.calls[0].body).toEqual({ text: "My answer" });
+    expect(server.calls[0].body).toEqual({ text: "My answer", client_submitted_at: expect.any(String) });
     expect(pendingCount()).toBe(0);
   });
 

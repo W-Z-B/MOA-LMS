@@ -238,6 +238,8 @@ export interface Submission {
   filename: string | null;
   download_url: string | null;
   submitted_at: string;
+  /** When the device handed it in, for work sent later from its offline queue (item 4.02). */
+  client_submitted_at: string | null;
   is_late: boolean;
   mark: SubmissionMark | null;
 }

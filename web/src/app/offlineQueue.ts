@@ -104,13 +104,16 @@ export async function sendOrQueue<T>(item: Omit<QueuedWrite, "id" | "createdAt">
   }
 }
 
-/** A student's typed answer to an assignment. Work with a file attached is sent only with a connection. */
+/**
+ * A student's typed answer to an assignment. Work with a file attached is sent only with a connection. The
+ * server's clock decides whether it is late; the device's time goes with it, for teaching staff to see.
+ */
 export const submitAssignmentText = <T>(assignmentId: number, title: string, text: string) =>
   sendOrQueue<T>({
     kind: "assignment",
     method: "POST",
     path: `/assignments/${assignmentId}/submit/`,
-    body: { text },
+    body: { text, client_submitted_at: new Date().toISOString() },
     label: `Answer to ${title}`,
   });
 

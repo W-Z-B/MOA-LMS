@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { errorMessage, get, patch, post } from "../../api/client";
 import { canTeach, type Assignment, type Gradebook, type Licence, type Paginated, type SiteContents, type Submission } from "../../api/types";
+import { dmyTime } from "../../app/format";
 import { useCrumb } from "../../app/frame";
 import { submitAssignmentText } from "../../app/offlineQueue";
 import { SITE_TABS, type SiteTab } from "../../app/router";
@@ -544,6 +545,12 @@ function Marking({ assignment, onChanged }: { assignment: Assignment; onChanged:
                 <tr key={row.id}>
                   <td>
                     {row.student_no} {row.student_name} {row.is_late && <span className="pill">Late</span>}
+                    {/* Sent later from a phone without signal: the server's time decides lateness, and the device's
+                        is shown so a lecturer can excuse it with an extension (item 4.02). */}
+                    <span className="muted small" style={{ display: "block" }}>
+                      Received {dmyTime(row.submitted_at)}
+                      {row.client_submitted_at && ` · handed in on the device ${dmyTime(row.client_submitted_at)}`}
+                    </span>
                   </td>
                   <td>
                     {row.text && <span style={{ whiteSpace: "pre-wrap" }}>{row.text}</span>}{" "}
