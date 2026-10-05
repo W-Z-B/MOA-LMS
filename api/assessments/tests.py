@@ -2,6 +2,7 @@ from datetime import timedelta
 from decimal import Decimal
 
 import pytest
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.utils import timezone
 
 from assessments.models import Assignment, Mark, Submission
@@ -53,6 +54,31 @@ def test_submit_mark_release_and_gradebook(site, assignment, student, other_stud
         learner.post(f"{url}submit/", {"text": "second try"}, format="json").json()["code"]
         == "already_marked"
     )
+
+
+@pytest.mark.django_db
+def test_work_handed_in_as_a_file_is_checked_and_kept_under_a_random_name(
+    site, assignment, student, lecturer, client_for, settings
+):
+    """Item 1.12."""
+    learner = client_for(student.user)
+    url = f"/api/v1/assignments/{assignment.id}/submit/"
+    disguised = SimpleUploadedFile("Ravi Singh report.docx", b"<html><script>steal()</script></html>")
+    refused = learner.post(url, {"file": disguised}, format="multipart")
+    assert refused.status_code == 400 and "do not match its name" in refused.json()["file"][0]
+    settings.UPLOAD_LIMIT_SUBMISSION_MB = 1
+    big = SimpleUploadedFile("Ravi Singh report.pdf", b"%PDF-1.7" + b"0" * (1024 * 1024))
+    assert learner.post(url, {"file": big}, format="multipart").json()["file"] == [
+        "The file is larger than 1 MB."
+    ]
+
+    report = SimpleUploadedFile("Ravi Singh report.pdf", b"%PDF-1.7 soil")
+    handed_in = learner.post(url, {"file": report}, format="multipart")
+    assert handed_in.status_code == 201 and handed_in.json()["filename"] == "Ravi Singh report.pdf"
+    stored = Submission.objects.get()
+    assert stored.file.name.startswith("submissions/") and "Ravi" not in stored.file.name
+    download = client_for(lecturer.user).get(handed_in.json()["download_url"])
+    assert download.status_code == 200 and "Ravi Singh report.pdf" in download["Content-Disposition"]
 
 
 @pytest.mark.django_db

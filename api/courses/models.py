@@ -3,6 +3,7 @@
 from django.db import models
 
 from core.models import TimeStampedModel
+from core.uploads import content_name
 
 
 class CourseSite(TimeStampedModel):
@@ -71,7 +72,10 @@ class ContentItem(TimeStampedModel):
     kind = models.CharField(max_length=10, choices=Kind.choices, default=Kind.PAGE)
     title = models.CharField(max_length=160)
     body = models.TextField(blank=True)
-    file = models.FileField(upload_to="content/%Y/%m/", blank=True)
+    file = models.FileField(upload_to=content_name, blank=True)
+    original_name = models.CharField(
+        max_length=255, blank=True, help_text="The name the file had when it was put up; used for downloads"
+    )
     url = models.URLField(blank=True)
     position = models.PositiveSmallIntegerField(default=1)
     is_published = models.BooleanField(default=True)
