@@ -32,6 +32,7 @@ and the Registrar publishes. Completions of staff-development sites go to the HR
 | Staff names and campuses | HRMS `GET /integration/staff/`, `/integration/org/` | `staff:read`, `org:read` | LMS pulls |
 | Offerings and class lists | SRMS `GET /integration/offerings/`, `/integration/enrolments/` | `academics:read` | LMS pulls (nightly, `integration.tasks.sync_srms`) |
 | Coursework percentages | SRMS `POST /integration/coursework-marks/` | `marks:write` | LMS pushes (`sync_ecosystem --push-marks`) |
+| Attendance totals (decision D6, [ADR 0008](adr/0008-attendance-in-the-lms.md)); only for courses whose programme makes attendance a condition | SRMS `POST /integration/attendance-totals/` (SRMS work, not built yet) | to be agreed with the SRMS | LMS pushes (teaching staff, `POST /api/v1/attendance/sites/{id}/send-to-srms/`) |
 | Training completions | HRMS `POST /integration/training-completions/` | `training:write` | LMS pushes (`sync_ecosystem --push-training`) |
 | Course sites | LMS `GET /api/v1/integration/sites/` | `sites:read` | Sibling systems pull |
 
@@ -79,6 +80,11 @@ Apps and their models (`api/`):
 |---|---|---|
 | `people` | PersonRef | A person known by employee number (staff) or student number, linked to an account |
 | `courses` | CourseSite, Membership, Module, ContentItem, Announcement, Completion | Sites (academic from the SRMS, or local, including staff development), who is in them and in what role, content, announcements, completions |
+| `courses` (group work, `courses/groups.py`) | Grouping, GroupSignUp | Groupings of a site's groups, random allocation into N groups or groups of K, self-sign-up with a size limit and closing time (item 4.12) |
+| `forums` | Forum, Thread, Post, Subscription, PostReport, ConductStatement, ConductAcceptance, ParticipationMark | Forums per site or module (general, question-and-answer, graded), threads and replies, subscriptions, moderation and reports, the conduct statement, participation marks counted in coursework (items 4.08 to 4.10) |
+| `messaging` | Conversation, Participant, Message | A student and the teaching staff; staff to a group or the whole site; read receipts; offline queue (item 4.11) |
+| `attendance` | ClassSession, AttendanceRecord, AttendancePolicy | Class sessions with meeting and recording links, the register (phone, offline), check-in by rotating code, totals sent to the SRMS (items 4.14, 4.15) |
+| `calendars` | CalendarFeed | One calendar of due dates, classes and release dates per person, and a private iCalendar feed (item 2.32) |
 | `assessments` | Assignment, Submission, Mark | Assignments with weights and dates, submissions (late flag), marks with release control, the gradebook and coursework percentage |
 | `integration` | ServiceClient, CampusRef | Service keys (hashed, scoped, rotatable), campus codes, the HRMS and SRMS clients and the sync |
 | `iam` | Role, RoleScope, TotpDevice, LoginAttempt | System roles, authenticator codes, lockout |
