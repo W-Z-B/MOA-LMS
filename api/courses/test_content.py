@@ -558,11 +558,18 @@ def test_a_reported_item_is_hidden_until_a_course_administrator_decides(
         f"/api/v1/content/{item['id']}/report/", {"reason": "Copied from a textbook"}, format="json"
     )
     assert reported.status_code == 201
+    # A student's report does not hide the lecturer's material from the class; it waits for review.
+    assert seen(learner, site) == ["Chapter 3"]
+    assert teacher.get(f"/api/v1/content/{item['id']}/").json()["under_review"] is False
+    # The course's own lecturer reporting it does hide it at once.
+    own = teacher.post(
+        f"/api/v1/content/{item['id']}/report/", {"reason": "Checking the source"}, format="json"
+    ).json()
     assert seen(learner, site) == []
     shown = teacher.get(f"/api/v1/content/{item['id']}/").json()
     assert shown["under_review"] is True and "takedown" in shown["conditions"]
     assert learner.get("/api/v1/takedowns/").json()["count"] == 1
-    assert teacher.get("/api/v1/takedowns/").json()["count"] == 0
+    assert teacher.get("/api/v1/takedowns/").json()["count"] == 1  # their own report only
 
     request_id = reported.json()["id"]
     assert (
@@ -574,6 +581,8 @@ def test_a_reported_item_is_hidden_until_a_course_administrator_decides(
     admin = client_for(course_admin)
     restored = admin.post(f"/api/v1/takedowns/{request_id}/review/", {"decision": "restore"}, format="json")
     assert restored.status_code == 200 and restored.json()["status"] == "restored"
+    assert seen(learner, site) == []  # the lecturer's own request is still open
+    admin.post(f"/api/v1/takedowns/{own['id']}/review/", {"decision": "restore"}, format="json")
     assert seen(learner, site) == ["Chapter 3"]
     again = admin.post(f"/api/v1/takedowns/{request_id}/review/", {"decision": "withdraw"}, format="json")
     assert again.status_code == 409
@@ -590,7 +599,7 @@ def test_a_reported_item_is_hidden_until_a_course_administrator_decides(
     stored = ContentItem.objects.get(pk=item["id"])
     assert stored.is_published is False and stored.under_review is False
     assert TakedownRequest.objects.filter(status="open").count() == 0
-    assert AuditLog.objects.filter(entity="courses.takedownrequest", action="review").count() == 2
+    assert AuditLog.objects.filter(entity="courses.takedownrequest", action="review").count() == 3
     # Teaching staff cannot bring withdrawn material back, nor copy it.
     republish = teacher.patch(f"/api/v1/content/{item['id']}/", {"is_published": True}, format="json")
     assert republish.status_code == 400 and "course administrator" in republish.json()["is_published"][0]

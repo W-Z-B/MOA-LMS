@@ -1011,7 +1011,8 @@ class ContentItemViewSet(TeachingViewSet):
     @extend_schema(
         request=ReportSerializer,
         responses={201: TakedownSerializer, 400: OpenApiTypes.OBJECT, 404: ErrorSerializer},
-        summary="Ask for an item to be taken down; it is hidden from students until reviewed (item 2.19)",
+        summary="Ask for an item to be taken down (item 2.19). A report by the course's teaching staff or a "
+        "course administrator hides it from students at once; a student's report waits for review.",
     )
     @action(detail=True, methods=["post"])
     def report(self, request, pk=None):
@@ -1027,7 +1028,10 @@ class ContentItemViewSet(TeachingViewSet):
                 updated_by=request.user,
             )
             record(request, "create", takedown, after=snapshot(takedown))
-            if not item.under_review:
+            # Only someone responsible for the course can hide its material at once: otherwise any one
+            # student could take a lecturer's material away from the whole class by reporting it.
+            hides = can_teach(request.user, item.module.site) or has_role(request.user, *SITE_ADMIN_ROLES)
+            if hides and not item.under_review:
                 before = snapshot(item)
                 item.under_review = True
                 item.save(update_fields=["under_review", "updated_at"])
