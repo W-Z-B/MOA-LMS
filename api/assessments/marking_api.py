@@ -319,14 +319,14 @@ def neighbours(request, pk: int):
     )
 
 
-class MarksReleasedSerializer(serializers.Serializer):
+class AssignmentReleasedSerializer(serializers.Serializer):
     released = serializers.IntegerField(help_text="How many marks were released now")
 
 
 @extend_schema(
     request=None,
     responses={
-        200: MarksReleasedSerializer,
+        200: AssignmentReleasedSerializer,
         403: ErrorSerializer,
         404: ErrorSerializer,
         409: ErrorSerializer,

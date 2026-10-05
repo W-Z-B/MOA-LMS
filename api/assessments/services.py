@@ -44,7 +44,7 @@ def _pct(fraction) -> str | None:
 
 @dataclass
 class Item:
-    kind: str  # assignment, quiz or practical
+    kind: str  # assignment, quiz, practical or forum
     id: int
     title: str
     category_id: int | None
@@ -137,6 +137,15 @@ def _practical_items(site, person, released_only, now) -> list[Item]:
     ]
 
 
+def _forum_items(site, person, released_only) -> list[Item]:
+    from forums.services import coursework_forums
+
+    return [
+        Item("forum", forum.id, forum.title, forum.grade_category_id, forum.weight, fraction, state)
+        for forum, fraction, state in coursework_forums(site, person, released_only=released_only)
+    ]
+
+
 def coursework_working(site, person, *, released_only: bool = False, now=None) -> dict:
     """The coursework total and how it was worked out: every item with its state, and every category."""
     now = now or timezone.now()
@@ -144,6 +153,7 @@ def coursework_working(site, person, *, released_only: bool = False, now=None) -
         _assignment_items(site, person, released_only, now)
         + _quiz_items(site, person, released_only, now)
         + _practical_items(site, person, released_only, now)
+        + _forum_items(site, person, released_only)
     )
     categories = list(GradeCategory.objects.filter(site=site))
     known = {c.id for c in categories}
@@ -201,6 +211,8 @@ def coursework_percent(site, person, *, released_only: bool = False, now=None) -
     view, awaiting release) is pending and does not count.
     A practical task with a weight counts by its latest observation; a closed task never observed counts
     as zero; a task not yet observed (or not released, for the student's own view) is pending.
+    A graded forum with a weight counts by the participation mark; with none given (or released) it is
+    pending.
     Categories, when the site has them, weight the parts (module docstring).
     """
     return coursework_working(site, person, released_only=released_only, now=now)["_total"]

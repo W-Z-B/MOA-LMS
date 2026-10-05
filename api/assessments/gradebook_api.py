@@ -84,7 +84,7 @@ class GradeCategoryViewSet(TeachingViewSet):
 
 
 class WorkingItemSerializer(serializers.Serializer):
-    kind = serializers.CharField(help_text="assignment, quiz or practical")
+    kind = serializers.CharField(help_text="assignment, quiz, practical or forum")
     id = serializers.IntegerField()
     title = serializers.CharField()
     category = serializers.IntegerField(allow_null=True)
@@ -236,25 +236,25 @@ def export(request, pk: int):
     return response
 
 
-class TransferSerializer(serializers.Serializer):
+class CourseworkTransferSerializer(serializers.Serializer):
     student_no = serializers.CharField()
     percent = serializers.CharField()
     outcome = serializers.CharField(help_text="accepted, locked (already locked in the SRMS) or unknown")
 
 
-class SentSerializer(serializers.Serializer):
+class CourseworkSentSerializer(serializers.Serializer):
     site = serializers.CharField()
     sent_at = serializers.DateTimeField()
     accepted = serializers.ListField(child=serializers.CharField())
     locked = serializers.ListField(child=serializers.CharField())
     unknown = serializers.ListField(child=serializers.CharField())
-    students = TransferSerializer(many=True)
+    students = CourseworkTransferSerializer(many=True)
 
 
 @extend_schema(
     request=None,
     responses={
-        200: SentSerializer,
+        200: CourseworkSentSerializer,
         403: ErrorSerializer,
         404: ErrorSerializer,
         409: ErrorSerializer,
@@ -320,7 +320,7 @@ def send_coursework(request, pk: int):
             },
         )
     return Response(
-        SentSerializer(
+        CourseworkSentSerializer(
             {
                 "site": site.code,
                 "sent_at": now,

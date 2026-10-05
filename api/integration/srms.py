@@ -114,3 +114,36 @@ def push_marks(site: CourseSite) -> dict:
         return {"offering_code": site.code, "accepted": [], "locked": [], "unknown": [], "sent": []}
     result = _srms("/api/v1/integration/coursework-marks/", data={"offering_code": site.code, "marks": marks})
     return {**result, "sent": marks}
+
+
+def push_attendance(site: CourseSite) -> dict:
+    """Send each student's attendance totals to the SRMS (decision D6, ADR 0008, item 4.15), for a course
+    whose programme makes attendance a condition (attendance.models.AttendancePolicy.send_to_srms).
+
+    The SRMS endpoint, /api/v1/integration/attendance-totals/, is SRMS work agreed with the Registrar; it
+    answers like coursework-marks: which students it accepted, which were locked and which it did not know.
+    """
+    from attendance.models import AttendancePolicy
+    from attendance.services import totals
+
+    if site.source != CourseSite.Source.SRMS:
+        return {"offering_code": site.code, "skipped": "not an SRMS offering"}
+    policy = AttendancePolicy.objects.filter(site=site).first()
+    if policy is None or not policy.send_to_srms:
+        return {"offering_code": site.code, "skipped": "attendance is not a condition on this course"}
+    rows = [
+        {
+            "student_no": row["student_no"],
+            "sessions": row["sessions"],
+            "present": row["present"],
+            "late": row["late"],
+            "excused": row["excused"],
+            "absent": row["absent"],
+            "not_recorded": row["not_recorded"],
+            "percent": row["percent"],
+        }
+        for row in totals(site)
+    ]
+    if not rows:
+        return {"offering_code": site.code, "accepted": [], "locked": [], "unknown": []}
+    return _srms("/api/v1/integration/attendance-totals/", data={"offering_code": site.code, "totals": rows})
