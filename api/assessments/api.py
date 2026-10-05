@@ -1,4 +1,8 @@
-"""Assignments, submissions, marking and the gradebook."""
+"""Assignments, handing in, marking and the gradebook.
+
+The marking screen's endpoints are in assessments.marking_api, the gradebook's in assessments.gradebook_api,
+and extensions and accommodations in assessments.arrangements_api; their routes are joined here.
+"""
 
 from django.db import transaction
 from django.db.models import Q
@@ -14,27 +18,237 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from rest_framework.routers import DefaultRouter
 
-from assessments.models import Assignment, Mark, Submission
+from assessments import rules
+from assessments.models import Assignment, GradeCategory, Submission, SubmissionAttempt, SubmissionFile
 from assessments.services import gradebook
 from audit.services import record
 from core.serializers import ErrorSerializer
-from core.uploads import SUBMISSION, original_name, validate_upload
+from core.uploads import SUBMISSION, narrowed, original_name, validate_upload
 from courses.access import TaughtRecord, can_teach, person_of, site_role, taught_sites, visible_sites
 from courses.api import TeachingViewSet
-from courses.models import CourseSite, Membership
+from courses.models import CourseSite, Membership, SiteGroup
 from iam.permissions import RolePermission
+from rubrics.models import Rubric
+
+
+def refused(refusal: rules.Refusal) -> Response:
+    return Response({"code": refusal.code, "detail": refusal.detail}, status=refusal.status)
 
 
 class ReleasedMarkSerializer(serializers.Serializer):
     """A mark as the submission shows it. Students see it only once it is released."""
 
-    mark = serializers.CharField(help_text="Decimal, as a string")
+    mark = serializers.CharField(
+        help_text="The mark that counts, after any late penalty; decimal as a string"
+    )
+    raw_mark = serializers.CharField(help_text="The mark the marker gave")
+    penalty = serializers.CharField(help_text="Marks taken for lateness (item 2.35)")
+    penalty_percent = serializers.CharField(help_text="The penalty as a percentage of the maximum mark")
     feedback = serializers.CharField()
     is_released = serializers.BooleanField()
+    source = serializers.CharField(help_text="manual, rubric, upload, group or agreed")
+    group_mark = serializers.CharField(allow_null=True)
+    adjustment = serializers.CharField()
+    rubric_scores = serializers.JSONField()
+
+
+class FileSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    filename = serializers.CharField()
+    size = serializers.IntegerField()
+    sha256 = serializers.CharField()
+    download_url = serializers.CharField()
+
+
+class FeedbackFileSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    filename = serializers.CharField()
+    kind = serializers.CharField(help_text="pdf, jpeg, docx ... or m4a, mp3, ogg, webm for recordings")
+    is_audio = serializers.BooleanField()
+    size = serializers.IntegerField()
+    download_url = serializers.CharField()
+
+
+def files_of(attempt) -> list[dict]:
+    return [
+        {
+            "id": f.id,
+            "filename": f.original_name,
+            "size": f.size,
+            "sha256": f.sha256,
+            "download_url": f"/api/v1/submission-files/{f.id}/download/",
+        }
+        for f in attempt.files.all()
+    ]
+
+
+def feedback_files_of(submission) -> list[dict]:
+    from core.uploads import AUDIO
+
+    return [
+        {
+            "id": f.id,
+            "filename": f.original_name,
+            "kind": f.kind,
+            "is_audio": f.kind in AUDIO,
+            "size": f.size,
+            "download_url": f"/api/v1/feedback-files/{f.id}/",
+        }
+        for f in submission.feedback_files.all()
+    ]
+
+
+class SubmissionSerializer(serializers.ModelSerializer):
+    """A submission as its student (context released_only) or its markers see it. While an anonymous
+    assignment's names are hidden, markers see a pseudonym in place of the student number and no name."""
+
+    student_no = serializers.SerializerMethodField(help_text="The student number, or the pseudonym")
+    student_name = serializers.SerializerMethodField()
+    group = serializers.SerializerMethodField(help_text="The group's name, for a group assignment")
+    filename = serializers.SerializerMethodField(
+        help_text="The name the first file had when it was handed in"
+    )
+    download_url = serializers.SerializerMethodField()
+    files = serializers.SerializerMethodField(help_text="The files of the latest attempt, the one marked")
+    attempts = serializers.SerializerMethodField(help_text="How many times work was handed in")
+    receipt = serializers.SerializerMethodField(help_text="The latest attempt's receipt code")
+    due_at = serializers.SerializerMethodField(help_text="The student's due date, extensions included")
+    extended = serializers.SerializerMethodField()
+    accommodation_applies = serializers.SerializerMethodField(
+        help_text="For markers only: an accommodation applies (never the reason); null for the student"
+    )
+    mark = serializers.SerializerMethodField()
+    feedback_files = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Submission
+        fields = (
+            "id",
+            "assignment",
+            "student_no",
+            "student_name",
+            "group",
+            "text",
+            "filename",
+            "download_url",
+            "files",
+            "submitted_at",
+            "is_late",
+            "due_at",
+            "extended",
+            "attempts",
+            "receipt",
+            "accommodation_applies",
+            "mark",
+            "feedback_files",
+        )
+
+    def _hidden(self, obj) -> bool:
+        return not self.context.get("released_only") and obj.assignment.names_hidden
+
+    def _latest(self, obj):
+        cached = getattr(obj, "_latest_attempt", None)
+        if cached is None:
+            cached = rules.attempts_of(obj).prefetch_related("files").last()
+            obj._latest_attempt = cached
+        return cached
+
+    def get_student_no(self, obj) -> str:
+        return rules.label_for(obj) if self._hidden(obj) else obj.student.external_id
+
+    def get_student_name(self, obj) -> str:
+        return "" if self._hidden(obj) else obj.student.full_name
+
+    def get_group(self, obj) -> str | None:
+        return obj.group.name if obj.group_id else None
+
+    def get_filename(self, obj) -> str | None:
+        return (obj.original_name or obj.file.name.rsplit("/", 1)[-1]) if obj.file else None
+
+    def get_download_url(self, obj) -> str | None:
+        return f"/api/v1/submissions/{obj.id}/download/" if obj.file else None
+
+    @extend_schema_field(FileSerializer(many=True))
+    def get_files(self, obj) -> list:
+        latest = self._latest(obj)
+        return files_of(latest) if latest else []
+
+    def get_attempts(self, obj) -> int:
+        return rules.attempts_of(obj).count()
+
+    def get_receipt(self, obj) -> str | None:
+        latest = self._latest(obj)
+        return latest.receipt if latest else None
+
+    def _due(self, obj):
+        cached = getattr(obj, "_due", None)
+        if cached is None:
+            cached = rules.due_for(obj.assignment, obj.student)
+            obj._due = cached
+        return cached
+
+    def get_due_at(self, obj) -> str:
+        return self._due(obj).at.isoformat()
+
+    def get_extended(self, obj) -> bool:
+        return self._due(obj).extended
+
+    def get_accommodation_applies(self, obj) -> bool | None:
+        return None if self.context.get("released_only") else rules.accommodation_applies(obj.student)
+
+    @extend_schema_field(ReleasedMarkSerializer(allow_null=True))
+    def get_mark(self, obj) -> dict | None:
+        mark = getattr(obj, "mark", None)
+        if mark is None or (self.context.get("released_only") and not mark.is_released):
+            return None
+        shown = rules.penalised(obj, mark.mark, self._due(obj))
+        return {
+            "mark": str(shown.final),
+            "raw_mark": str(shown.raw),
+            "penalty": str(shown.penalty),
+            "penalty_percent": str(shown.percent),
+            "feedback": mark.feedback,
+            "is_released": mark.is_released,
+            "source": mark.source,
+            "group_mark": str(mark.group_mark) if mark.group_mark is not None else None,
+            "adjustment": str(mark.adjustment),
+            "rubric_scores": mark.rubric_scores,
+        }
+
+    @extend_schema_field(FeedbackFileSerializer(many=True))
+    def get_feedback_files(self, obj) -> list:
+        mark = getattr(obj, "mark", None)
+        if self.context.get("released_only") and (mark is None or not mark.is_released):
+            return []
+        return feedback_files_of(obj)
 
 
 class AssignmentSerializer(serializers.ModelSerializer):
     site = TaughtRecord(CourseSite)
+    category = serializers.PrimaryKeyRelatedField(
+        queryset=GradeCategory.objects.all(), required=False, allow_null=True, help_text="Gradebook category"
+    )
+    groups = serializers.PrimaryKeyRelatedField(
+        queryset=SiteGroup.objects.all(), many=True, required=False, help_text="Groups that take part"
+    )
+    rubric = serializers.PrimaryKeyRelatedField(
+        queryset=Rubric.objects.all(),
+        required=False,
+        allow_null=True,
+        help_text="A rubric or marking guide of the same site (copy a library rubric to the site first)",
+    )
+    accepted_kinds = serializers.ListField(
+        child=serializers.ChoiceField(choices=sorted(SUBMISSION.kinds)),
+        required=False,
+        help_text="File kinds accepted; empty accepts every kind a submission may be",
+    )
+    accepts = serializers.SerializerMethodField(help_text="What files are accepted, said in words")
+    upload_limit_mb = serializers.SerializerMethodField(help_text="The size limit of each file, in MB")
+    integrity_statement = serializers.SerializerMethodField(
+        help_text="The statement accepted with each hand-in, when the assignment asks for it"
+    )
+    rubric_detail = serializers.SerializerMethodField(help_text="The rubric, shown with the assignment")
+    my_due_at = serializers.SerializerMethodField(help_text="The caller's own due date, extensions included")
     my_submission = serializers.SerializerMethodField()
     submissions_count = serializers.SerializerMethodField()
 
@@ -51,16 +265,88 @@ class AssignmentSerializer(serializers.ModelSerializer):
             "weight",
             "allow_late",
             "is_published",
+            "category",
+            "allow_resubmission",
+            "accepted_kinds",
+            "max_files",
+            "accepts",
+            "upload_limit_mb",
+            "requires_integrity",
+            "integrity_statement",
+            "late_penalty",
+            "late_penalty_percent",
+            "late_penalty_cap",
+            "is_group",
+            "groups",
+            "rubric",
+            "rubric_detail",
+            "anonymous",
+            "moderation",
+            "marks_released_at",
+            "my_due_at",
             "my_submission",
             "submissions_count",
         )
+        read_only_fields = ("marks_released_at",)
 
-    def get_my_submission(self, obj) -> dict | None:
+    def validate(self, attrs):
+        site = attrs.get("site") or getattr(self.instance, "site", None)
+        category = attrs.get("category")
+        if category is not None and category.site_id != site.id:
+            raise serializers.ValidationError({"category": ["Choose a category of the same course."]})
+        for group in attrs.get("groups", []):
+            if group.site_id != site.id:
+                raise serializers.ValidationError({"groups": ["Choose groups of the same course."]})
+        rubric = attrs.get("rubric")
+        if rubric is not None and rubric.site_id != site.id:
+            raise serializers.ValidationError(
+                {"rubric": ["Choose a rubric of the same course; copy one from the library first."]}
+            )
+        rule = attrs.get("late_penalty", getattr(self.instance, "late_penalty", Assignment.LatePenalty.NONE))
+        rate = attrs.get("late_penalty_percent", getattr(self.instance, "late_penalty_percent", 0))
+        if rule != Assignment.LatePenalty.NONE and not rate:
+            raise serializers.ValidationError({"late_penalty_percent": ["Give the percentage taken."]})
+        if self.instance is not None and self.instance.submissions.exists():
+            for name in ("is_group", "anonymous"):
+                if name in attrs and attrs[name] != getattr(self.instance, name):
+                    raise serializers.ValidationError(
+                        {name: ["This cannot change once work has been handed in."]}
+                    )
+        return attrs
+
+    def get_accepts(self, obj) -> str:
+        return narrowed(SUBMISSION, obj.accepted_kinds).accepts
+
+    def get_upload_limit_mb(self, obj) -> int:
+        return SUBMISSION.limit_mb
+
+    def get_integrity_statement(self, obj) -> str | None:
+        return rules.INTEGRITY_STATEMENT if obj.requires_integrity else None
+
+    @extend_schema_field(OpenApiTypes.OBJECT)
+    def get_rubric_detail(self, obj) -> dict | None:
+        from rubrics.api import rubric_for_students
+
+        return rubric_for_students(obj.rubric) if obj.rubric_id else None
+
+    def _person(self):
         request = self.context.get("request")
-        person = person_of(request.user) if request else None
+        return person_of(request.user) if request else None
+
+    def get_my_due_at(self, obj) -> str | None:
+        person = self._person()
         if person is None:
             return None
-        submission = obj.submissions.filter(student=person).select_related("mark").first()
+        return rules.due_for(obj, person).at.isoformat()
+
+    @extend_schema_field(SubmissionSerializer(allow_null=True))
+    def get_my_submission(self, obj) -> dict | None:
+        person = self._person()
+        if person is None:
+            return None
+        submission = (
+            obj.submissions.filter(student=person).select_related("mark", "assignment", "student").first()
+        )
         return SubmissionSerializer(submission, context={"released_only": True}).data if submission else None
 
     def get_submissions_count(self, obj) -> int | None:
@@ -68,63 +354,28 @@ class AssignmentSerializer(serializers.ModelSerializer):
         return obj.submissions.count() if request and can_teach(request.user, obj.site) else None
 
 
-class SubmissionSerializer(serializers.ModelSerializer):
-    student_no = serializers.CharField(source="student.external_id", read_only=True)
-    student_name = serializers.CharField(source="student.full_name", read_only=True)
-    filename = serializers.SerializerMethodField(help_text="The name the file had when it was handed in")
-    download_url = serializers.SerializerMethodField()
-    mark = serializers.SerializerMethodField()
-
-    class Meta:
-        model = Submission
-        fields = (
-            "id",
-            "assignment",
-            "student_no",
-            "student_name",
-            "text",
-            "filename",
-            "download_url",
-            "submitted_at",
-            "is_late",
-            "mark",
-        )
-
-    def get_filename(self, obj) -> str | None:
-        return (obj.original_name or obj.file.name.rsplit("/", 1)[-1]) if obj.file else None
-
-    def get_download_url(self, obj) -> str | None:
-        return f"/api/v1/submissions/{obj.id}/download/" if obj.file else None
-
-    @extend_schema_field(ReleasedMarkSerializer(allow_null=True))
-    def get_mark(self, obj) -> dict | None:
-        mark = getattr(obj, "mark", None)
-        if mark is None or (self.context.get("released_only") and not mark.is_released):
-            return None
-        return {"mark": str(mark.mark), "feedback": mark.feedback, "is_released": mark.is_released}
-
-
 class SubmitSerializer(serializers.Serializer):
     text = serializers.CharField(required=False, allow_blank=True)
-    file = serializers.FileField(
+    files = serializers.ListField(
+        child=serializers.FileField(),
         required=False,
-        help_text="A PDF, a photograph, or a Word, Excel or PowerPoint file without macros; at most "
+        help_text="Up to the assignment's max_files files of the kinds it accepts, each at most "
         "UPLOAD_LIMIT_SUBMISSION_MB (20 MB by default)",
     )
-
-    def validate_file(self, upload):
-        return validate_upload(upload, SUBMISSION)
-
-    def validate(self, attrs):
-        if not attrs.get("text") and not attrs.get("file"):
-            raise serializers.ValidationError("Provide text or a file.")
-        return attrs
+    file = serializers.FileField(required=False, help_text="One file; the older way of sending a single file")
+    integrity_accepted = serializers.BooleanField(
+        required=False,
+        default=False,
+        help_text="Required when the assignment asks for the integrity statement",
+    )
 
 
 class MarkSerializer(serializers.Serializer):
     mark = serializers.DecimalField(max_digits=6, decimal_places=2, min_value=0)
     feedback = serializers.CharField(required=False, allow_blank=True)
-    is_released = serializers.BooleanField(required=False, default=False)
+    is_released = serializers.BooleanField(
+        required=False, default=False, help_text="false keeps the mark and feedback as a draft"
+    )
 
 
 class GradebookAssignmentSerializer(serializers.Serializer):
@@ -132,13 +383,24 @@ class GradebookAssignmentSerializer(serializers.Serializer):
     title = serializers.CharField()
     max_mark = serializers.CharField()
     weight = serializers.CharField()
+    category = serializers.IntegerField(allow_null=True)
 
 
 class GradebookCellSerializer(serializers.Serializer):
     submitted = serializers.BooleanField()
     late = serializers.BooleanField()
-    mark = serializers.CharField(allow_null=True)
+    mark = serializers.CharField(allow_null=True, help_text="The mark that counts, after any late penalty")
+    raw_mark = serializers.CharField(allow_null=True)
+    penalty = serializers.CharField(allow_null=True)
     feedback = serializers.CharField()
+    anonymous = serializers.BooleanField(help_text="Hidden while an anonymous assignment's names are hidden")
+
+
+class GradebookCategorySerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    name = serializers.CharField()
+    weight = serializers.CharField()
+    drop_lowest = serializers.IntegerField()
 
 
 class GradebookRowSerializer(serializers.Serializer):
@@ -146,6 +408,10 @@ class GradebookRowSerializer(serializers.Serializer):
     student_no = serializers.CharField()
     name = serializers.CharField()
     marks = serializers.DictField(child=GradebookCellSerializer(), help_text="Keyed by assignment id")
+    quizzes = serializers.DictField(child=serializers.JSONField(), help_text="Keyed by quiz id")
+    categories = serializers.DictField(
+        child=serializers.CharField(allow_null=True), help_text="Percent per category id"
+    )
     coursework_percent = serializers.CharField(allow_null=True, help_text="Weighted, as a string")
 
 
@@ -153,8 +419,19 @@ class GradebookSerializer(serializers.Serializer):
     """Describes assessments.services.gradebook for the API documentation."""
 
     site = serializers.CharField(help_text="Site code")
+    categories = GradebookCategorySerializer(many=True)
     assignments = GradebookAssignmentSerializer(many=True)
+    quizzes = serializers.ListField(child=serializers.JSONField())
     rows = GradebookRowSerializer(many=True)
+
+
+def _students_of_group(group) -> list:
+    return [
+        m.person
+        for m in group.members.filter(is_active=True, role=Membership.SiteRole.STUDENT).select_related(
+            "person"
+        )
+    ]
 
 
 @extend_schema_view(
@@ -185,7 +462,11 @@ class AssignmentViewSet(TeachingViewSet):
             403: ErrorSerializer,
             409: ErrorSerializer,
         },
-        summary="Hand in work for an assignment, or replace work not yet marked",
+        summary="Hand in work: text and up to max_files files; each hand-in is kept with a receipt",
+        description="Work may be handed in again until the student's due date while it is not marked, when "
+        "the assignment allows it; the latest attempt is the one marked (items 2.21, 2.22, 3.22). For a "
+        "group assignment one member hands in for the whole group (item 2.27). Refusals: not_open, closed, "
+        "already_submitted, already_marked, no_group, integrity_required, too_many_files.",
     )
     @action(detail=True, methods=["post"])
     def submit(self, request, pk=None):
@@ -198,44 +479,191 @@ class AssignmentViewSet(TeachingViewSet):
         now = timezone.now()
         if assignment.opens_at and now < assignment.opens_at:
             return Response({"code": "not_open", "detail": "The assignment has not opened yet."}, status=409)
-        late = now > assignment.due_at
+        due = rules.due_for(assignment, person)
+        late = now > due.at
         if late and not assignment.allow_late:
             return Response({"code": "closed", "detail": "The deadline has passed."}, status=409)
+        group = rules.group_of(assignment, person)
+        if assignment.is_group and group is None:
+            return Response(
+                {
+                    "code": "no_group",
+                    "detail": "You are not in one group of this assignment. Ask your lecturer.",
+                },
+                status=409,
+            )
         data = SubmitSerializer(data=request.data)
         data.is_valid(raise_exception=True)
-        upload = data.validated_data.get("file")
+        uploads = self._checked_uploads(assignment, data.validated_data)
+        text = data.validated_data.get("text", "")
+        if not text and not uploads:
+            raise serializers.ValidationError("Provide text or a file.")
+        if assignment.requires_integrity and not data.validated_data["integrity_accepted"]:
+            return Response(
+                {
+                    "code": "integrity_required",
+                    "detail": "Accept the academic integrity statement to hand in.",
+                },
+                status=400,
+            )
+        members = _students_of_group(group) if group else [person]
         with transaction.atomic():
-            existing = Submission.objects.filter(assignment=assignment, student=person).first()
-            if existing and hasattr(existing, "mark"):
+            existing = list(
+                Submission.objects.select_for_update(of=("self",))
+                .filter(assignment=assignment, student__in=members)
+                .select_related("mark")
+            )
+            if any(hasattr(s, "mark") for s in existing):
                 return Response(
                     {"code": "already_marked", "detail": "A marked submission cannot be replaced."},
                     status=409,
                 )
-            submission, _ = Submission.objects.update_or_create(
+            if existing and not assignment.allow_resubmission:
+                return Response(
+                    {
+                        "code": "already_submitted",
+                        "detail": "Work for this assignment can be handed in once.",
+                    },
+                    status=409,
+                )
+            if existing and late:
+                return Response(
+                    {"code": "closed", "detail": "The due date has passed, so the work cannot be replaced."},
+                    status=409,
+                )
+            own, attempt = self._hand_in(request, assignment, person, group, members, text, uploads, now, data)
+        _send_receipt(person, assignment, attempt)
+        return Response(SubmissionSerializer(own, context={"released_only": True}).data, status=201)
+
+    def _checked_uploads(self, assignment, validated) -> list:
+        policy = narrowed(SUBMISSION, assignment.accepted_kinds)
+        uploads = []
+        if validated.get("file"):
+            try:
+                uploads.append(validate_upload(validated["file"], policy))
+            except serializers.ValidationError as error:
+                raise serializers.ValidationError({"file": error.detail}) from error
+        for upload in validated.get("files", []):
+            try:
+                uploads.append(validate_upload(upload, policy))
+            except serializers.ValidationError as error:
+                raise serializers.ValidationError({"files": [f"{upload.name}: {error.detail[0]}"]}) from error
+        if len(uploads) > assignment.max_files:
+            limit = assignment.max_files
+            raise serializers.ValidationError(
+                {
+                    "files": [
+                        f"Send at most {limit} file{'s' if limit != 1 else ''}."
+                        if limit
+                        else "Send text only."
+                    ]
+                }
+            )
+        return uploads
+
+    def _hand_in(self, request, assignment, person, group, members, text, uploads, now, data):
+        due = rules.due_for(assignment, person)
+        own, _ = Submission.objects.get_or_create(
+            assignment=assignment,
+            student=person,
+            defaults={"submitted_at": now, "created_by": request.user, "group": group},
+        )
+        own.group = group
+        number = (
+            rules.attempts_of(own).order_by("-number").values_list("number", flat=True).first() or 0
+        ) + 1
+        hashes = [(original_name(u), rules.file_sha256(u)) for u in uploads]
+        attempt = SubmissionAttempt.objects.create(
+            submission=own,
+            number=number,
+            submitted_by=person,
+            submitted_at=now,
+            text=text,
+            is_late=now > due.at,
+            receipt=rules.new_receipt(),
+            content_hash=rules.content_hash(text, hashes),
+            integrity_statement=rules.INTEGRITY_STATEMENT
+            if data.validated_data["integrity_accepted"]
+            else "",
+        )
+        stored = []
+        for position, (upload, (name, sha)) in enumerate(zip(uploads, hashes, strict=True), start=1):
+            stored.append(
+                SubmissionFile.objects.create(
+                    attempt=attempt,
+                    position=position,
+                    file=upload,
+                    original_name=name,
+                    size=upload.size,
+                    sha256=sha,
+                )
+            )
+        first = stored[0] if stored else None
+        for member in members:
+            member_due = due if member == person else rules.due_for(assignment, member)
+            submission, created = Submission.objects.update_or_create(
                 assignment=assignment,
-                student=person,
+                student=member,
                 defaults={
-                    "text": data.validated_data.get("text", ""),
-                    "file": upload or "",
-                    "original_name": original_name(upload) if upload else "",
+                    "text": text,
+                    "file": first.file.name if first else "",
+                    "original_name": first.original_name if first else "",
                     "submitted_at": now,
-                    "is_late": late,
+                    "is_late": now > member_due.at,
+                    "group": group,
                     "updated_by": request.user,
                 },
             )
-            record(request, "submit", submission, after={"assignment": assignment.id, "late": late})
-        return Response(SubmissionSerializer(submission, context={"released_only": True}).data, status=201)
+            record(
+                request,
+                "submit",
+                submission,
+                after={
+                    "assignment": assignment.id,
+                    "late": submission.is_late,
+                    "attempt": number,
+                    "receipt": attempt.receipt,
+                    "content_hash": attempt.content_hash,
+                    "files": [f.original_name for f in stored],
+                    "integrity_accepted": bool(attempt.integrity_statement),
+                    "group": group.id if group else None,
+                },
+            )
+            if member == person:
+                own = submission
+        return own, attempt
 
     @extend_schema(
         responses={200: SubmissionSerializer(many=True), 403: ErrorSerializer},
-        summary="All submissions (teaching staff)",
+        summary="All submissions (teaching staff); pseudonyms in place of names while marking is anonymous",
     )
     @action(detail=True, methods=["get"])
     def submissions(self, request, pk=None):
         assignment = self.get_object()
         self._require_teaching(assignment.site)
-        rows = assignment.submissions.select_related("student", "mark")
+        rows = sorted(
+            assignment.submissions.select_related("student", "mark", "assignment", "group"),
+            key=lambda s: rules.label_for(s),
+        )
         return Response(SubmissionSerializer(rows, many=True).data)
+
+
+def _send_receipt(person, assignment, attempt) -> None:
+    from notifications.models import Notification
+    from notifications.services import notify
+
+    if person.user is None:
+        return
+    when = timezone.localtime(attempt.submitted_at)
+    notify(
+        [person.user],
+        title=f"Received: {assignment.title}",
+        body=f"{assignment.site.code}: handed in at {when:%d/%m/%Y %H:%M}. "
+        f"Receipt {attempt.receipt}; content fingerprint {attempt.content_hash[:16]}.",
+        link=f"/sites/{assignment.site_id}",
+        kind=Notification.Kind.RECEIPT,
+        dedupe_key=f"receipt:{attempt.receipt}",
+    )
 
 
 def visible_submissions(user):
@@ -250,8 +678,17 @@ def visible_submissions(user):
 
 @extend_schema(
     request=MarkSerializer,
-    responses={200: SubmissionSerializer, 400: ErrorSerializer, 403: ErrorSerializer, 404: ErrorSerializer},
-    summary="Mark a submission, and release the mark to the student when ready",
+    responses={
+        200: SubmissionSerializer,
+        400: ErrorSerializer,
+        403: ErrorSerializer,
+        404: ErrorSerializer,
+        409: ErrorSerializer,
+    },
+    summary="Mark a submission; keep it as a draft or release it to the student",
+    description="Refused above the maximum (above_max), once the SRMS holds the student's coursework "
+    "(locked_in_srms), and, for a release, while a second marking is not agreed (moderation_outstanding). "
+    "Every change is kept in the submission's history.",
 )
 @api_view(["POST"])
 @permission_classes([RolePermission])
@@ -264,37 +701,26 @@ def mark_submission(request, pk: int):
         raise PermissionDenied("Only the site's teaching staff can mark.")
     data = MarkSerializer(data=request.data)
     data.is_valid(raise_exception=True)
-    if data.validated_data["mark"] > submission.assignment.max_mark:
-        return Response({"mark": [f"The maximum is {submission.assignment.max_mark}."]}, status=400)
-    with transaction.atomic():
-        mark, _ = Mark.objects.update_or_create(
-            submission=submission,
-            defaults={
-                "mark": data.validated_data["mark"],
-                "feedback": data.validated_data.get("feedback", ""),
-                "is_released": data.validated_data["is_released"],
-                "marked_by": person_of(request.user),
-                "updated_by": request.user,
-            },
-        )
-        record(request, "mark", submission, after={"mark": str(mark.mark), "released": mark.is_released})
-    if mark.is_released and submission.student.user:
-        from notifications.services import notify
-
-        notify(
-            [submission.student.user],
-            title=f"Marked: {submission.assignment.title}",
-            body=f"{site.code}: {mark.mark} out of {submission.assignment.max_mark}.",
-            link=f"/sites/{site.id}",
-            dedupe_key=f"mark:{mark.id}:released",
-        )
+    try:
+        with transaction.atomic():
+            mark = rules.save_mark(
+                request,
+                submission,
+                mark=data.validated_data["mark"],
+                feedback=data.validated_data.get("feedback", ""),
+                is_released=data.validated_data["is_released"],
+            )
+    except rules.Refusal as refusal:
+        return refused(refusal)
+    if mark.is_released:
+        rules.notify_released(mark)
     submission.refresh_from_db()
     return Response(SubmissionSerializer(submission).data)
 
 
 @extend_schema(
     responses={(200, "application/octet-stream"): OpenApiTypes.BINARY, 404: ErrorSerializer},
-    summary="Download the file handed in, under the name it had",
+    summary="Download the first file of the latest hand-in, under the name it had",
 )
 @api_view(["GET"])
 @permission_classes([RolePermission])
@@ -326,11 +752,22 @@ def site_gradebook(request, pk: int):
     return Response(gradebook(site))
 
 
-router = DefaultRouter()
-router.register("assignments", AssignmentViewSet, basename="assignment")
-urlpatterns = [
-    path("submissions/<int:pk>/mark/", mark_submission, name="submission-mark"),
-    path("submissions/<int:pk>/download/", download_submission, name="submission-download"),
-    path("sites/<int:pk>/gradebook/", site_gradebook, name="site-gradebook"),
-    *router.urls,
-]
+def _routes():
+    from assessments import arrangements_api, gradebook_api, marking_api
+
+    router = DefaultRouter()
+    router.register("assignments", AssignmentViewSet, basename="assignment")
+    router.register("grade-categories", gradebook_api.GradeCategoryViewSet, basename="grade-category")
+    router.register("extensions", arrangements_api.ExtensionViewSet, basename="extension")
+    router.register("accommodations", arrangements_api.AccommodationViewSet, basename="accommodation")
+    return [
+        path("submissions/<int:pk>/mark/", mark_submission, name="submission-mark"),
+        path("submissions/<int:pk>/download/", download_submission, name="submission-download"),
+        path("sites/<int:pk>/gradebook/", site_gradebook, name="site-gradebook"),
+        *marking_api.urlpatterns,
+        *gradebook_api.urlpatterns,
+        *router.urls,
+    ]
+
+
+urlpatterns = _routes()

@@ -80,6 +80,14 @@ class PracticalTask(TimeStampedModel):
     )
     max_attempts = models.PositiveSmallIntegerField(default=3, help_text="First attempt and re-assessments")
     is_published = models.BooleanField(default=False)
+    grade_category = models.ForeignKey(
+        "assessments.GradeCategory",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="practical_tasks",
+        help_text="The gradebook category it counts in (item 2.28)",
+    )
 
     class Meta:
         ordering = ["closes_at", "id"]

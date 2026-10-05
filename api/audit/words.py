@@ -18,6 +18,10 @@ RECORDS = {
     "assessments.assignment": "Assignment",
     "assessments.submission": "Submission",
     "assessments.mark": "Mark",
+    "assessments.gradecategory": "Gradebook category",
+    "assessments.extension": "Extension",
+    "assessments.accommodation": "Accommodation",
+    "rubrics.rubric": "Rubric",
     "iam.accessreview": "Access review",
     "audit.auditlog": "Audit log",
     "audit.auditcheck": "Audit check",
@@ -61,6 +65,16 @@ ACTIONS = {
     "disposed": "Destroyed under the retention schedule",
     "purged": "Old logs removed",
     "breach_closed": "Breach closed",
+    "marks_released": "Marks released",
+    "downloaded_all": "All submissions downloaded",
+    "marks_uploaded": "Marks uploaded from a spreadsheet",
+    "feedback_added": "Feedback file added",
+    "feedback_removed": "Feedback file removed",
+    "moderation_sampled": "Sample chosen for moderation",
+    "second_marked": "Second marked",
+    "mark_agreed": "Mark agreed after moderation",
+    "gradebook_exported": "Gradebook exported",
+    "coursework_sent": "Coursework sent to the SRMS",
 }
 # Account events: in the audit viewer and in the sign-ins of a person's record, not among their actions.
 ACCOUNT_EVENTS = (
