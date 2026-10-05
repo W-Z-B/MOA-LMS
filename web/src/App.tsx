@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useState, type ReactNode } from "react";
 import { SIGNED_OUT_EVENT, get } from "./api/client";
-import type { Me } from "./api/types";
+import { ADMIN_ROLES, hasAnyRole, type Me } from "./api/types";
 import { usesCampusSwitch } from "./app/people";
 import { Shell } from "./app/Shell";
-import { siteAddress, useHashRoute } from "./app/router";
+import { adminAddress, contentAddress, siteAddress, useHashRoute } from "./app/router";
 import { AccountScreen } from "./features/account/AccountScreen";
 import { LoginScreen } from "./features/auth/LoginScreen";
 import { MyCoursesScreen } from "./features/courses/MyCoursesScreen";
@@ -15,6 +15,18 @@ import { PrivacyNoticeScreen } from "./features/privacy/PrivacyNoticeScreen";
 import { ToDoScreen } from "./features/todo/ToDoScreen";
 
 const CAMPUS_KEY = "gsa-lms.campus";
+
+// Teaching content and course administration (items 2.12 to 2.20), fetched when first opened: the page
+// editor and KaTeX in particular stay out of what every page loads.
+const PageScreen = lazy(() => import("./features/content/PageScreen"));
+const PageEditorScreen = lazy(() => import("./features/content/PageEditorScreen"));
+const CourseSetupScreen = lazy(() => import("./features/content/CourseSetupScreen"));
+const AdminScreen = lazy(() => import("./features/course-admin/AdminScreen"));
+const TemplatesScreen = lazy(() => import("./features/course-admin/TemplatesScreen"));
+const TakedownsScreen = lazy(() => import("./features/course-admin/TakedownsScreen"));
+const StorageAllowancesScreen = lazy(() => import("./features/course-admin/StorageAllowancesScreen"));
+
+const later = (screen: ReactNode) => <Suspense fallback={<p className="loading">Opening…</p>}>{screen}</Suspense>;
 
 function readCampus(): string | null {
   try {
@@ -72,11 +84,25 @@ export default function App() {
 
   // Every page has an address of its own (item 2.10), down to a course site's tab: #/sites/4/gradebook.
   const site = siteAddress(path);
+  const content = contentAddress(path);
+  const admin = adminAddress(path);
   const campus = usesCampusSwitch(me) ? campusCode : null;
   let screen;
   // Everyone opens on their own Home (item 2.07): what waits for them, and the pages their role uses.
   if (path === "/") screen = <HomeScreen me={me} onNavigate={navigate} />;
   else if (path === "/to-do") screen = <ToDoScreen onNavigate={navigate} />;
+  else if (content?.view === "setup") screen = later(<CourseSetupScreen siteId={content.siteId} />);
+  else if (content?.view === "page") screen = later(<PageScreen key={content.itemId} siteId={content.siteId} itemId={content.itemId} />);
+  else if (content?.view === "edit")
+    screen = later(
+      <PageEditorScreen
+        key={`editor-${content.siteId}`}
+        siteId={content.siteId}
+        itemId={content.itemId}
+        moduleId={content.moduleId}
+        onNavigate={navigate}
+      />,
+    );
   else if (site)
     screen = (
       <SiteScreen
@@ -89,8 +115,16 @@ export default function App() {
   else if (path === "/courses" || path === "/sites") screen = <MyCoursesScreen campusCode={campus} onNavigate={navigate} />;
   else if (path === "/account") screen = <AccountScreen />;
   else if (path.startsWith("/my-data")) screen = <MyDataScreen />;
-  else if (path.startsWith("/admin"))
-    screen = <ComingSoon title="Admin" sprint="a later sprint" requirement="site creation and ecosystem sync controls" />;
+  else if (admin && !hasAnyRole(me, ADMIN_ROLES))
+    screen = (
+      <p role="alert" className="error">
+        Admin is for course administrators and administrators.
+      </p>
+    );
+  else if (admin === "home") screen = later(<AdminScreen onNavigate={navigate} />);
+  else if (admin === "templates") screen = later(<TemplatesScreen />);
+  else if (admin === "takedowns") screen = later(<TakedownsScreen />);
+  else if (admin === "storage") screen = later(<StorageAllowancesScreen />);
   else screen = <ComingSoon title="Not found" sprint="a later sprint" requirement="unknown route" />;
 
   return (
