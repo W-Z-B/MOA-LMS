@@ -339,3 +339,26 @@ def test_totals_go_to_the_srms_only_where_the_programme_requires_it(
         "locked": [],
         "unknown": [],
     }
+
+
+@pytest.mark.django_db
+def test_the_short_code_is_typed_from_the_screen_and_lasts_its_minute_and_the_next(
+    make_session, teacher, learner, settings
+):
+    session = make_session(minutes_from_now=-5)
+    shown = teacher.get(f"/api/v1/class-sessions/{session.id}/check-in-code/").json()
+    short = shown["short_code"]
+    assert len(short) == 6 and not set(short) & set("IO01")
+    assert 1 <= shown["refresh_seconds"] <= 60
+    now = timezone.now().timestamp()
+    window_start = (now // 60) * 60
+    assert codes.check(session.id, short, now=window_start + 119) is None  # still good the next minute
+    assert codes.check(session.id, short, now=window_start + 125) == "expired"
+    assert codes.check(session.id, short, now=window_start + 600) == "invalid"
+    other = make_session(title="Another class")
+    assert codes.check(other.id, short, now=now) == "invalid"
+    assert codes.check(session.id, "ABC", now=now) == "invalid"
+    url = f"/api/v1/class-sessions/{session.id}/check-in/"
+    # Typed as people type it: lower case, with a space in the middle.
+    typed = f"{short[:3].lower()} {short[3:].lower()}"
+    assert learner.post(url, {"code": typed}, format="json").status_code == 201
