@@ -39,6 +39,8 @@ services:
       PORT: "8080"
       DEMO_USER_PASSWORD: *password
       DEMO_TOTP_SECRET: *totp
+      # seed_journeys writes the fictional invitation links and certificate code here for the journeys.
+      JOURNEY_LINKS_FILE: /srv/files/journeys/links.json
     volumes:
       - e2e_files:/srv/files
     depends_on:
@@ -75,11 +77,13 @@ services:
       E2E_BASE_URL: https://lms-e2e
       E2E_PASSWORD: *password
       E2E_TOTP_SECRET: *totp
+      E2E_LINKS_FILE: /srv/files/journeys/links.json
       CI: ${CI:-}
       HOME: /tmp
     volumes:
       - ./web:/web
       - e2e_node_modules:/web/node_modules
+      - e2e_files:/srv/files:ro
     command: ["sh", "-c", "npm ci --no-audit --no-fund && npx playwright test"]
     profiles: ["test"]
     depends_on:

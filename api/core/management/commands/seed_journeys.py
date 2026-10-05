@@ -9,11 +9,20 @@ so the lecturer's authenticator is enrolled from DEMO_TOTP_SECRET, a fictional s
 to compute the code. The draft privacy notice is published, so the journeys read and acknowledge it as
 everyone does at their first sign-in. Never run it on a database that holds real records.
 Idempotent: running it again changes nothing.
+
+For the staff-development and administration journeys it also makes an administrator (with the same
+fictional authenticator), two staff-development courses in the catalogue (one open to join, one Marlon has
+completed, with its certificate and a fictional check code), and two new students whose accounts are open
+but who have not chosen a password yet. Their invitation links, and the certificate's reference and code,
+are written as JSON to the file JOURNEY_LINKS_FILE names, where the journeys read them: a link to choose a
+password is signed afresh each time and is never printed.
 """
 
+import json
 import os
 import re
 from datetime import timedelta
+from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
@@ -22,11 +31,15 @@ from django.db import transaction
 from django.utils import timezone
 
 from assessments.models import Assignment, Submission
+from certificates.models import Certificate
 from core.management.commands.seed_demo import Command as SeedDemo
-from courses.models import CourseSite, Membership
+from courses.models import Completion, ContentItem, CourseSite, Membership, Module
+from iam import accounts
 from iam.models import Role, RoleScope, TotpDevice
 from people.models import PersonRef
 from privacy.models import PrivacyNotice
+from staffdev.completion import record_completion
+from staffdev.models import CatalogueEntry
 
 SITE = {
     "code": "AGR101-2026-27-S1-MRP",
@@ -42,6 +55,17 @@ CAST = [
     ("kezia.persaud", PersonRef.Kind.STUDENT, "S2026901", "Kezia", "Persaud", Role.STUDENT, "student"),
     ("tevin.joseph", PersonRef.Kind.STUDENT, "S2026902", "Tevin", "Joseph", Role.STUDENT, "student"),
 ]
+# The administrator of the console journeys: username, first name, last name.
+ADMINISTRATOR = ("ayesha.ramdin", "Ayesha", "Ramdin")
+# New students with an account but no password yet: one invitation for each journey project.
+INVITED = [("S2026903", "Rohan", "Singh"), ("S2026904", "Priya", "Bhagwandin")]
+# Staff-development courses: code, title, how one joins, whether Marlon has completed it.
+STAFF_COURSES = [
+    ("SD-101", "Safe use of farm machinery", CatalogueEntry.Enrol.OPEN, False),
+    ("SD-102", "First aid in the field", CatalogueEntry.Enrol.APPROVAL, True),
+]
+# Printed on the fictional certificate; the public check accepts it.
+CERTIFICATE_CODE = "JRNY-0000-2026"
 
 
 class Command(BaseCommand):
@@ -82,6 +106,14 @@ class Command(BaseCommand):
             SeedDemo()._teach(site)
             self._homes(site)
             PrivacyNotice.objects.filter(published_at__isnull=True).update(published_at=timezone.now())
+            self._administrator(password, secret)
+            certificate = self._staff_development()
+            links = self._invitations()
+        target = os.environ.get("JOURNEY_LINKS_FILE", "")
+        if target:
+            os.makedirs(os.path.dirname(target) or ".", exist_ok=True)
+            with open(target, "w", encoding="utf-8") as out:
+                json.dump({"invitations": links, "certificate": certificate}, out)
         self.stdout.write(
             self.style.SUCCESS(f"Journey data ready: {len(CAST)} accounts in {site.code} ({site.title}).")
         )
@@ -111,6 +143,90 @@ class Command(BaseCommand):
             student=tevin,
             defaults={"text": "Demonstration submission.", "submitted_at": now - timedelta(days=1)},
         )
+
+    @staticmethod
+    def _administrator(password: str, secret: str) -> None:
+        username, first, last = ADMINISTRATOR
+        user, created = get_user_model().objects.get_or_create(
+            username=username,
+            defaults={"first_name": first, "last_name": last, "email": f"{username}@gsa.example"},
+        )
+        if created:
+            user.set_password(password)
+            user.save(update_fields=["password"])
+        RoleScope.objects.get_or_create(
+            user=user, role=Role.objects.get(code=Role.ADMINISTRATOR), campus_code=""
+        )
+        TotpDevice.objects.get_or_create(
+            user=user, defaults={"secret": secret, "confirmed_at": timezone.now()}
+        )
+
+    @staticmethod
+    def _staff_development() -> dict:
+        """Two courses in the catalogue; Marlon has completed the second, so it has a certificate."""
+        marlon = PersonRef.objects.get(kind=PersonRef.Kind.STAFF, external_id="E0901")
+        found = None
+        for code, title, enrol, completed in STAFF_COURSES:
+            site, made = CourseSite.objects.get_or_create(
+                code=code,
+                defaults={
+                    "title": title,
+                    "kind": CourseSite.Kind.STAFF_DEVELOPMENT,
+                    "source": "local",
+                    "is_published": True,
+                    "campus_code": "MRP",
+                    "description": f"{title}, for every member of staff who works on the farm.",
+                },
+            )
+            if made:
+                module = Module.objects.create(site=site, title="What to know")
+                ContentItem.objects.create(
+                    module=module, title="Before you start", body="<p>Read this first.</p>"
+                )
+            entry, _ = CatalogueEntry.objects.get_or_create(
+                site=site,
+                defaults={
+                    "summary": f"A short course: {title.lower()}.",
+                    "audience": "All farm staff",
+                    "length_hours": Decimal("3"),
+                    "self_enrol": enrol,
+                    "validity_months": 24,
+                },
+            )
+            if completed:
+                if not Completion.objects.filter(site=site, person=marlon).exists():
+                    record_completion(entry, marlon, how=Completion.How.RECORDED)
+                certificate = Certificate.objects.get(site=site, person=marlon)
+                if certificate.check_code != CERTIFICATE_CODE:
+                    certificate.check_code = CERTIFICATE_CODE
+                    certificate.save(update_fields=["check_code"])
+                found = {"reference": certificate.reference, "code": CERTIFICATE_CODE}
+        return found
+
+    @staticmethod
+    def _invitations() -> list[str]:
+        """Open the new students' accounts, without a password, and sign an invitation link for each."""
+        links = []
+        for number, first, last in INVITED:
+            person, _ = PersonRef.objects.get_or_create(
+                kind=PersonRef.Kind.STUDENT,
+                external_id=number,
+                defaults={
+                    "first_name": first,
+                    "last_name": last,
+                    "email": f"{number.lower()}@gsa.example",
+                    "campus_code": "MRP",
+                },
+            )
+            user = person.user or accounts.open_account(person)
+            if not accounts.never_used(user):
+                continue  # the journey has chosen a password already: the link would open it again
+            if not person.invited_at:
+                person.invited_at = timezone.now()
+                person.save(update_fields=["invited_at", "updated_at"])
+            link = accounts.password_link(user, accounts.invitation_tokens())
+            links.append(link[link.index("/#/") :])
+        return links
 
     @staticmethod
     def _person(username, kind, external_id, first, last, role, password) -> PersonRef:
