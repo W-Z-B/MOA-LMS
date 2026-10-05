@@ -40,6 +40,11 @@ export const PAGES: readonly Page[] = [
   { path: "/", label: "Home", desc: "Your work and your shortcuts" },
   { path: "/to-do", label: "To do", desc: "Work due, work to mark and requests waiting for you" },
   { path: "/courses", label: "My courses", desc: "Your course sites: content, assignments and marks", under: ["/sites"] },
+  // --- talk: forums, messages and the calendar (items 4.08 to 4.11, 2.32) ---
+  { path: "/messages", label: "Messages", desc: "Conversations with your teaching staff, and notices" },
+  { path: "/calendar", label: "Calendar", desc: "Due dates, classes and releases, and a feed for your phone" },
+  { path: "/forums", label: "Discussion", desc: "The forums of your courses" },
+  // --- end talk ---
   { path: "/my-data", label: "My data", desc: "What the LMS holds about you, and corrections" },
   { path: "/account", label: "My account", desc: "Authenticator and signed-in devices" },
   { path: "/admin", label: "Admin", desc: "Site creation and ecosystem sync", roles: ADMIN_ROLES, later: true },
@@ -59,7 +64,7 @@ export function pageOf(path: string): Page | undefined {
 }
 
 /** The tabs of a course site, each with an address of its own. */
-export const SITE_TABS = ["content", "assignments", "gradebook", "announcements"] as const;
+export const SITE_TABS = ["content", "assignments", "gradebook", "announcements", "discussion", "classes", "groups"] as const;
 export type SiteTab = (typeof SITE_TABS)[number];
 
 /** #/sites/4 or #/sites/4/gradebook: the site and its tab. A tab the screen does not have opens Content. */
@@ -69,3 +74,26 @@ export function siteAddress(path: string): { id: number; tab: SiteTab } | null {
   const tab = SITE_TABS.find((t) => t === match[2]) ?? "content";
   return { id: Number(match[1]), tab };
 }
+
+// --- talk: addresses inside forums, messages and a site's classes (items 4.08 to 4.15) ---
+
+/** #/forums/3 or #/forums/3/threads/7: a forum, and a thread in it. #/forums alone lists every forum. */
+export function forumAddress(path: string): { forum: number | null; thread: number | null } | null {
+  const match = path.split("?")[0].match(/^\/forums(?:\/(\d+)(?:\/threads\/(\d+))?)?\/?$/);
+  if (!match) return null;
+  return { forum: match[1] ? Number(match[1]) : null, thread: match[2] ? Number(match[2]) : null };
+}
+
+/** #/messages or #/messages/12: the conversations, and one of them. */
+export function messageAddress(path: string): { conversation: number | null } | null {
+  const match = path.split("?")[0].match(/^\/messages(?:\/(\d+))?\/?$/);
+  if (!match) return null;
+  return { conversation: match[1] ? Number(match[1]) : null };
+}
+
+/** #/sites/4/classes/9 opens one class; #/sites/4/classes/9/code shows its check-in code in the room. */
+export function classAddress(path: string): { session: number; code: boolean } | null {
+  const match = path.split("?")[0].match(/^\/sites\/\d+\/classes\/(\d+)(\/code)?\/?$/);
+  return match ? { session: Number(match[1]), code: Boolean(match[2]) } : null;
+}
+// --- end talk ---

@@ -298,6 +298,8 @@ def test_a_report_by_teaching_staff_hides_a_post_at_once_but_a_students_waits(
 
     by_student = learner.post(f"/api/v1/posts/{post['id']}/report/", {"reason": "Advertising"}, format="json")
     assert by_student.status_code == 201 and by_student.json()["status"] == "open"
+    # The report names its forum and thread, so a moderator opens the post from the queue.
+    assert by_student.json()["forum"] == forum.id and by_student.json()["thread"] == thread["id"]
     assert Post.objects.get(pk=post["id"]).is_hidden is False
     assert Notification.objects.filter(
         recipient=lecturer.user, dedupe_key__startswith="post-report:"

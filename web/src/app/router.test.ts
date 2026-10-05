@@ -18,7 +18,7 @@ const person = (roles: string[], is_superuser = false): Me => ({
 
 describe("pages by role", () => {
   it("gives everyone Home, To do, their courses, their data and their account", () => {
-    const own = ["Home", "To do", "My courses", "My data", "My account"];
+    const own = ["Home", "To do", "My courses", "Messages", "Calendar", "Discussion", "My data", "My account"];
     expect(pagesFor(person(["student"])).map((p) => p.label)).toEqual(own);
     expect(pagesFor(person(["lecturer"])).map((p) => p.label)).toEqual(own);
     expect(pagesFor(person([])).map((p) => p.label)).toEqual(own);

@@ -1,0 +1,529 @@
+/* Forums, messages, groups, classes and the calendar (items 4.08 to 4.15, 2.32). Built on the tokens and
+   components of index.css; kept in a file of its own so the screens of other areas never collide with it. */
+
+/* Lists of rows: forums, discussions, conversations, groups, classes. */
+.talk-list {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0;
+  background: var(--card);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+}
+.talk-list > li + li {
+  border-top: 1px solid var(--rule-soft);
+}
+.talk-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 56px;
+  padding: 10px 16px;
+  color: var(--ink);
+  text-decoration: none;
+}
+a.talk-row:hover {
+  background: var(--hover-row);
+  color: var(--ink);
+}
+.talk-row-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.talk-title {
+  font-weight: 600;
+  color: var(--accent);
+}
+.talk-row.unread .talk-title {
+  font-weight: 800;
+}
+.talk-row .count,
+.talk-row .pill {
+  flex: none;
+}
+.talk-row .count {
+  min-width: 24px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+}
+.talk-foot {
+  margin: 16px 0;
+}
+.talk-site {
+  font-size: 16px;
+}
+.talk-form-title {
+  margin: 0;
+  font-size: 17px;
+}
+.talk-quote {
+  margin: 0;
+  font-style: italic;
+}
+.talk-where {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin: 0;
+}
+.talk-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.talk-choices label.inline {
+  min-height: 44px;
+  font-weight: 400;
+}
+.report + .report {
+  border-top: 1px solid var(--rule-soft);
+  padding-top: 10px;
+}
+
+/* The composer: a plain text box and four formatting buttons. */
+.composer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.composer textarea {
+  width: 100%;
+  resize: vertical;
+}
+.composer-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.composer-help,
+.composer-hint {
+  margin: 0;
+  font-weight: 400;
+}
+
+/* The conduct statement, read and accepted before the first post or message (item 4.09). */
+.conduct {
+  background: var(--card);
+  border: 1px solid var(--rule);
+  border-left: 4px solid var(--amber);
+  border-radius: var(--radius-card);
+  padding: 14px 16px;
+}
+.conduct h2 {
+  margin-top: 0;
+}
+.conduct-body {
+  max-height: 22rem;
+  overflow-y: auto;
+  margin: 8px 0 12px;
+}
+
+/* A discussion: posts with their replies beneath, indented a little at each level (no more than three). */
+.posts {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.posts.root {
+  margin-bottom: 8px;
+}
+.post > article {
+  background: var(--card);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-card);
+  padding: 12px 14px;
+  margin-bottom: 8px;
+}
+.post .posts {
+  margin-left: 14px;
+  padding-left: 10px;
+  border-left: 2px solid var(--rule);
+}
+.post.depth-3 .posts {
+  margin-left: 0;
+  padding-left: 0;
+  border-left: 0;
+}
+.post-meta {
+  margin: 0 0 4px;
+}
+.post-body > :last-child {
+  margin-bottom: 0;
+}
+.post-removed {
+  font-style: italic;
+  margin: 0;
+}
+.post-actions {
+  gap: 4px 14px;
+  margin-top: 4px;
+}
+.post-actions button.link {
+  min-height: 44px;
+}
+
+/* Participation marks: a row a student, wrapping on a phone. */
+.mark-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px 12px;
+  padding: 10px 16px;
+}
+.mark-row .talk-row-main {
+  flex: 1 1 100%;
+}
+.mark-row label input {
+  width: 100%;
+}
+.mark-row label:not(.grow) {
+  flex: 0 1 120px;
+}
+
+/* Messages: bubbles, mine on the right. */
+.bubbles {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.bubble {
+  max-width: min(560px, 92%);
+  align-self: flex-start;
+  background: var(--card);
+  border: 1px solid var(--rule);
+  border-radius: 12px 12px 12px 4px;
+  padding: 8px 12px;
+  overflow-wrap: anywhere;
+}
+.bubble.mine {
+  align-self: flex-end;
+  background: var(--tint);
+  border-color: transparent;
+  border-radius: 12px 12px 4px 12px;
+}
+.bubble.waiting {
+  border: 1px dashed var(--amber);
+}
+.bubble-meta {
+  margin: 0 0 2px;
+}
+.bubble .page-body > :first-child {
+  margin-top: 0;
+}
+.bubble .page-body > :last-child {
+  margin-bottom: 0;
+}
+.bubble-receipt {
+  margin: 2px 0 0;
+  text-align: right;
+}
+
+/* In the header, beside notifications: Messages with the unread count. */
+a.messages-link {
+  color: #ffffff;
+}
+a.messages-link:hover {
+  color: #ffffff;
+}
+a.messages-link[aria-current="page"] {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+/* Groups. */
+.group-row {
+  padding: 10px 16px;
+}
+.group-row .sub-form {
+  margin-top: 8px;
+}
+
+/* Classes: the register on a phone, four choices a student, each a 44px target. */
+.class-row {
+  flex-wrap: wrap;
+}
+.register {
+  list-style: none;
+  margin: 12px 0;
+  padding: 0;
+}
+.register > li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--rule-soft);
+}
+.register-name {
+  flex: 1 1 180px;
+  min-width: 0;
+  font-weight: 600;
+}
+.segmented {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+  flex: 1 1 300px;
+  max-width: 420px;
+}
+.seg {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 44px;
+  padding: 0 4px;
+  border: 1px solid var(--field);
+  border-radius: var(--radius-control);
+  background: var(--card);
+  color: var(--ink-2);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+}
+.seg input {
+  position: absolute;
+  opacity: 0;
+  inset: 0;
+  margin: 0;
+  cursor: pointer;
+}
+.seg:focus-within {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.seg.on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+.seg.on.seg-absent {
+  background: var(--danger);
+  border-color: var(--danger);
+}
+.register-foot {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+.pill.att-absent {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+/* The check-in code, read from the back of the room. */
+.code-screen {
+  text-align: center;
+  background: var(--card);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-card);
+  padding: 24px 16px;
+}
+.code-how {
+  font-size: 18px;
+}
+.check-code {
+  margin: 12px 0;
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: clamp(56px, 16vw, 200px);
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  line-height: 1;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.check-in .code-input {
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 28px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  min-height: 56px;
+  text-align: center;
+}
+
+/* The calendar. */
+.calendar-bar {
+  align-items: center;
+}
+.calendar-bar button {
+  min-width: 44px;
+  min-height: 44px;
+}
+.calendar-title {
+  margin: 0;
+  font-size: 17px;
+  flex: 1 1 160px;
+}
+.calendar-course {
+  flex: 1 1 200px;
+}
+.agenda-day {
+  font-size: 15px;
+  margin: 18px 0 6px;
+}
+.agenda-day.today {
+  color: var(--accent);
+}
+.events {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  background: var(--card);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-card);
+}
+.event {
+  display: flex;
+  gap: 12px;
+  padding: 10px 14px;
+  border-left: 4px solid var(--rule);
+}
+.event + .event {
+  border-top: 1px solid var(--rule-soft);
+}
+.event-time {
+  flex: none;
+  width: 44px;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+.event-assignment_due,
+.event-quiz_closes,
+.event-practical_closes {
+  border-left-color: var(--amber);
+}
+.event-class_session {
+  border-left-color: var(--header);
+}
+.month {
+  display: flex;
+  flex-direction: column;
+  background: var(--card);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+}
+.month-row {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+.month-head {
+  padding: 6px 4px;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+  color: var(--muted);
+  background: var(--head-row);
+}
+.month-cell {
+  border-top: 1px solid var(--rule-soft);
+  min-width: 0;
+}
+.month-cell + .month-cell {
+  border-left: 1px solid var(--rule-soft);
+}
+.month-cell.other .month-date {
+  color: var(--muted);
+  font-weight: 400;
+}
+.month-day {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+  width: 100%;
+  min-height: 88px;
+  padding: 4px;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--ink);
+  font-weight: 400;
+  text-align: left;
+}
+.month-day:hover {
+  background: var(--hover-row);
+}
+.month-day.today .month-date {
+  color: var(--accent);
+  font-weight: 800;
+}
+.month-day.chosen {
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+.month-date {
+  font-weight: 600;
+}
+.month-items {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.month-item {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 12px;
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: var(--stripe);
+}
+.month-item.event-assignment_due,
+.month-item.event-quiz_closes,
+.month-item.event-practical_closes {
+  background: var(--warn-bg);
+  color: var(--amber-text);
+}
+.month-more {
+  font-size: 12px;
+  color: var(--muted);
+}
+.month-dot {
+  align-self: flex-start;
+  min-width: 20px;
+  padding: 0 5px;
+  border-radius: 10px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+}
+.chosen-day {
+  margin-top: 12px;
+}
+
+@media (max-width: 760px) {
+  .month-day {
+    min-height: 52px;
+    align-items: center;
+    text-align: center;
+  }
+  .month-head {
+    font-size: 11px;
+  }
+  .talk-row {
+    padding: 10px 12px;
+  }
+  .post .posts {
+    margin-left: 6px;
+    padding-left: 8px;
+  }
+}

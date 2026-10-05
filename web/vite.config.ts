@@ -36,6 +36,12 @@ export default defineConfig({
         "src/features/home/**",
         "src/features/todo/**",
         "src/features/courses/MyCoursesScreen.tsx",
+        // Forums, messages, groups, classes and the calendar (items 4.08 to 4.15, 2.32).
+        "src/features/forums/**",
+        "src/features/messages/**",
+        "src/features/groups/**",
+        "src/features/attendance/**",
+        "src/features/calendar/**",
       ],
       exclude: ["src/**/*.test.*", "src/test/**"],
       reporter: ["text"],
