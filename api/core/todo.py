@@ -2,8 +2,9 @@
 
 Each source asks only what that person may act on, by the same rules its own screen uses, and the list
 links to where it is done: work to mark and logbooks to sign off on the sites they teach, takedown
-requests and correction requests for course administrators, disposals for the keepers of records, and,
-for a student, work due soon and logbook entries handed back. Something that has waited past its time
+requests and correction requests for course administrators, disposals for the keepers of records, forum
+posts reported on the forums they moderate, the register of today's classes they teach, unread messages,
+and, for a student, work due soon and logbook entries handed back. Something that has waited past its time
 limit, or work past its due date, is marked overdue.
 """
 
@@ -147,6 +148,88 @@ def _disposals(user) -> list[dict]:
     ]
 
 
+def _messages(user) -> list[dict]:
+    """Conversations with messages from others not yet read (messaging), oldest unread first."""
+    from django.db.models import F, Min, Q
+
+    from messaging.models import Conversation
+
+    unread = (
+        Conversation.objects.filter(participants__user=user)
+        .annotate(
+            oldest=Min(
+                "messages__created_at",
+                filter=~Q(messages__sender=user)
+                & (
+                    Q(participants__last_read_at__isnull=True)
+                    | Q(messages__created_at__gt=F("participants__last_read_at"))
+                ),
+            )
+        )
+        .filter(oldest__isnull=False)
+        .select_related("site")
+    )
+    return [
+        _item("message", "Unread message", c.subject, c.oldest, f"/messages/{c.id}", site_title=c.site.title)
+        for c in unread
+    ]
+
+
+def _reports(user) -> list[dict]:
+    """Open reports of forum posts on the sites the person moderates (forums.api.PostReportViewSet)."""
+    from courses.access import taught_sites
+    from forums.models import PostReport
+
+    open_ = PostReport.objects.filter(
+        status=PostReport.Status.OPEN, post__thread__forum__site__in=taught_sites(user)
+    ).select_related("post__thread__forum__site")
+    return [
+        _item(
+            "post_report",
+            "Reported post to review",
+            f"{r.post.thread.title}: {_shorten(r.reason)}",
+            r.created_at,
+            f"/forums/{r.post.thread.forum_id}/threads/{r.post.thread_id}",
+            limit=settings.DECISION_DAYS,
+            site_title=r.post.thread.forum.site.title,
+        )
+        for r in open_
+    ]
+
+
+def _registers(person) -> list[dict]:
+    """Today's classes, on the sites the person teaches, that have started and whose register is not
+    complete (attendance)."""
+    from attendance.models import ClassSession
+    from attendance.services import expected
+    from courses.models import Membership
+
+    if person is None:
+        return []
+    now = timezone.now()
+    start = timezone.localtime(now).replace(hour=0, minute=0, second=0, microsecond=0)
+    teaching = Membership.objects.filter(
+        person=person, is_active=True, role__in=[Membership.SiteRole.LECTURER, Membership.SiteRole.ASSISTANT]
+    ).values("site_id")
+    sessions = ClassSession.objects.filter(
+        site_id__in=teaching, takes_attendance=True, starts_at__gte=start, starts_at__lte=now
+    ).select_related("site")
+    items = []
+    for session in sessions:
+        if session.records.count() < expected(session).count():
+            items.append(
+                _item(
+                    "register",
+                    "Register to take",
+                    session.title,
+                    session.starts_at,
+                    f"/sites/{session.site_id}/classes/{session.id}",
+                    site_title=session.site.title,
+                )
+            )
+    return items
+
+
 def _student(person) -> list[dict]:
     """Work due within the week, overdue work that can still be handed in, and logbook entries returned."""
     from practicals.models import LogbookEntry
@@ -189,6 +272,9 @@ def to_do_for(user) -> list[dict]:
         *_takedowns(user),
         *_corrections(user),
         *_disposals(user),
+        *_reports(user),
+        *_registers(person),
+        *_messages(user),
         *_student(person),
     ]
     return sorted(items, key=lambda item: item["due_at"] or item["since"])
@@ -207,6 +293,9 @@ class ToDoItemSerializer(serializers.Serializer):
             "assignment",
             "quiz",
             "logbook_returned",
+            "post_report",
+            "register",
+            "message",
         ]
     )
     kind_name = serializers.CharField(help_text="What it is, in words: 'Work to mark', 'Work due'")
