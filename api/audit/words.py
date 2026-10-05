@@ -28,6 +28,15 @@ RECORDS = {
     "privacy.disposalrun": "Disposal run",
     "privacy.breach": "Data breach",
     "integration.integrationrun": "Integration run",
+    "approvals.delegation": "Stand-in",
+    "staffdev.catalogueentry": "Catalogue entry",
+    "staffdev.enrolmentrequest": "Enrolment request",
+    "staffdev.learningpath": "Learning path",
+    "staffdev.pathenrolment": "Place on a learning path",
+    "staffdev.requiredtraining": "Required training",
+    "staffdev.trainingassignment": "Required training assignment",
+    "certificates.certificate": "Certificate",
+    "certificates.certificatetemplate": "Certificate template",
 }
 ACTIONS = {
     "create": "Added",
@@ -68,6 +77,22 @@ ACTIONS = {
     "password_set": "Password chosen through a link",
     "password_changed": "Password changed",
     "password_change_failed": "Password change refused",
+    "enrolled": "Enrolled",
+    "completed": "Completed",
+    "renewed": "Renewed",
+    "renewal_opened": "Opened for renewal",
+    "escalated": "Sent on to the next person up",
+    "delegation_ended": "Stand-in ended",
+    "transition:approve": "Approved",
+    "transition:reject": "Not approved",
+    "transition:withdraw": "Withdrawn",
+    "training_assigned": "Required training assigned",
+    "training_renewal_due": "Required training due for renewal",
+    "report_viewed": "Report viewed",
+    "certificate_issued": "Certificate issued",
+    "certificate_withdrawn": "Certificate withdrawn",
+    "certificate_checked": "Certificate checked",
+    "template_versioned": "Template changed (new version)",
 }
 # Account events: in the audit viewer and in the sign-ins of a person's record, not among their actions.
 ACCOUNT_EVENTS = (

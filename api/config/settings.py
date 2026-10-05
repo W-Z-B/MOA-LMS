@@ -51,6 +51,9 @@ INSTALLED_APPS = [
     "privacy",
     "quizzes",
     "practicals",
+    "approvals",
+    "staffdev",
+    "certificates",
 ]
 
 MIDDLEWARE = [
