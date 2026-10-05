@@ -18,6 +18,7 @@ urlpatterns = [
     path("api/v1/auth/", include("iam.urls")),
     path("api/v1/notifications/", include("notifications.api")),
     path("api/v1/", include("assessments.api")),
+    path("api/v1/", include("practicals.api")),
     path("api/v1/", include("courses.api")),
     path("api/v1/reference/", include((reference_urls, "reference"))),
     # Service-to-service API for the GSA ecosystem. Api-Key authentication, scoped.
