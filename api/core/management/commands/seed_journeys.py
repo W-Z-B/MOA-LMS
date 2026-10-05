@@ -3,7 +3,8 @@
 seed_demo needs the HRMS and the SRMS to name the people and the classes. The journeys run the LMS on its
 own, so this command creates its own small cast instead: a lecturer and two students with accounts, and one
 course site taught with seed_demo's material (content, an announcement, two assignments, a released mark),
-plus what the Homes show: work due this week for Kezia and a hand-in waiting to be marked for the lecturer.
+plus what the Homes show: work due this week for Kezia and a hand-in waiting to be marked for the lecturer,
+and a practical task with its checklist and a competency framework for the practicals journeys.
 The accounts share the password in DEMO_USER_PASSWORD. Teaching staff need an authenticator code (ADR 0013),
 so the lecturer's authenticator is enrolled from DEMO_TOTP_SECRET, a fictional secret the journeys also hold
 to compute the code. The draft privacy notice is published, so the journeys read and acknowledge it as
@@ -26,6 +27,14 @@ from core.management.commands.seed_demo import Command as SeedDemo
 from courses.models import CourseSite, Membership
 from iam.models import Role, RoleScope, TotpDevice
 from people.models import PersonRef
+from practicals.models import (
+    CompetencyFramework,
+    PerformanceCriterion,
+    PracticalCriterion,
+    PracticalTask,
+    SiteFramework,
+)
+from practicals.serializers import FrameworkImportSerializer
 from privacy.models import PrivacyNotice
 
 SITE = {
@@ -34,6 +43,30 @@ SITE = {
     "term_code": "2026-27-S1",
     "campus_code": "MRP",
     "description": "How crops grow, from seed to harvest.",
+}
+
+# A small occupational standard for the practicals journeys (fictional codes, in the Council for TVET's form).
+FRAMEWORK = {
+    "code": "AGR-CROP-L2",
+    "title": "Crop Production Level 2",
+    "source": "Council for TVET occupational standard",
+    "version": "2024.1",
+    "units": [
+        {
+            "code": "U1",
+            "title": "Prepare land for planting",
+            "elements": [
+                {
+                    "code": "E1.1",
+                    "title": "Prepare beds",
+                    "criteria": [
+                        {"code": "PC1.1.1", "text": "Beds are formed to the specified width"},
+                        {"code": "PC1.1.2", "text": "Tools are cleaned and stored after use"},
+                    ],
+                }
+            ],
+        }
+    ],
 }
 
 # username, kind, external id, first name, last name, system role, role in the site
@@ -81,6 +114,7 @@ class Command(BaseCommand):
                     )
             SeedDemo()._teach(site)
             self._homes(site)
+            self._practicals(site)
             PrivacyNotice.objects.filter(published_at__isnull=True).update(published_at=timezone.now())
         self.stdout.write(
             self.style.SUCCESS(f"Journey data ready: {len(CAST)} accounts in {site.code} ({site.title}).")
@@ -111,6 +145,51 @@ class Command(BaseCommand):
             student=tevin,
             defaults={"text": "Demonstration submission.", "submitted_at": now - timedelta(days=1)},
         )
+
+    @staticmethod
+    def _practicals(site: CourseSite) -> None:
+        """What the practicals journeys use (items 3.12 to 3.15): a published field task with a
+        three-criterion checklist, and a competency framework the site follows, its first performance
+        criterion mapped to the critical criterion. The task does not count in coursework (weight 0), so the
+        gradebook and Home figures the other journeys check stay as they are, whatever the practicals
+        journeys record."""
+        framework = CompetencyFramework.objects.filter(
+            code=FRAMEWORK["code"], version=FRAMEWORK["version"]
+        ).first()
+        if framework is None:
+            data = FrameworkImportSerializer(data=FRAMEWORK)
+            data.is_valid(raise_exception=True)
+            framework = data.save()
+        SiteFramework.objects.get_or_create(site=site, framework=framework)
+        task, created = PracticalTask.objects.get_or_create(
+            site=site,
+            title="Prepare a vegetable bed",
+            defaults={
+                "instructions": "Form a raised bed 1.2 m wide on your plot, work the soil to a fine tilth, "
+                "then clean and store the tools.",
+                "unit_type": "crop_plot",
+                "location": "Plot 7",
+                "weight": 0,
+                "max_attempts": 6,
+                "is_published": True,
+            },
+        )
+        if created:
+            bed = PracticalCriterion.objects.create(
+                task=task, position=1, text="Bed formed to 1.2 m wide", is_critical=True
+            )
+            bed.performance_criteria.add(
+                PerformanceCriterion.objects.get(element__unit__framework=framework, code="PC1.1.1")
+            )
+            PracticalCriterion.objects.create(
+                task=task,
+                position=2,
+                text="Soil worked to a fine tilth",
+                kind="scored",
+                max_score=5,
+                pass_score=3,
+            )
+            PracticalCriterion.objects.create(task=task, position=3, text="Tools cleaned and stored")
 
     @staticmethod
     def _person(username, kind, external_id, first, last, role, password) -> PersonRef:
