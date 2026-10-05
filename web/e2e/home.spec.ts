@@ -23,7 +23,7 @@ test("a student's Home shows what is due this week, new feedback and progress, a
     for (const tab of await tabs.locator("a, button").all()) expect((await tab.boundingBox())!.height).toBeGreaterThanOrEqual(44);
     await tabs.getByRole("link", { name: /^To do/ }).click();
   } else {
-    await page.getByRole("link", { name: /^To do/ }).click();
+    await page.getByRole("banner").getByRole("link", { name: /^To do/ }).click();
   }
   await expect(page.getByRole("heading", { name: "To do", level: 1 })).toBeVisible();
   const list = page.getByRole("list", { name: "Waiting for you" });
