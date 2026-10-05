@@ -13,6 +13,7 @@ from assessments.models import (
     Accommodation,
     Assignment,
     Extension,
+    GradeCategory,
     Mark,
     SrmsTransfer,
     Submission,
@@ -370,3 +371,34 @@ def test_extensions_reach_the_late_flag_of_each_group_member(
     )
     late = dict(Submission.objects.values_list("student__external_id", "is_late"))
     assert late == {"26MRP0001": True, "26MRP0002": False}
+
+
+@pytest.mark.django_db
+def test_practical_tasks_and_graded_forums_take_categories_and_appear_in_the_working(site, student, lecturer):
+    from forums.models import Forum, ParticipationMark
+    from practicals.models import PracticalTask
+
+    practicals = GradeCategory.objects.create(site=site, name="Practicals", weight=50)
+    talk = GradeCategory.objects.create(site=site, name="Discussion", weight=50)
+    PracticalTask.objects.create(
+        site=site,
+        title="Prepare a bed",
+        weight=1,
+        is_published=True,
+        closes_at=timezone.now() - timedelta(days=1),
+        grade_category=practicals,
+    )
+    forum = Forum.objects.create(
+        site=site, title="Debate", forum_type="graded", weight=1, max_mark=10, grade_category=talk
+    )
+    working = coursework_working(site, student)
+    states = {(i["kind"], i["title"]): (i["state"], i["category"]) for i in working["items"]}
+    assert states == {
+        ("practical", "Prepare a bed"): ("zero", practicals.id),
+        ("forum", "Debate"): ("pending", talk.id),
+    }
+    assert working["coursework_percent"] == "0.00"
+    ParticipationMark.objects.create(forum=forum, student=student, mark=8)
+    # Practicals 0%, discussion 80%, equal weights.
+    assert coursework_percent(site, student) == Decimal("40.00")
+    assert coursework_percent(site, student, released_only=True) == Decimal("0.00")
