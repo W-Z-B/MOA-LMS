@@ -1,0 +1,9 @@
+# Development, test and CI tools. Never installed in a production image. Re-lock after editing:
+#   docker compose exec api python -m piptools compile --generate-hashes --strip-extras -o requirements-dev.txt requirements-dev.in
+-c requirements.txt
+pytest>=8
+pytest-django>=4.8
+pytest-cov>=5
+ruff>=0.6
+pip-audit>=2.7
+pip-tools>=7.4

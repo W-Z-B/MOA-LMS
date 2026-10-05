@@ -16,7 +16,10 @@ services:
       retries: 20
 
   api:
-    build: ./api
+    build:
+      context: ./api
+      args:
+        INSTALL_DEV: "1" # tests, lint and lock tools; production images leave them out
     env_file: .env
     command: python manage.py runserver 0.0.0.0:8000
     volumes:

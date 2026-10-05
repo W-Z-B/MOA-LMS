@@ -22,13 +22,14 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 # WeasyPrint (PDF output) needs Pango and Cairo at runtime.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libpango-1.0-0 libpangoft2-1.0-0 libcairo2 libgdk-pixbuf-2.0-0 shared-mime-info fonts-dejavu \
+    libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz-subset0 libcairo2 libgdk-pixbuf-2.0-0 shared-mime-info fonts-dejavu \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
+# Runtime packages only, pinned with hashes. Development tools live in requirements-dev.txt.
 COPY api/requirements.txt .
-RUN pip install -r requirements.txt
+RUN pip install --require-hashes -r requirements.txt
 
 COPY api/ .
 RUN python manage.py collectstatic --noinput
