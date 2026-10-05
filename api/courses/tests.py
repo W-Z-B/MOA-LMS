@@ -111,11 +111,15 @@ def test_course_files_are_stored_under_random_names_and_keep_the_name_chosen(
     """Item 1.12."""
     module = Module.objects.create(site=site, title="Week 1")
     upload = SimpleUploadedFile("Asha Persaud week 1.pdf", b"%PDF-1.7 week one")
-    created = client_for(lecturer.user).post(
-        "/api/v1/content/",
-        {"module": module.id, "kind": "file", "title": "Week 1", "file": upload},
-        format="multipart",
-    ).json()
+    created = (
+        client_for(lecturer.user)
+        .post(
+            "/api/v1/content/",
+            {"module": module.id, "kind": "file", "title": "Week 1", "file": upload},
+            format="multipart",
+        )
+        .json()
+    )
     stored = ContentItem.objects.get(pk=created["id"])
     assert stored.file.name.startswith("content/") and stored.file.name.endswith(".pdf")
     assert "Asha" not in stored.file.name
