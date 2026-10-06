@@ -2,6 +2,8 @@
 away. Any signed-in member of staff; course administrators also name stand-ins for others."""
 
 from django.db import transaction
+from django.db.models import Q, Value
+from django.db.models.functions import Concat
 from django.utils import timezone
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import mixins, serializers, status, viewsets
@@ -38,6 +40,48 @@ class WaitingItemSerializer(serializers.Serializer):
 @permission_classes([RolePermission])
 def waiting(request):
     return Response(WaitingItemSerializer(waiting_for(request.user), many=True).data)
+
+
+class ColleagueSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    name = serializers.CharField()
+    employee_no = serializers.CharField()
+
+
+@extend_schema(
+    parameters=[
+        OpenApiParameter(
+            "q", str, required=True, description="Two letters or more of a name or employee number"
+        )
+    ],
+    responses={200: ColleagueSerializer(many=True), 403: ErrorSerializer},
+    summary="Colleagues on the staff who can sign in, to name one as a stand-in",
+)
+@api_view(["GET"])
+@permission_classes([RolePermission])
+def colleagues(request):
+    """The stand-in form finds the colleague it names here: at most ten, active and able to sign in."""
+    own = getattr(request.user, "person", None)
+    if not has_role(request.user, Role.COURSE_ADMIN) and (own is None or own.kind != PersonRef.Kind.STAFF):
+        return Response(
+            {"code": "permission_denied", "detail": "Stand-ins are named by members of staff."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+    text = (request.query_params.get("q") or "").strip()
+    if len(text) < 2:
+        return Response([])
+    people = (
+        PersonRef.objects.filter(kind=PersonRef.Kind.STAFF, is_active=True, user__is_active=True)
+        .annotate(whole=Concat("first_name", Value(" "), "last_name"))
+        .filter(
+            Q(first_name__icontains=text)
+            | Q(last_name__icontains=text)
+            | Q(whole__icontains=text)
+            | Q(external_id__icontains=text)
+        )
+        .order_by("last_name", "first_name", "id")[:10]
+    )
+    return Response([{"id": p.pk, "name": p.full_name, "employee_no": p.external_id} for p in people])
 
 
 class StaffPerson(serializers.PrimaryKeyRelatedField):

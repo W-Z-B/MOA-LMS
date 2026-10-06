@@ -1,0 +1,433 @@
+/* Practicals and the logbook (items 3.12 to 3.15): used on a phone in the field, in bright sunlight, often
+   with one hand. Big targets (48px and more), strong borders and solid fills for a chosen answer, and a
+   mark (tick or cross) beside every colour so nothing is said by colour alone. */
+
+.practicals {
+  --met: #1d5631; /* white on it 8.6:1 */
+  --met-bg: #e3f0e6;
+}
+
+.section-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 12px;
+}
+.section-links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--field);
+  border-radius: 22px;
+  background: var(--card);
+  color: var(--ink-2);
+  font-weight: 600;
+  text-decoration: none;
+}
+.section-links a[aria-current="page"] {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: #ffffff;
+}
+.field-waiting {
+  display: flex;
+  margin: 0 0 12px;
+}
+.wrap-head {
+  flex-wrap: wrap;
+}
+.wrap-head h2,
+.wrap-head h3,
+.module h3 {
+  overflow-wrap: anywhere;
+}
+.pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.pill.critical {
+  background: var(--ink);
+  color: #ffffff;
+  margin-left: 6px;
+}
+
+/* Big buttons for the main actions on a phone. */
+button.big {
+  min-height: 52px;
+  font-size: 16px;
+  font-weight: 700;
+  padding: 0 20px;
+}
+.big-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0 0 14px;
+}
+.big-buttons > * {
+  flex: 1 1 160px;
+}
+
+/* The student picker: one big button a person, the name first. */
+.pick-list {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+button.pick {
+  width: 100%;
+  min-height: 64px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 2px;
+  text-align: left;
+  background: var(--card);
+  color: var(--ink);
+  border: 2px solid var(--ink-3);
+  padding: 8px 14px;
+}
+button.pick:hover {
+  background: var(--hover-row);
+}
+.pick-name {
+  font-size: 17px;
+  font-weight: 700;
+}
+.pick-sub {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-2);
+}
+
+/* The checklist. */
+.field-head h2 {
+  margin: 0;
+  font-size: 22px;
+}
+.field-head p {
+  margin: 2px 0 12px;
+}
+.criteria {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.criterion fieldset {
+  background: var(--card);
+  border: 2px solid var(--field);
+  border-radius: var(--radius-card);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.criterion.done fieldset {
+  border-color: var(--ink-3);
+}
+.criterion legend {
+  float: left; /* keeps the legend inside the card, as an ordinary first line */
+  width: 100%;
+  padding: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.criterion legend + * {
+  clear: both;
+}
+.toggle-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+button.toggle {
+  min-height: 56px;
+  font-size: 17px;
+  font-weight: 700;
+  background: var(--card);
+  color: var(--ink);
+  border: 2px solid var(--ink-3);
+}
+button.toggle:hover {
+  background: var(--hover-row);
+}
+button.toggle[aria-pressed="true"].yes {
+  background: var(--met);
+  border-color: var(--met);
+  color: #ffffff;
+}
+button.toggle[aria-pressed="true"].no {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #ffffff;
+}
+.score-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+button.toggle.score {
+  min-width: 52px;
+  min-height: 52px;
+  padding: 0 8px;
+  flex: 1 0 52px;
+}
+.criterion-comment input {
+  min-height: 44px;
+}
+.checklist textarea {
+  min-height: 88px;
+}
+.checklist,
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.checklist > *,
+.field > * {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+/* The save bar stays at the foot of the screen, within reach of a thumb. */
+.sticky-save {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  padding: 10px 0;
+  background: var(--paper);
+  border-top: 2px solid var(--ink-3);
+}
+.sticky-save button {
+  flex: 1 1 200px;
+}
+.tally {
+  font-size: 16px;
+  font-weight: 700;
+}
+.saved-panel:focus {
+  outline: 3px solid var(--ink);
+}
+
+/* Photos and the place. */
+.field-photos,
+.field-place {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--card);
+}
+.field-photos legend,
+.field-place legend {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.field-photos p,
+.field-place p {
+  margin: 0;
+}
+label.file-button {
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  min-height: 52px;
+  padding: 0 16px;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+}
+label.file-button.secondary {
+  background: var(--card);
+  color: var(--accent);
+  border-color: var(--field);
+}
+label.file-button:focus-within {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+label.file-button.disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.thumbs {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.thumb {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 96px;
+}
+.thumb img {
+  width: 96px;
+  height: 96px;
+  object-fit: cover;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--rule);
+  display: block;
+}
+.thumb-name {
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+/* Results, read back. */
+.results {
+  gap: 6px;
+  margin: 8px 0;
+}
+.result {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+.result-mark {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: #ffffff;
+}
+.result.met .result-mark {
+  background: var(--met);
+}
+.result.not-met .result-mark {
+  background: var(--danger);
+}
+.result-comment {
+  display: block;
+  color: var(--ink-2);
+  font-style: italic;
+}
+.task-block {
+  margin-bottom: 18px;
+}
+.task-block h3 {
+  margin: 12px 0 2px;
+  font-size: 17px;
+}
+.task-block details {
+  margin: 6px 0 10px;
+}
+.task-block summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+/* Lists inside cards, and choices. */
+.unit-lines {
+  margin-top: 8px;
+  gap: 6px;
+}
+.spread {
+  flex-wrap: wrap;
+  gap: 4px 10px;
+}
+.check-row {
+  min-height: 44px;
+  font-weight: 500;
+}
+.check-row input {
+  width: 22px;
+  height: 22px;
+  flex: none;
+}
+.map-unit {
+  margin-bottom: 8px;
+}
+.choice-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+label.choice {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 0 14px;
+  border: 2px solid var(--field);
+  border-radius: var(--radius-control);
+  background: var(--card);
+  font-size: 15px;
+  cursor: pointer;
+}
+label.choice.chosen {
+  border-color: var(--ink);
+}
+label.choice input {
+  width: 20px;
+  height: 20px;
+}
+.chip-competent,
+.chip-logbook-signed {
+  background: var(--met-bg);
+  color: var(--met);
+}
+.chip-not_yet_competent,
+.chip-logbook-returned {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+.chip-not_assessed {
+  background: var(--stripe);
+  color: var(--ink-3);
+}
+.chip-logbook-pending {
+  background: var(--warn-bg);
+  color: var(--amber-text);
+}
+.hours {
+  gap: 4px;
+  margin: 6px 0;
+}
+.hours .total {
+  border-top: 1px solid var(--rule);
+  padding-top: 4px;
+}
+.download-row {
+  margin-bottom: 14px;
+}
+.download-row a.button {
+  min-height: 48px;
+}
+
+@media (max-width: 760px) {
+  .practicals .module {
+    padding: 12px;
+  }
+  .practicals button.small-button {
+    min-height: 44px;
+  }
+}

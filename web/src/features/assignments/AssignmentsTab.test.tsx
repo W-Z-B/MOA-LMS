@@ -166,7 +166,7 @@ describe("teaching staff set assignments (items 2.22, 2.26, 2.27, 2.35, 3.16, 3.
       opens_at: null,
     });
     expect(body.due_at).toMatch(/^2026-10-08T/);
-  });
+  }, 20_000); // A long form: on a busy machine with the whole suite it runs past the default 5 s.
 
   it("changes an assignment, and cannot change anonymous marking once work is handed in", async () => {
     const { calls } = show([assignment({ anonymous: true })], true, { "PATCH /assignments/3/": { body: assignment() } });

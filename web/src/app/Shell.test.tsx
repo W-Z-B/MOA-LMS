@@ -223,6 +223,9 @@ describe("search", () => {
     expect(within(pages).getAllByRole("option").map((o) => o.querySelector(".search-title")?.textContent)).toEqual([
       "To do",
       "My courses",
+      "Messages",
+      "Calendar",
+      "Discussion",
       "My data",
       "My account",
       "Notification settings",
