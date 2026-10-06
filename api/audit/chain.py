@@ -19,7 +19,7 @@ import logging
 
 from django.db import connection
 
-from core.crypto import chain_key
+from core.crypto import chain_key, chain_keys
 
 log = logging.getLogger(__name__)
 # Names the advisory lock that puts audit rows in a single line (any constant unique in the database).
@@ -54,10 +54,20 @@ def canonical(row) -> bytes:
     return json.dumps(content, sort_keys=True, separators=(",", ":"), default=str).encode("utf-8")
 
 
-def link(previous: str, row) -> str:
+def link(previous: str, row, key: bytes | None = None) -> str:
+    """The fingerprint of a row after `previous`, under the newest key unless another is given."""
     return hmac.new(
-        chain_key(), previous.encode("ascii") + b"\n" + canonical(row), hashlib.sha256
+        key or chain_key(), previous.encode("ascii") + b"\n" + canonical(row), hashlib.sha256
     ).hexdigest()
+
+
+def fits(previous: str, row, keys: list[bytes]) -> bytes | None:
+    """The key under which the row's fingerprint fits, or None. Rows written before the encryption key was
+    changed were sealed with a key derived from the old one (core.crypto.chain_keys): each is tried."""
+    for key in keys:
+        if hmac.compare_digest(link(previous, row, key), row.chain):
+            return key
+    return None
 
 
 def lock() -> None:
@@ -78,10 +88,15 @@ def walk() -> tuple[int, int | None, str, int | None]:
     from audit.models import AuditLog
 
     previous, rows, last_id = "", 0, None
+    allowed = chain_keys()  # newest first
     fields = ("id", "at", "actor_id", "action", "entity", "entity_id", "before", "after", "source_ip")
     for row in AuditLog.objects.order_by("id").only(*fields, "subject", "reason", "chain").iterator(2000):
-        if not hmac.compare_digest(link(previous, row), row.chain):
+        fitted = fits(previous, row, [allowed[-1], *allowed[:-1]])  # the key that fitted last, first
+        if fitted is None:
             return rows, last_id, previous, row.id
+        # Keys only ever get newer along the chain: once a row fits a key, no later row may fit an older
+        # one, so whoever holds a retired key cannot add or change entries written after it was retired.
+        allowed = allowed[: allowed.index(fitted) + 1]
         previous, rows, last_id = row.chain, rows + 1, row.id
     return rows, last_id, previous, None
 

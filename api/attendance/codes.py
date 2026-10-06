@@ -25,7 +25,9 @@ SKEW_SECONDS = 5  # a code "from the future" by a few seconds is the server's ow
 
 
 def _key() -> bytes:
-    raw = getattr(settings, "FIELD_ENCRYPTION_KEY", "") or ""
+    from core.crypto import keys
+
+    raw = (keys() or [""])[0]  # the newest key (core.crypto)
     if not raw:
         raise ImproperlyConfigured("FIELD_ENCRYPTION_KEY is not set; check-in codes cannot be made")
     return hashlib.sha256(b"attendance-check-in:" + raw.encode("utf-8")).digest()
