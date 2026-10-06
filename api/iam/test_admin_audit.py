@@ -52,7 +52,9 @@ def test_adding_changing_and_removing_in_the_admin_is_audited(root):
 
     changed = client.post(f"/admin/auth/group/{group.pk}/change/", {"name": "External examiners"})
     assert changed.status_code == 302
-    renamed, unchosen = AuditLog.objects.filter(entity="auth.group", action="update", id__gt=chosen.id).order_by("id")
+    renamed, unchosen = AuditLog.objects.filter(
+        entity="auth.group", action="update", id__gt=chosen.id
+    ).order_by("id")
     assert renamed.before["name"] == "Examiners" and renamed.after["name"] == "External examiners"
     assert unchosen.before == {"permissions": [permission.pk]} and unchosen.after == {"permissions": []}
 
