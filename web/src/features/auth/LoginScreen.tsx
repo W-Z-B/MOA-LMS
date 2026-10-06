@@ -5,13 +5,17 @@ import { AuthFrame } from "./AuthFrame";
 
 interface Props {
   onSignedIn: (me: Me) => void;
-  /** Why the server ended the last session, if it did. */
+  /** Why the server ended the last session, if it did, or that a password was just saved. */
   notice?: string | null;
+  /** The username to start with, after choosing a password from an emailed link. */
+  knownUsername?: string;
+  /** Opens the page that emails a link to choose a new password (item 1.22). */
+  onForgot?: () => void;
 }
 
 /** Login, then the authenticator code for lecturers and administrators (with first-time enrolment). */
-export function LoginScreen({ onSignedIn, notice }: Props) {
-  const [username, setUsername] = useState("");
+export function LoginScreen({ onSignedIn, notice, knownUsername = "", onForgot }: Props) {
+  const [username, setUsername] = useState(knownUsername);
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
   const [stage, setStage] = useState<"credentials" | "mfa">("credentials");
@@ -122,6 +126,11 @@ export function LoginScreen({ onSignedIn, notice }: Props) {
         <button type="submit" className="wide" disabled={busy}>
           {stage === "credentials" ? "Sign in" : "Verify"}
         </button>
+        {stage === "credentials" && onForgot && (
+          <button type="button" className="link accent" onClick={onForgot}>
+            Forgot your password?
+          </button>
+        )}
       </form>
     </AuthFrame>
   );

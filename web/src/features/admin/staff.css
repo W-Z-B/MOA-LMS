@@ -1,0 +1,108 @@
+/* Staff development and the console (items 1.17 to 1.23, 5.02 to 5.11): built from the shared tokens. */
+.plain-tabs {
+  list-style: none;
+  padding: 0;
+}
+.plain-tabs .tab {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+.staff-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.staff-section h2,
+.staff-section h3,
+.staff-section > p {
+  margin: 0;
+}
+.staff-section h3 {
+  font-size: 15px;
+}
+.rows.flush > li {
+  padding: 12px 0;
+  overflow-wrap: anywhere;
+}
+.rows.flush > li:first-child {
+  border-top: 0;
+}
+.row-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 12px;
+}
+.row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+.scroll-box {
+  overflow-x: auto;
+}
+.scroll-box table {
+  min-width: 520px;
+}
+.facts {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 4px 14px;
+  margin: 0;
+}
+.facts dt {
+  color: var(--muted);
+}
+.facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.chip-valid,
+.chip-done,
+.chip-intact {
+  background: var(--tint);
+  color: var(--tint-ink);
+}
+.chip-overdue,
+.chip-withdrawn,
+.chip-broken {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+.chip-due,
+.chip-expired,
+.chip-requested {
+  background: var(--warn-bg);
+  color: var(--amber-text);
+}
+details.run > summary {
+  cursor: pointer;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+@media (max-width: 760px) {
+  .row-actions button,
+  .row-actions a.button {
+    flex: 1 1 140px;
+    justify-content: center;
+  }
+  .facts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .facts dd {
+    margin-bottom: 6px;
+  }
+}
+.small-gap {
+  margin: 2px 0 0;
+}
+.months {
+  width: 84px;
+}

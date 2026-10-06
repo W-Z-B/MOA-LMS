@@ -19,7 +19,7 @@ interface Props {
 const MINE = [
   { path: "/courses", label: "My courses", desc: "Your course sites" },
   { path: "/my-data", label: "My data", desc: "What the LMS holds about you" },
-  { path: "/account", label: "My account", desc: "Authenticator and signed-in devices" },
+  { path: "/account", label: "My account", desc: "Password, sign-in email and devices" },
 ];
 
 /** The person's own pages and Sign out, behind their initials (as in the HRMS). */
