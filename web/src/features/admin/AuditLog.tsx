@@ -62,7 +62,7 @@ export function AuditLog() {
     `/audit/?${query}${query ? "&" : ""}page=${page}`,
     "Could not load the audit log.",
   );
-  const set = (field: keyof typeof EMPTY) => (e: { target: { value: string } }) => setForm({ ...form, [field]: e.target.value });
+  const set = (field: keyof typeof EMPTY) => (e: { target: { value: string } }) => setForm((prev) => ({ ...prev, [field]: e.target.value }));
   const apply = (e: FormEvent) => {
     e.preventDefault();
     setPage(1);

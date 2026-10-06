@@ -102,11 +102,11 @@ export function TaskList({ siteId, onNavigate }: Props) {
           <div className="grid2">
             <label className="span2">
               Title
-              <input value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} required maxLength={160} />
+              <input value={draft.title} onChange={(e) => setDraft((prev) => ({ ...prev, title: e.target.value }))} required maxLength={160} />
             </label>
             <label>
               Where it is done
-              <select value={draft.unit_type} onChange={(e) => setDraft({ ...draft, unit_type: e.target.value as UnitType })}>
+              <select value={draft.unit_type} onChange={(e) => setDraft((prev) => ({ ...prev, unit_type: e.target.value as UnitType }))}>
                 {UNIT_TYPES.map((u) => (
                   <option key={u.value} value={u.value}>
                     {u.label}
@@ -116,27 +116,27 @@ export function TaskList({ siteId, onNavigate }: Props) {
             </label>
             <label>
               Location
-              <input value={draft.location} onChange={(e) => setDraft({ ...draft, location: e.target.value })} placeholder="Plot 7" maxLength={160} />
+              <input value={draft.location} onChange={(e) => setDraft((prev) => ({ ...prev, location: e.target.value }))} placeholder="Plot 7" maxLength={160} />
             </label>
             <label>
               Weight in coursework (0 if it does not count)
-              <input type="number" min={0} step="0.5" value={draft.weight} onChange={(e) => setDraft({ ...draft, weight: e.target.value })} required />
+              <input type="number" min={0} step="0.5" value={draft.weight} onChange={(e) => setDraft((prev) => ({ ...prev, weight: e.target.value }))} required />
             </label>
             <label>
               Attempts allowed
-              <input type="number" min={1} max={10} value={draft.max_attempts} onChange={(e) => setDraft({ ...draft, max_attempts: e.target.value })} required />
+              <input type="number" min={1} max={10} value={draft.max_attempts} onChange={(e) => setDraft((prev) => ({ ...prev, max_attempts: e.target.value }))} required />
             </label>
             <label>
               Opens
-              <input type="datetime-local" value={draft.opens_at} onChange={(e) => setDraft({ ...draft, opens_at: e.target.value })} />
+              <input type="datetime-local" value={draft.opens_at} onChange={(e) => setDraft((prev) => ({ ...prev, opens_at: e.target.value }))} />
             </label>
             <label>
               Closes
-              <input type="datetime-local" value={draft.closes_at} onChange={(e) => setDraft({ ...draft, closes_at: e.target.value })} />
+              <input type="datetime-local" value={draft.closes_at} onChange={(e) => setDraft((prev) => ({ ...prev, closes_at: e.target.value }))} />
             </label>
             <label className="span2">
               Instructions
-              <textarea value={draft.instructions} onChange={(e) => setDraft({ ...draft, instructions: e.target.value })} />
+              <textarea value={draft.instructions} onChange={(e) => setDraft((prev) => ({ ...prev, instructions: e.target.value }))} />
             </label>
           </div>
           <p className="muted small">Add the checklist's criteria next. Publish the task when the checklist is ready.</p>

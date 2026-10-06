@@ -155,7 +155,7 @@ export function Register({ session }: { session: ClassSession }) {
                     name={`att-${r.person_id}`}
                     value={s}
                     checked={marks[r.person_id] === s}
-                    onChange={() => setMarks({ ...marks, [r.person_id]: s })}
+                    onChange={() => setMarks((prev) => ({ ...prev, [r.person_id]: s }))}
                   />
                   {STATUS_LABEL[s]}
                 </label>

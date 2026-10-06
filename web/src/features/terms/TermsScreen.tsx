@@ -128,7 +128,7 @@ export default function TermsScreen() {
     }
   }
 
-  const field = (name: keyof Draft, value: string) => draft && setDraft({ ...draft, [name]: value });
+  const field = (name: keyof Draft, value: string) => draft && setDraft((prev) => prev && ({ ...prev, [name]: value }));
 
   return (
     <>

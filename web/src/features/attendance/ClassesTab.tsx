@@ -156,28 +156,28 @@ function NewClass({ siteId, onMade }: { siteId: number; onMade: () => void }) {
       <h3>Add a class</h3>
       <label>
         Title
-        <input required maxLength={160} value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} />
+        <input required maxLength={160} value={draft.title} onChange={(e) => setDraft((prev) => prev && ({ ...prev, title: e.target.value }))} />
       </label>
       <div className="grid2">
         <label>
           Starts
-          <input required type="datetime-local" value={draft.starts} onChange={(e) => setDraft({ ...draft, starts: e.target.value })} />
+          <input required type="datetime-local" value={draft.starts} onChange={(e) => setDraft((prev) => prev && ({ ...prev, starts: e.target.value }))} />
         </label>
         <label>
           Ends
-          <input required type="datetime-local" value={draft.ends} onChange={(e) => setDraft({ ...draft, ends: e.target.value })} />
+          <input required type="datetime-local" value={draft.ends} onChange={(e) => setDraft((prev) => prev && ({ ...prev, ends: e.target.value }))} />
         </label>
         <label>
           Room or place
-          <input maxLength={160} value={draft.location} onChange={(e) => setDraft({ ...draft, location: e.target.value })} />
+          <input maxLength={160} value={draft.location} onChange={(e) => setDraft((prev) => prev && ({ ...prev, location: e.target.value }))} />
         </label>
         <label>
           Meeting link (https)
-          <input type="url" placeholder="https://" value={draft.meeting_url} onChange={(e) => setDraft({ ...draft, meeting_url: e.target.value })} />
+          <input type="url" placeholder="https://" value={draft.meeting_url} onChange={(e) => setDraft((prev) => prev && ({ ...prev, meeting_url: e.target.value }))} />
         </label>
         <label>
           For
-          <select value={draft.group} onChange={(e) => setDraft({ ...draft, group: e.target.value })}>
+          <select value={draft.group} onChange={(e) => setDraft((prev) => prev && ({ ...prev, group: e.target.value }))}>
             <option value="">The whole class</option>
             {groups.map((g) => (
               <option key={g.id} value={g.id}>
@@ -188,7 +188,7 @@ function NewClass({ siteId, onMade }: { siteId: number; onMade: () => void }) {
         </label>
       </div>
       <label className="inline">
-        <input type="checkbox" checked={draft.takes_attendance} onChange={(e) => setDraft({ ...draft, takes_attendance: e.target.checked })} />
+        <input type="checkbox" checked={draft.takes_attendance} onChange={(e) => setDraft((prev) => prev && ({ ...prev, takes_attendance: e.target.checked }))} />
         Take attendance at this class
       </label>
       {error && (

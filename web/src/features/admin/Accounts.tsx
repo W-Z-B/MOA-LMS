@@ -39,7 +39,7 @@ export function Accounts() {
       <form className="filters" onSubmit={count}>
         <label>
           Campus
-          <select value={scope.campus_code} onChange={(e) => setScope({ ...scope, campus_code: e.target.value })}>
+          <select value={scope.campus_code} onChange={(e) => setScope((prev) => ({ ...prev, campus_code: e.target.value }))}>
             <option value="">Any campus</option>
             {(campuses.data ?? []).map((c) => (
               <option key={c.code} value={c.code}>
@@ -50,7 +50,7 @@ export function Accounts() {
         </label>
         <label>
           Term code
-          <input value={scope.term_code} maxLength={16} placeholder="2026-27-S1" onChange={(e) => setScope({ ...scope, term_code: e.target.value.trim() })} />
+          <input value={scope.term_code} maxLength={16} placeholder="2026-27-S1" onChange={(e) => setScope((prev) => ({ ...prev, term_code: e.target.value.trim() }))} />
         </label>
         <button type="submit" className="secondary" disabled={action.busy}>
           See who would be invited

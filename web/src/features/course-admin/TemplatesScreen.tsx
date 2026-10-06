@@ -86,7 +86,7 @@ export default function TemplatesScreen() {
   }
 
   const setModule = (at: number, change: Partial<Draft["modules"][number]>) =>
-    draft && setDraft({ ...draft, modules: draft.modules.map((m, i) => (i === at ? { ...m, ...change } : m)) });
+    setDraft((d) => d && { ...d, modules: d.modules.map((m, i) => (i === at ? { ...m, ...change } : m)) });
 
   return (
     <>
@@ -139,14 +139,14 @@ export default function TemplatesScreen() {
           <h2>{draft.id ? `Edit “${draft.name}”` : "New template"}</h2>
           <label>
             Name
-            <input id="template-name" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} required />
+            <input id="template-name" value={draft.name} onChange={(e) => setDraft((prev) => prev && ({ ...prev, name: e.target.value }))} required />
           </label>
           <label>
             What it is for
-            <input id="template-description" value={draft.description} onChange={(e) => setDraft({ ...draft, description: e.target.value })} />
+            <input id="template-description" value={draft.description} onChange={(e) => setDraft((prev) => prev && ({ ...prev, description: e.target.value }))} />
           </label>
           <label className="inline">
-            <input type="checkbox" checked={draft.is_default} onChange={(e) => setDraft({ ...draft, is_default: e.target.checked })} /> The standard
+            <input type="checkbox" checked={draft.is_default} onChange={(e) => setDraft((prev) => prev && ({ ...prev, is_default: e.target.checked }))} /> The standard
             template, given to every new course
           </label>
           {draft.modules.map((m, mi) => (
@@ -192,7 +192,7 @@ export default function TemplatesScreen() {
                     type="button"
                     className="secondary small-button"
                     aria-label={`Remove module ${mi + 1}`}
-                    onClick={() => setDraft({ ...draft, modules: draft.modules.filter((_, i) => i !== mi) })}
+                    onClick={() => setDraft((prev) => prev && ({ ...prev, modules: draft.modules.filter((_, i) => i !== mi) }))}
                   >
                     Remove module
                   </button>
@@ -201,7 +201,7 @@ export default function TemplatesScreen() {
             </fieldset>
           ))}
           <div className="actions">
-            <button type="button" className="secondary" onClick={() => setDraft({ ...draft, modules: [...draft.modules, { title: "", items: [] }] })}>
+            <button type="button" className="secondary" onClick={() => setDraft((d) => d && { ...d, modules: [...d.modules, { title: "", items: [] }] })}>
               Add a module
             </button>
           </div>

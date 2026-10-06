@@ -122,7 +122,7 @@ function RunRow({ run, writes, onChanged }: { run: DisposalRun; writes: boolean;
               <form className="actions" onSubmit={keep}>
                 <label className="grow">
                   Why it is kept
-                  <input required maxLength={300} value={keeping.reason} onChange={(e) => setKeeping({ ...keeping, reason: e.target.value })} />
+                  <input required maxLength={300} value={keeping.reason} onChange={(e) => setKeeping((prev) => prev && ({ ...prev, reason: e.target.value }))} />
                 </label>
                 <button type="submit" className="secondary" disabled={action.busy}>
                   Keep it
@@ -196,7 +196,7 @@ const NEW_BREACH = { discovered_at: "", happened: "", summary: "", data_affected
 function NewBreach({ onMade }: { onMade: (message: string) => void }) {
   const [form, setForm] = useState(NEW_BREACH);
   const action = useAction();
-  const set = (field: keyof typeof NEW_BREACH) => (e: { target: { value: string } }) => setForm({ ...form, [field]: e.target.value });
+  const set = (field: keyof typeof NEW_BREACH) => (e: { target: { value: string } }) => setForm((prev) => ({ ...prev, [field]: e.target.value }));
   const submit = (e: FormEvent) => {
     e.preventDefault();
     action.run(async () => {
@@ -243,7 +243,7 @@ function NewBreach({ onMade }: { onMade: (message: string) => void }) {
           </select>
         </label>
         <label className="inline span2">
-          <input type="checkbox" checked={form.minors_affected} onChange={(e) => setForm({ ...form, minors_affected: e.target.checked })} /> Students
+          <input type="checkbox" checked={form.minors_affected} onChange={(e) => setForm((prev) => ({ ...prev, minors_affected: e.target.checked }))} /> Students
           under 18 are among them
         </label>
         <label className="span2">

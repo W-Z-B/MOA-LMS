@@ -324,7 +324,7 @@ function Checklist({ task, student, onNext, onBack }: { task: PracticalTask; stu
                     <input value={m?.comment ?? ""} maxLength={500} onChange={(e) => set(c, { comment: e.target.value })} />
                   </label>
                 ) : (
-                  <button type="button" className="link accent" onClick={() => setOpen({ ...open, [c.id]: true })}>
+                  <button type="button" className="link accent" onClick={() => setOpen((prev) => ({ ...prev, [c.id]: true }))}>
                     Add a comment
                   </button>
                 )}

@@ -83,7 +83,7 @@ export function ReportsQueue({ siteId }: { siteId?: number }) {
               <input
                 value={notes[report.id] ?? ""}
                 maxLength={300}
-                onChange={(e) => setNotes({ ...notes, [report.id]: e.target.value })}
+                onChange={(e) => setNotes((prev) => ({ ...prev, [report.id]: e.target.value }))}
               />
             </label>
             <div className="actions">
@@ -149,11 +149,11 @@ function NewForum({ siteId, onMade }: { siteId: number; onMade: () => void }) {
       <h3>New forum</h3>
       <label>
         Title
-        <input required maxLength={160} value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} />
+        <input required maxLength={160} value={draft.title} onChange={(e) => setDraft((prev) => prev && ({ ...prev, title: e.target.value }))} />
       </label>
       <label>
         Kind of forum
-        <select value={draft.forum_type} onChange={(e) => setDraft({ ...draft, forum_type: e.target.value as ForumType })}>
+        <select value={draft.forum_type} onChange={(e) => setDraft((prev) => prev && ({ ...prev, forum_type: e.target.value as ForumType }))}>
           {(Object.keys(FORUM_TYPE) as ForumType[]).map((kind) => (
             <option key={kind} value={kind}>
               {FORUM_TYPE[kind].label}
@@ -164,17 +164,17 @@ function NewForum({ siteId, onMade }: { siteId: number; onMade: () => void }) {
       <p className="muted small">{FORUM_TYPE[draft.forum_type].explain}</p>
       <label>
         What it is for (optional)
-        <textarea rows={3} value={draft.description} onChange={(e) => setDraft({ ...draft, description: e.target.value })} />
+        <textarea rows={3} value={draft.description} onChange={(e) => setDraft((prev) => prev && ({ ...prev, description: e.target.value }))} />
       </label>
       {draft.forum_type === "graded" && (
         <div className="grid2">
           <label>
             Participation mark out of
-            <input type="number" min="1" step="0.5" value={draft.max_mark} onChange={(e) => setDraft({ ...draft, max_mark: e.target.value })} />
+            <input type="number" min="1" step="0.5" value={draft.max_mark} onChange={(e) => setDraft((prev) => prev && ({ ...prev, max_mark: e.target.value }))} />
           </label>
           <label>
             Weight in coursework
-            <input type="number" min="0" step="0.5" value={draft.weight} onChange={(e) => setDraft({ ...draft, weight: e.target.value })} />
+            <input type="number" min="0" step="0.5" value={draft.weight} onChange={(e) => setDraft((prev) => prev && ({ ...prev, weight: e.target.value }))} />
           </label>
         </div>
       )}

@@ -123,15 +123,15 @@ function NewStandIn({ onMade }: { onMade: (message: string) => void }) {
           <div className="grid2">
             <label>
               From
-              <input type="date" required value={form.starts} onChange={(e) => setForm({ ...form, starts: e.target.value })} />
+              <input type="date" required value={form.starts} onChange={(e) => setForm((prev) => ({ ...prev, starts: e.target.value }))} />
             </label>
             <label>
               To
-              <input type="date" required value={form.ends} onChange={(e) => setForm({ ...form, ends: e.target.value })} />
+              <input type="date" required value={form.ends} onChange={(e) => setForm((prev) => ({ ...prev, ends: e.target.value }))} />
             </label>
             <label className="span2">
               Why (leave, travel)
-              <input value={form.reason} maxLength={200} onChange={(e) => setForm({ ...form, reason: e.target.value })} />
+              <input value={form.reason} maxLength={200} onChange={(e) => setForm((prev) => ({ ...prev, reason: e.target.value }))} />
             </label>
           </div>
           <div className="actions">

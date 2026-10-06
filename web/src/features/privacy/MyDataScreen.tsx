@@ -80,7 +80,7 @@ export function MyDataScreen() {
     setSent(null);
     try {
       await post("/privacy/corrections/", form);
-      setForm({ ...form, wrong: "", should_be: "" });
+      setForm((prev) => ({ ...prev, wrong: "", should_be: "" }));
       setSent("Your request has been sent. A course administrator will answer it.");
       loadCorrections();
     } catch (err) {
@@ -175,7 +175,7 @@ export function MyDataScreen() {
       <form className="stack panel" onSubmit={ask}>
         <label htmlFor="corr-subject">
           What is it about
-          <select id="corr-subject" value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })}>
+          <select id="corr-subject" value={form.subject} onChange={(e) => setForm((prev) => ({ ...prev, subject: e.target.value }))}>
             {SUBJECTS.map(([code, name]) => (
               <option key={code} value={code}>
                 {name}
@@ -185,11 +185,11 @@ export function MyDataScreen() {
         </label>
         <label htmlFor="corr-wrong">
           What is wrong
-          <textarea id="corr-wrong" required maxLength={1000} value={form.wrong} onChange={(e) => setForm({ ...form, wrong: e.target.value })} />
+          <textarea id="corr-wrong" required maxLength={1000} value={form.wrong} onChange={(e) => setForm((prev) => ({ ...prev, wrong: e.target.value }))} />
         </label>
         <label htmlFor="corr-should">
           What it should say
-          <textarea id="corr-should" required maxLength={1000} value={form.should_be} onChange={(e) => setForm({ ...form, should_be: e.target.value })} />
+          <textarea id="corr-should" required maxLength={1000} value={form.should_be} onChange={(e) => setForm((prev) => ({ ...prev, should_be: e.target.value }))} />
         </label>
         <div>
           <button type="submit">Send the request</button>

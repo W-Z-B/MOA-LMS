@@ -27,7 +27,7 @@ function WordingForm({
   const [form, setForm] = useState<Wording & { code: string }>({ ...start, code: "" });
   const action = useAction();
   const helpId = useId();
-  const set = (field: keyof Wording | "code") => (e: { target: { value: string } }) => setForm({ ...form, [field]: e.target.value });
+  const set = (field: keyof Wording | "code") => (e: { target: { value: string } }) => setForm((prev) => ({ ...prev, [field]: e.target.value }));
   const submit = (e: FormEvent) => {
     e.preventDefault();
     const { code, ...wording } = form;
@@ -66,7 +66,7 @@ function WordingForm({
           <input maxLength={120} value={form.signatory_title} onChange={set("signatory_title")} />
         </label>
         <label className="inline span2">
-          <input type="checkbox" checked={form.is_active} onChange={(e) => setForm({ ...form, is_active: e.target.checked })} /> In use
+          <input type="checkbox" checked={form.is_active} onChange={(e) => setForm((prev) => ({ ...prev, is_active: e.target.checked }))} /> In use
         </label>
       </div>
       <div className="actions">
