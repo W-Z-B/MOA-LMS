@@ -22,10 +22,12 @@ def _database() -> bool:
 
 
 def _storage() -> bool:
-    """The file store takes a write: a small file is made and removed in it."""
+    """The file store takes a write: a small file is made and removed in its .health directory (which the
+    backup leaves out, so the check never changes what is being copied)."""
     try:
-        os.makedirs(settings.MEDIA_ROOT, exist_ok=True)
-        with tempfile.NamedTemporaryFile(dir=settings.MEDIA_ROOT, prefix=".health-"):
+        directory = os.path.join(settings.MEDIA_ROOT, ".health")
+        os.makedirs(directory, exist_ok=True)
+        with tempfile.NamedTemporaryFile(dir=directory, prefix="check-"):
             pass
         return True
     except OSError:
