@@ -227,6 +227,11 @@ def test_journey_data_for_staff_development_invitations_and_the_console(monkeypa
     assert admin.get("/api/v1/audit/").status_code == 200
     catalogue = admin.get("/api/v1/staff-development/catalogue/").json()["results"]
     assert [(c["code"], c["self_enrol"]) for c in catalogue] == [("SD-102", "approval"), ("SD-101", "open")]
+    required = admin.get("/api/v1/staff-development/required/").json()["results"]
+    assert sorted((r["site_title"], r["source"]) for r in required) == [
+        ("First aid in the field", "hrms"),
+        ("Safe use of farm machinery", "lms"),
+    ]
 
 
 @pytest.mark.django_db
