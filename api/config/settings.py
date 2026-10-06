@@ -58,6 +58,7 @@ INSTALLED_APPS = [
     "messaging",
     "attendance",
     "calendars",
+    "helpdesk",
     "rubrics",
 ]
 
@@ -279,3 +280,11 @@ ATTENDANCE_LATE_AFTER_MINUTES = int(env("ATTENDANCE_LATE_AFTER_MINUTES", "10"))
 # To do (items 2.07 to 2.09): days after which work to mark, and a decision, are marked overdue.
 MARKING_DAYS = int(env("MARKING_DAYS", "14"))
 DECISION_DAYS = int(env("DECISION_DAYS", "7"))
+
+# --- help and going live (items 7.16, 7.17) ---
+# Help requests one person may send in an hour (item 7.17); they reach the course administrators.
+HELP_REQUESTS_PER_HOUR = int(env("HELP_REQUESTS_PER_HOUR", "5"))
+# Student orientation (item 7.16): the self-paced course seed_orientation makes, and whether a student is
+# enrolled on it at their first sign-in. On by default; set ORIENTATION_AUTO_ENROL=0 to enrol by hand.
+ORIENTATION_SITE_CODE = env("ORIENTATION_SITE_CODE", "GSA-LMS-ORIENTATION")
+ORIENTATION_AUTO_ENROL = env_bool("ORIENTATION_AUTO_ENROL", True)
