@@ -34,3 +34,43 @@ used unmodified, as ADR 0002 sets out.
 - The licence gates in CI check each component, and its dependencies, when it is added.
 - The H5P server library for PHP is GPL and is not used; only the standalone player is.
 - A component not on this list needs its own decision record or an amendment to this one.
+
+## As added: the editor, maths and PDF viewer (items 2.12 to 2.14, 5 October 2026)
+
+Added at exact versions with the content screens, and only what they use:
+
+| Package | Version | Licence | What for |
+|---|---|---|---|
+| `@tiptap/core`, `@tiptap/pm`, `@tiptap/starter-kit`, `@tiptap/extension-table`, `@tiptap/extension-image` | 3.31.4 | MIT | The page editor. TipTap's React layer is not used: a small wrapper drives the core |
+| `katex` | 0.19.0 | MIT | Maths, stored in pages as TeX (`data-math`) and drawn with `trust: false` |
+| `pdfjs-dist` | 6.4.299 | Apache-2.0 | PDFs shown in the page, without WebAssembly |
+
+Everything they bring with them is MIT: the TipTap extensions in the starter kit, the ProseMirror packages,
+`orderedmap`, `rope-sequence`, `w3c-keyname`, `linkifyjs` and `commander` (KaTeX's command line, never
+loaded by the app). `pdfjs-dist` lists `@napi-rs/canvas` (MIT) as an optional dependency for Node.js; it is
+never part of the web bundle. `node scripts/check_npm_licences.mjs` passes with no new exception.
+
+Nothing they add needs the Content-Security-Policy changed: TipTap's base styles are in the app's own
+stylesheet instead of the style element it would inject, tables are written without width styles, KaTeX
+draws into the page through the CSS object model rather than an HTML string, its fonts are served by the app as files (never inlined as data: addresses, which `font-src` refuses),
+and PDF.js runs its worker from the app's own files with WebAssembly turned off.
+
+### Page weight
+
+The shell budget stays at 160 KB compressed. The editor and KaTeX are loaded only on the screens that use
+them, so a student's pages carry neither unless a page has a formula, and the PDF viewer only when someone
+asks to see a PDF in the page. The page-weight check (`web/scripts/check-bundle-size.mjs`) used to add up
+every script in the build, which would have counted these parts against every page. It now counts what
+every page loads (index.html and what it names) against the 160 KB budget, and lists each part loaded on
+demand against a budget of 400 KB of its own.
+
+| Measured with `npm run check:bundle` | Before | After |
+|---|---|---|
+| Shell, every page | 88.9 KB | 94.8 KB |
+| Page editor (TipTap and ProseMirror) | | 134.5 KB, editing pages only |
+| KaTeX (script and stylesheet; fonts as a formula needs them) | | 78.7 KB, pages with maths |
+| PDF viewer, and its worker | | 125.2 KB and 366.9 KB, when a PDF is shown in the page |
+
+A student opening a page with maths loads about 175 KB of code, inside the 500 KB the gold standard allows
+a common page. The PDF viewer with its worker is over 500 KB on its own, once: that is why it is never
+loaded unasked. "Download" is always beside it, and the service worker keeps the viewer after its first use.

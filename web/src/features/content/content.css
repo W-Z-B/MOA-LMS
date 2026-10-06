@@ -1,0 +1,436 @@
+/* Teaching content, the page editor, course setup and course administration (items 2.12 to 2.20). Uses the
+   design tokens of index.css. Every control is 44px tall on a phone; nothing is wider than the screen. */
+
+.content-tab .module h2 {
+  margin: 0;
+  font-size: 17px;
+}
+.setup-link {
+  margin: 0 0 12px;
+}
+.module-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.module-tools,
+.item-tools,
+.add-row,
+.document-actions,
+.pdf-pages {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.add-row {
+  margin-top: 10px;
+}
+.conditions {
+  margin: 4px 0 0;
+  padding: 4px 8px;
+  border-left: 3px solid var(--amber);
+  background: var(--warn-bg);
+  color: var(--amber-text);
+  font-size: 13px;
+}
+.progress-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+.wide-bar {
+  display: block;
+  margin: 6px 0 10px;
+}
+ol.items {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+.content-item {
+  padding: 10px 0;
+  border-top: 1px solid var(--rule-soft);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.content-item:first-child {
+  border-top: 0;
+}
+.content-item[draggable="true"] {
+  cursor: grab;
+}
+.content-item.dragging {
+  opacity: 0.5;
+}
+.empty-module {
+  padding: 8px 0;
+}
+.item-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+}
+.item-title {
+  margin: 0;
+  font-size: 15px;
+}
+.done-mark {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+}
+.done-mark::before {
+  content: "\2713\00a0";
+}
+.item-tools {
+  margin-top: 8px;
+  padding: 8px;
+  background: var(--paper);
+  border-radius: var(--radius-control);
+}
+.move-to {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 6px;
+}
+.move-to label {
+  font-size: 12px;
+}
+.link-line,
+.credit {
+  margin: 4px 0 0;
+  overflow-wrap: anywhere;
+}
+a.button.small-button {
+  min-height: 34px;
+  padding: 0 12px;
+  font-size: 13px;
+}
+.block {
+  display: block;
+}
+
+/* Documents in the page (item 2.14). */
+.document {
+  margin-top: 6px;
+}
+.document-image {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin-bottom: 6px;
+  border-radius: var(--radius-control);
+}
+.pdf-viewer {
+  margin-top: 8px;
+  max-width: 100%;
+}
+.pdf-viewer canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--rule);
+  background: #fff;
+}
+.pdf-pages {
+  margin-top: 8px;
+}
+
+/* Maths drawn by KaTeX; a formula KaTeX cannot read shows its TeX, marked. */
+.page-body .katex-display,
+.math-block {
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+.math-error {
+  font-family: ui-monospace, monospace;
+  color: var(--danger);
+}
+
+/* The page editor (items 2.12 and 2.13). */
+.page-editor h1 {
+  margin-bottom: 12px;
+}
+.back-link {
+  margin: 0 0 8px;
+  font-size: 14px;
+}
+.editor-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 16px;
+  margin: 14px 0;
+}
+.field-label {
+  display: block;
+  font-size: 13.5px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.rich-editor {
+  border: 1px solid var(--field);
+  border-radius: var(--radius-control);
+  background: var(--card);
+  min-width: 0;
+}
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 6px;
+  border-bottom: 1px solid var(--rule);
+  background: var(--head-row);
+}
+button.tool {
+  min-height: 36px;
+  padding: 0 10px;
+  font-size: 13px;
+  background: var(--card);
+  color: var(--ink-2);
+  border: 1px solid var(--rule);
+}
+button.tool:hover {
+  background: var(--hover-row);
+}
+button.tool[aria-pressed="true"] {
+  background: var(--tint);
+  color: var(--tint-ink);
+  border-color: var(--amber);
+}
+.editor-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border-bottom: 1px solid var(--rule);
+  background: var(--paper);
+}
+.editor-panel p {
+  margin: 0;
+}
+.maths-preview {
+  min-height: 40px;
+  padding: 6px 8px;
+  background: var(--card);
+  border: 1px dashed var(--field);
+  border-radius: var(--radius-control);
+  overflow-x: auto;
+}
+.editor-area {
+  min-height: 280px;
+  padding: 12px 14px;
+  outline: none;
+  overflow-wrap: anywhere;
+}
+.editor-area:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+.editor-area img {
+  max-width: 100%;
+  height: auto;
+}
+.editor-area img.ProseMirror-selectednode,
+.editor-area .math-node.ProseMirror-selectednode {
+  outline: 2px solid var(--accent);
+}
+.editor-area table {
+  border-collapse: collapse;
+  width: 100%;
+}
+.editor-area td,
+.editor-area th {
+  border: 1px solid var(--rule);
+  padding: 4px 6px;
+  vertical-align: top;
+}
+.editor-area .selectedCell {
+  background: var(--tint);
+}
+.math-node {
+  cursor: pointer;
+}
+.editor-side h2 {
+  margin: 0 0 6px;
+  font-size: 15px;
+}
+.issues-title {
+  font-size: 13px;
+  margin: 6px 0;
+}
+.issues ul {
+  margin: 0;
+  padding-left: 18px;
+}
+.issue {
+  margin-bottom: 6px;
+  font-size: 13.5px;
+}
+.issue-error {
+  color: var(--danger);
+}
+.notice.warn {
+  background: var(--warn-bg);
+  color: var(--amber-text);
+}
+.notice p {
+  margin: 0;
+}
+.page-reading {
+  max-width: 72ch;
+  line-height: 1.6;
+}
+
+/* Course setup (items 2.17, 2.18 and 2.20) and course administration. */
+.setup-section {
+  margin-bottom: 16px;
+}
+.setup-section h2 {
+  margin-bottom: 8px;
+}
+.setup-section .stack {
+  margin-top: 8px;
+}
+table.dates input {
+  min-width: 0;
+}
+tr.changed td {
+  background: var(--tint);
+}
+.shift {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--rule);
+}
+.shift h3 {
+  margin: 0;
+  font-size: 15px;
+}
+.takedowns li,
+.allowances li,
+.templates li {
+  margin-bottom: 10px;
+}
+.reason {
+  white-space: pre-wrap;
+}
+.template-module {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.template-page {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-left: 10px;
+  border-left: 3px solid var(--rule);
+}
+.template-page button.link {
+  align-self: flex-start;
+}
+
+@media (max-width: 760px) {
+  .editor-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  button.tool,
+  a.button.small-button {
+    min-height: 44px;
+  }
+  .template-page button.link {
+    min-height: 44px;
+  }
+}
+
+/* ProseMirror's own base styles, which TipTap would otherwise add as a style element (refused by the
+   Content-Security-Policy): editing keeps spaces and line breaks, and the gap cursor shows where to type. */
+.ProseMirror {
+  position: relative;
+  word-wrap: break-word;
+  white-space: pre-wrap;
+  white-space: break-spaces;
+  font-variant-ligatures: none;
+  font-feature-settings: "liga" 0;
+}
+.ProseMirror [contenteditable="false"] {
+  white-space: normal;
+}
+.ProseMirror [contenteditable="false"] [contenteditable="true"] {
+  white-space: pre-wrap;
+}
+.ProseMirror pre {
+  white-space: pre-wrap;
+}
+img.ProseMirror-separator {
+  display: inline !important;
+  border: none !important;
+  margin: 0 !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+.ProseMirror-gapcursor {
+  display: none;
+  pointer-events: none;
+  position: absolute;
+  margin: 0;
+}
+.ProseMirror-gapcursor:after {
+  content: "";
+  display: block;
+  position: absolute;
+  top: -2px;
+  width: 20px;
+  border-top: 1px solid var(--ink);
+  animation: ProseMirror-cursor-blink 1.1s steps(2, start) infinite;
+}
+@keyframes ProseMirror-cursor-blink {
+  to {
+    visibility: hidden;
+  }
+}
+.ProseMirror-hideselection *::selection {
+  background: transparent;
+}
+.ProseMirror-hideselection * {
+  caret-color: transparent;
+}
+.ProseMirror-focused .ProseMirror-gapcursor {
+  display: block;
+}
+
+/* A long module or course name never widens a field past the screen. */
+.content-tab select,
+.setup select,
+.page-editor select,
+.release-editor select {
+  max-width: 100%;
+  min-width: 0;
+}
+
+/* Radio buttons and tick boxes big enough to hit (WCAG 2.5.8): 24px, on a line of their own. */
+.content-tab label.inline,
+.setup label.inline,
+.page-editor label.inline,
+.release-editor label.inline,
+.template-form label.inline {
+  min-height: 44px;
+}
+.content-tab label.inline input,
+.setup label.inline input,
+.page-editor label.inline input,
+.release-editor label.inline input,
+.template-form label.inline input {
+  width: 24px;
+  height: 24px;
+  flex: none;
+  margin: 0;
+}

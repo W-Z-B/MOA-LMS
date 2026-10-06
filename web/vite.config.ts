@@ -16,6 +16,9 @@ export default defineConfig({
   build: {
     outDir: "dist",
     sourcemap: false,
+    // Fonts are always files: the Content-Security-Policy (font-src 'self') refuses fonts in data: addresses,
+    // which Vite would otherwise make of KaTeX's smallest fonts.
+    assetsInlineLimit: (file) => (/\.(woff2?|ttf)$/.test(file) ? false : undefined),
   },
   // Component and logic tests (npm test). Browser journeys are Playwright tests in e2e/.
   test: {
@@ -36,6 +39,9 @@ export default defineConfig({
         "src/features/home/**",
         "src/features/todo/**",
         "src/features/courses/MyCoursesScreen.tsx",
+        // Teaching content, the page editor, course setup and course administration (items 2.12 to 2.20).
+        "src/features/content/**",
+        "src/features/course-admin/**",
       ],
       exclude: ["src/**/*.test.*", "src/test/**"],
       reporter: ["text"],

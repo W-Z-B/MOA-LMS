@@ -62,9 +62,15 @@ def test_journey_data_signs_in_and_teaches_one_course(monkeypatch):
     call_command("seed_journeys", "--fictional", verbosity=0)
     call_command("seed_journeys", "--fictional", verbosity=0)  # idempotent
 
-    site = CourseSite.objects.get()
+    site = CourseSite.objects.get(code="AGR101-2026-27-S1-MRP")
     assert site.is_published and site.source == CourseSite.Source.LOCAL
     assert site.memberships.count() == 3
+    # The lecturer also teaches last year's AGR102, dated, and this year's, empty, to copy one into the other.
+    earlier = CourseSite.objects.get(code="AGR102-2025-26-S1-MRP")
+    later = CourseSite.objects.get(code="AGR102-2026-27-S1-MRP")
+    assert earlier.modules.get().available_from is not None and earlier.assignments.count() == 1
+    assert not later.modules.exists() and not later.is_published
+    assert {m.person.external_id for m in later.memberships.all()} == {"E0901"}
     assert Assignment.objects.filter(site=site).count() == 3  # with "Field notebook check", for the Homes
     assert Mark.objects.filter(submission__assignment__site=site, is_released=True).count() == 2
 
