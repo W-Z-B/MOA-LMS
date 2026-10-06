@@ -29,6 +29,7 @@ the recommended answer"; GSA may revise any of them by a new record.
 | [0017](0017-competency-records.md) | Competency records beside marks | D8 | Proposed, open |
 | [0018](0018-text-and-whatsapp-notices.md) | Text messages and WhatsApp for urgent notices only | D12 | Proposed, open |
 | [0019](0019-required-training.md) | The HRMS says which staff must take which training | D13 | Proposed, open |
+| [0020](0020-reports-by-role-grant.md) | Who reads the reports that leave a course: heads of department by unit, the Registrar by campus | | Proposed; built this way, GSA to confirm |
 
 ## Open decisions with no record yet
 
