@@ -33,3 +33,8 @@ backups/
 .idea/
 .DS_Store
 Thumbs.db
+
+# test output
+web/coverage/
+web/test-results/
+web/playwright-report/

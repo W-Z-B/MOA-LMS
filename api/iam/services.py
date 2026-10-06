@@ -46,17 +46,16 @@ def teaches(user) -> bool:
     cached = getattr(user, "_teaches", None)
     if cached is None:
         person = getattr(user, "person", None)
-        cached = person is not None and person.memberships.filter(
-            is_active=True, role__in=TEACHING_SITE_ROLES
-        ).exists()
+        cached = (
+            person is not None
+            and person.memberships.filter(is_active=True, role__in=TEACHING_SITE_ROLES).exists()
+        )
         user._teaches = cached
     return cached
 
 
 def requires_mfa(user) -> bool:
-    return (
-        bool(role_codes(user) & Role.MFA_REQUIRED) or getattr(user, "is_superuser", False) or teaches(user)
-    )
+    return bool(role_codes(user) & Role.MFA_REQUIRED) or getattr(user, "is_superuser", False) or teaches(user)
 
 
 def scope_queryset(user, queryset, campus_field: str = "campus_code"):

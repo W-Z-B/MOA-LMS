@@ -7,7 +7,7 @@ from django.shortcuts import get_object_or_404
 from django.urls import path
 from django.utils import timezone
 from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_field, extend_schema_view
 from rest_framework import serializers
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.exceptions import PermissionDenied
@@ -23,6 +23,14 @@ from courses.access import TaughtRecord, can_teach, person_of, site_role, taught
 from courses.api import TeachingViewSet
 from courses.models import CourseSite, Membership
 from iam.permissions import RolePermission
+
+
+class ReleasedMarkSerializer(serializers.Serializer):
+    """A mark as the submission shows it. Students see it only once it is released."""
+
+    mark = serializers.CharField(help_text="Decimal, as a string")
+    feedback = serializers.CharField()
+    is_released = serializers.BooleanField()
 
 
 class AssignmentSerializer(serializers.ModelSerializer):
@@ -88,6 +96,7 @@ class SubmissionSerializer(serializers.ModelSerializer):
     def get_download_url(self, obj) -> str | None:
         return f"/api/v1/submissions/{obj.id}/download/" if obj.file else None
 
+    @extend_schema_field(ReleasedMarkSerializer(allow_null=True))
     def get_mark(self, obj) -> dict | None:
         mark = getattr(obj, "mark", None)
         if mark is None or (self.context.get("released_only") and not mark.is_released):
@@ -118,6 +127,39 @@ class MarkSerializer(serializers.Serializer):
     is_released = serializers.BooleanField(required=False, default=False)
 
 
+class GradebookAssignmentSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    title = serializers.CharField()
+    max_mark = serializers.CharField()
+    weight = serializers.CharField()
+
+
+class GradebookCellSerializer(serializers.Serializer):
+    submitted = serializers.BooleanField()
+    late = serializers.BooleanField()
+    mark = serializers.CharField(allow_null=True)
+    feedback = serializers.CharField()
+
+
+class GradebookRowSerializer(serializers.Serializer):
+    person_id = serializers.IntegerField()
+    student_no = serializers.CharField()
+    name = serializers.CharField()
+    marks = serializers.DictField(child=GradebookCellSerializer(), help_text="Keyed by assignment id")
+    coursework_percent = serializers.CharField(allow_null=True, help_text="Weighted, as a string")
+
+
+class GradebookSerializer(serializers.Serializer):
+    """Describes assessments.services.gradebook for the API documentation."""
+
+    site = serializers.CharField(help_text="Site code")
+    assignments = GradebookAssignmentSerializer(many=True)
+    rows = GradebookRowSerializer(many=True)
+
+
+@extend_schema_view(
+    list=extend_schema(parameters=[OpenApiParameter("site", OpenApiTypes.INT, description="Only this site")])
+)
 class AssignmentViewSet(TeachingViewSet):
     serializer_class = AssignmentSerializer
 
@@ -184,7 +226,10 @@ class AssignmentViewSet(TeachingViewSet):
             record(request, "submit", submission, after={"assignment": assignment.id, "late": late})
         return Response(SubmissionSerializer(submission, context={"released_only": True}).data, status=201)
 
-    @extend_schema(responses={200: SubmissionSerializer(many=True), 403: ErrorSerializer})
+    @extend_schema(
+        responses={200: SubmissionSerializer(many=True), 403: ErrorSerializer},
+        summary="All submissions (teaching staff)",
+    )
     @action(detail=True, methods=["get"])
     def submissions(self, request, pk=None):
         assignment = self.get_object()
@@ -265,7 +310,10 @@ def download_submission(request, pk: int):
     )
 
 
-@extend_schema(responses={200: OpenApiTypes.OBJECT, 403: ErrorSerializer, 404: ErrorSerializer})
+@extend_schema(
+    responses={200: GradebookSerializer, 403: ErrorSerializer, 404: ErrorSerializer},
+    summary="Gradebook: the whole class for teaching staff, own released marks for a student",
+)
 @api_view(["GET"])
 @permission_classes([RolePermission])
 def site_gradebook(request, pk: int):

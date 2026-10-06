@@ -14,3 +14,6 @@ web/dist
 api/staticfiles
 api/media
 api/db.sqlite3
+web/coverage
+web/test-results
+web/playwright-report

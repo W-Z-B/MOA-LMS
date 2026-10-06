@@ -1,0 +1,17 @@
+# Runtime dependencies shipped in the product. Edit this file, then re-lock (see CONTRIBUTING.md):
+#   docker compose exec api python -m piptools compile --generate-hashes --strip-extras -o requirements.txt requirements.in
+# Licence policy: docs/adr/0002-licence-policy.md. scripts/check_licences.py enforces it in CI.
+django>=5.2,<6
+djangorestframework>=3.15,<4
+drf-spectacular>=0.27,<1
+procrastinate[django]>=3.10,<4
+# LGPL-3.0, used unmodified as a separate library: a named exception under ADR 0002.
+psycopg[binary]>=3.2,<4
+gunicorn>=23
+cryptography>=43
+pyotp>=2.9,<3
+# PDF output (certificates of completion are planned to use it); needs Pango at runtime, see the Dockerfile.
+weasyprint>=62
+django-cors-headers>=4.4,<5
+# Cleans the HTML of rich pages (item 2.12). MIT.
+nh3>=0.2.18,<1

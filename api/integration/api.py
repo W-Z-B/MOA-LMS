@@ -1,6 +1,8 @@
 """Integration and reference endpoints of the LMS."""
 
 from django.urls import path
+from drf_spectacular.utils import extend_schema
+from rest_framework import serializers
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.response import Response
 
@@ -11,6 +13,31 @@ from integration.auth import ServiceKeyAuthentication, scope
 from integration.models import CampusRef
 
 
+class ServiceSiteSerializer(serializers.Serializer):
+    code = serializers.CharField()
+    title = serializers.CharField()
+    term_code = serializers.CharField()
+    campus_code = serializers.CharField()
+    kind = serializers.ChoiceField(choices=CourseSite.Kind.choices)
+    is_published = serializers.BooleanField()
+
+
+class ServiceSiteListSerializer(serializers.Serializer):
+    count = serializers.IntegerField()
+    results = ServiceSiteSerializer(many=True)
+
+
+class CampusSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    code = serializers.CharField()
+    name = serializers.CharField()
+
+
+@extend_schema(
+    responses=ServiceSiteListSerializer,
+    summary="Course sites, for sibling systems (scope sites:read)",
+    tags=["integration"],
+)
 @api_view(["GET"])
 @authentication_classes([ServiceKeyAuthentication])
 @permission_classes([scope("sites:read")])
@@ -36,6 +63,7 @@ def sites(request):
     return Response({"count": len(rows), "results": rows})
 
 
+@extend_schema(responses=CampusSerializer(many=True), summary="Campuses, by the codes the HRMS owns")
 @api_view(["GET"])
 @permission_classes([RolePermission])
 def campuses(request):

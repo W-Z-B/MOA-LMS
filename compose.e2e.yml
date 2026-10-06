@@ -1,0 +1,91 @@
+# End-to-end test stack: the hosted image (deploy/railway/Dockerfile) on a throw-away database, behind TLS,
+# with the fictional journey data and the Playwright browsers. Run it with `bash scripts/e2e.sh`, which CI
+# uses too. Nothing here is a secret: every value exists only inside this short-lived stack.
+name: gsa-lms-e2e
+
+x-e2e-password: &password ${E2E_PASSWORD:-e2e-Only-Fictional-Learner-2026}
+# The fictional lecturer's authenticator secret (base32): seed_journeys enrols it, the journeys compute codes.
+x-e2e-totp: &totp ${E2E_TOTP_SECRET:-JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP}
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: lms
+      POSTGRES_USER: lms
+      POSTGRES_PASSWORD: e2e_only_not_a_secret
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lms -d lms"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+  app:
+    build:
+      context: .
+      dockerfile: deploy/railway/Dockerfile
+    environment:
+      DJANGO_SECRET_KEY: e2e-only-not-a-secret-but-long-enough-for-django-0123456789
+      FIELD_ENCRYPTION_KEY: e2e-only-not-a-secret
+      DJANGO_DEBUG: "0"
+      DJANGO_ALLOWED_HOSTS: lms-e2e
+      DB_HOST: db
+      DB_NAME: lms
+      DB_USER: lms
+      DB_PASSWORD: e2e_only_not_a_secret
+      TZ: America/Guyana
+      PORT: "8080"
+      DEMO_USER_PASSWORD: *password
+      DEMO_TOTP_SECRET: *totp
+    volumes:
+      - e2e_files:/srv/files
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request as u; u.urlopen(u.Request('http://127.0.0.1:8080/api/health/', headers={'Host': 'lms-e2e'}))"
+      interval: 5s
+      timeout: 5s
+      retries: 60
+
+  # TLS in front of the app, as the platform edge does on staging, so cookies are Secure and the
+  # browser sees HTTPS. Caddy signs the certificate itself; the tests accept it.
+  tls:
+    image: caddy:2-alpine
+    volumes:
+      - ./deploy/e2e/Caddyfile:/etc/caddy/Caddyfile:ro
+    networks:
+      default:
+        aliases:
+          - lms-e2e
+    depends_on:
+      app:
+        condition: service_healthy
+
+  playwright:
+    image: mcr.microsoft.com/playwright:v1.63.0-noble
+    working_dir: /web
+    environment:
+      E2E_BASE_URL: https://lms-e2e
+      E2E_PASSWORD: *password
+      E2E_TOTP_SECRET: *totp
+      CI: ${CI:-}
+      HOME: /tmp
+    volumes:
+      - ./web:/web
+      - e2e_node_modules:/web/node_modules
+    command: ["sh", "-c", "npm ci --no-audit --no-fund && npx playwright test"]
+    profiles: ["test"]
+    depends_on:
+      tls:
+        condition: service_started
+
+volumes:
+  e2e_node_modules:
+  e2e_files:

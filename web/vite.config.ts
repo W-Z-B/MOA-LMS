@@ -1,5 +1,5 @@
-import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import { defineConfig } from "vitest/config";
 
 // Behind Caddy (Compose) the API is same-origin. When running `npm run dev` directly on a
 // developer machine, proxy API and admin calls to the Django dev server instead.
@@ -16,5 +16,28 @@ export default defineConfig({
   build: {
     outDir: "dist",
     sourcemap: false,
+  },
+  // Component and logic tests (npm test). Browser journeys are Playwright tests in e2e/.
+  test: {
+    environment: "jsdom",
+    setupFiles: ["./src/test/setup.ts"],
+    include: ["src/**/*.test.{ts,tsx}"],
+    restoreMocks: true,
+    unstubGlobals: true,
+    coverage: {
+      provider: "v8",
+      // The client-side rules: API access, routing, sign-in, the course list and notifications. Add each
+      // screen here as it gains tests; whole screens are also covered by the Playwright journeys.
+      include: [
+        "src/api/**",
+        "src/app/router.ts",
+        "src/app/NotificationsBell.tsx",
+        "src/features/auth/**",
+        "src/features/courses/MyCoursesScreen.tsx",
+      ],
+      exclude: ["src/**/*.test.*", "src/test/**"],
+      reporter: ["text"],
+      thresholds: { lines: 85, statements: 85, functions: 85, branches: 75 },
+    },
   },
 });
