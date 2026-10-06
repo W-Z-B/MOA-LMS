@@ -44,3 +44,11 @@ minutes ahead of the server) and shown to teaching staff in the list of submissi
 accepts that the work was done in time excuses the lateness with an extension. Quiz answers already keep
 the device's time in the same way, and practical observations and logbook entries refuse a device time more
 than seven days old or ten minutes ahead.
+
+## Note on shared phones, 6 October 2026 (items 4.02, 3.15)
+
+Phones on campus and on the farm are shared. Every write kept on a device (the offline queue, and the
+photographs of a field observation or logbook entry) records the account that made it, and is listed and
+sent only while that account is signed in. What one person left waiting is never sent under someone
+else's session; it stays on the device until its owner signs in again. A write with no owner, or made with
+no one signed in, is not kept.

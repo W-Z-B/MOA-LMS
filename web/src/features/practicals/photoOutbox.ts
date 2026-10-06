@@ -16,7 +16,7 @@
 
 import { useEffect, useState } from "react";
 import { ApiError, api } from "../../api/client";
-import { isNetworkError, pending, subscribe as onQueueChange, type QueuedWrite, type Sent } from "../../app/offlineQueue";
+import { isNetworkError, pending, queueOwner, subscribe as onQueueChange, type QueuedWrite, type Sent } from "../../app/offlineQueue";
 
 export interface OutboxEntry {
   id: string;
@@ -32,8 +32,13 @@ export interface OutboxEntry {
   recordBody: unknown;
   recordKey: string | null;
   files: { name: string; type: string; blob: Blob }[];
+  /** The account that took them: like the offline queue, only that person's session sends them. */
+  owner: number | null;
   createdAt: string;
 }
+
+/** Only the signed-in person's photographs are counted or sent; anyone else's wait for their owner. */
+const mine = (entries: OutboxEntry[]) => entries.filter((e) => e.owner !== null && e.owner === queueOwner());
 
 export type PhotoOutcome = { state: "sent"; count: number } | { state: "refused"; detail: string };
 
@@ -101,7 +106,7 @@ let waiting: { id: string; count: number }[] = [];
 
 async function refresh() {
   try {
-    waiting = (await store.all()).map((e) => ({ id: e.id, count: e.files.length }));
+    waiting = mine(await store.all()).map((e) => ({ id: e.id, count: e.files.length }));
   } catch {
     waiting = [];
   }
@@ -148,6 +153,7 @@ export async function attachPhotos(
     recordBody: queued?.body ?? null,
     recordKey: queued?.idempotencyKey ?? null,
     files: files.map((f) => ({ name: f.name, type: f.type, blob: f })),
+    owner: queueOwner(),
     createdAt: new Date().toISOString(),
   };
   if (!sent.queued && (typeof navigator === "undefined" || navigator.onLine !== false)) {
@@ -188,7 +194,8 @@ export function drain(): Promise<void> {
 async function drainOnce() {
   if (typeof navigator !== "undefined" && navigator.onLine === false) return;
   const queued = new Set(pending().map((q) => q.id));
-  for (const entry of await store.all()) {
+  for (const entry of mine(await store.all())) {
+    if (entry.owner !== queueOwner()) return; // the person signed out while these were sending
     if (entry.targetId === null) {
       if (entry.queueId && queued.has(entry.queueId)) continue; // the record has not gone yet
       try {

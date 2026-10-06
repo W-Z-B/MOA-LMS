@@ -2,9 +2,14 @@
 
 import "@testing-library/jest-dom/vitest";
 import { cleanup } from "@testing-library/react";
-import { afterEach } from "vitest";
+import { afterEach, beforeEach } from "vitest";
+import { setQueueOwner } from "../app/offlineQueue";
+
+// Component tests act as one signed-in person, whose writes the offline queue may keep and send.
+beforeEach(() => setQueueOwner(1));
 
 afterEach(() => {
+  setQueueOwner(null);
   cleanup();
   localStorage.clear();
   document.cookie.split("; ").forEach((row) => {

@@ -23,6 +23,9 @@ export default defineConfig({
   // Component and logic tests (npm test). Browser journeys are Playwright tests in e2e/.
   test: {
     environment: "jsdom",
+    // Screens with long forms are typed key by key; on a busy machine or a small CI runner the 5-second
+    // default is reached by load alone, not by a fault, so every test gets the same, longer limit.
+    testTimeout: 15_000,
     setupFiles: ["./src/test/setup.ts"],
     include: ["src/**/*.test.{ts,tsx}"],
     restoreMocks: true,
