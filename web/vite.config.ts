@@ -48,6 +48,10 @@ export default defineConfig({
         "src/features/groups/**",
         "src/features/attendance/**",
         "src/features/calendar/**",
+        // --- accounts, staff development and the console ---
+        "src/features/account/**",
+        "src/features/learning/**",
+        "src/features/admin/**",
       ],
       exclude: ["src/**/*.test.*", "src/test/**"],
       reporter: ["text"],

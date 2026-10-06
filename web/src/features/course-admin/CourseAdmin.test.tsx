@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import { FrameContext } from "../../app/frame";
 import { fakeServer } from "../../test/fetch";
 import { contents } from "../content/fixtures";
-import AdminScreen from "./AdminScreen";
+import { CourseAdminLinks } from "./CourseAdminLinks";
 import { asHtml } from "./sections";
 import StorageAllowancesScreen from "./StorageAllowancesScreen";
 import TakedownsScreen from "./TakedownsScreen";
@@ -22,12 +22,12 @@ function framed(node: ReactNode) {
   return { decided, setCrumb };
 }
 
-describe("Admin (course administrators and administrators)", () => {
+describe("course administration on the Admin page (course administrators and administrators)", () => {
   it("lists only the parts that have screens, with the takedown requests waiting", async () => {
     fakeServer({ "GET /takedowns/": { body: { ...page([]), count: 2 } } });
     const onNavigate = vi.fn();
-    render(<AdminScreen onNavigate={onNavigate} />);
-    const nav = screen.getByRole("navigation", { name: "Admin" });
+    render(<CourseAdminLinks onNavigate={onNavigate} />);
+    const nav = screen.getByRole("navigation", { name: "Course administration" });
     expect(within(nav).getAllByRole("link").map((a) => a.getAttribute("href"))).toEqual(["#/admin/templates", "#/admin/takedowns", "#/admin/storage"]);
     expect(await within(nav).findByText("Takedown requests (2 waiting)")).toBeInTheDocument();
     await userEvent.click(within(nav).getByRole("link", { name: /Course templates/ }));

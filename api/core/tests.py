@@ -119,3 +119,57 @@ def test_journey_data_signs_in_and_teaches_one_course(monkeypatch):
     assert lecturer.post("/api/v1/auth/mfa/verify/", {"code": code}, format="json").json()["mfa_verified"]
     marking = lecturer.get("/api/v1/home/").json()["teaching"]["to_mark"]
     assert [row["title"] for row in marking] == ["Crop calendar for a kitchen garden: 1 to mark"]
+
+
+@pytest.mark.django_db
+def test_journey_data_for_staff_development_invitations_and_the_console(monkeypatch, tmp_path):
+    import json
+
+    from django.core.management import call_command
+    from rest_framework.test import APIClient
+
+    links_file = tmp_path / "journeys" / "links.json"
+    monkeypatch.setenv("DEMO_USER_PASSWORD", "e2e-Only-Fictional-Learner-2026")
+    monkeypatch.setenv("DEMO_TOTP_SECRET", JOURNEY_TOTP)
+    monkeypatch.setenv("JOURNEY_LINKS_FILE", str(links_file))
+    call_command("seed_journeys", "--fictional", verbosity=0)
+    written = json.loads(links_file.read_text())
+    call_command("seed_journeys", "--fictional", verbosity=0)  # idempotent: the same certificate
+    again = json.loads(links_file.read_text())
+    assert again["certificate"] == written["certificate"]
+    assert written["certificate"]["code"] == "JRNY-0000-2026"
+
+    # The invitation opens a new student's account, once: after the password is chosen it is not offered.
+    assert len(written["invitations"]) == 2 and written["invitations"][0].startswith("/#/set-password/")
+    uid, token = written["invitations"][0].split("/")[-2:]
+    anyone = APIClient()
+    assert anyone.post(
+        "/api/v1/auth/password/check/", {"uid": uid, "token": token}, format="json"
+    ).json() == {
+        "username": "S2026903",
+        "kind": "invitation",
+    }
+    chosen = {"uid": uid, "token": token, "password": "Mango-Season-Starts-2026"}
+    assert anyone.post("/api/v1/auth/password/set/", chosen, format="json").status_code == 200
+    call_command("seed_journeys", "--fictional", verbosity=0)
+    assert len(json.loads(links_file.read_text())["invitations"]) == 1
+
+    # The certificate is genuine to the public check.
+    checked = anyone.post("/api/v1/certificates/check/", written["certificate"], format="json").json()
+    assert checked["status"] == "genuine" and checked["holder"] == "Marlon Bacchus"
+    assert checked["expires_on"] is not None
+
+    # The administrator gives a code too; the open course is in the catalogue for Marlon to join.
+    admin = APIClient()
+    admin.post(
+        "/api/v1/auth/login/",
+        {"username": "ayesha.ramdin", "password": "e2e-Only-Fictional-Learner-2026"},
+        format="json",
+    )
+    me = admin.post(
+        "/api/v1/auth/mfa/verify/", {"code": pyotp.TOTP(JOURNEY_TOTP).now()}, format="json"
+    ).json()
+    assert me["roles"] == ["administrator"] and me["mfa_verified"]
+    assert admin.get("/api/v1/audit/").status_code == 200
+    catalogue = admin.get("/api/v1/staff-development/catalogue/").json()["results"]
+    assert [(c["code"], c["self_enrol"]) for c in catalogue] == [("SD-102", "approval"), ("SD-101", "open")]
