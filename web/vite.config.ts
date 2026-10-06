@@ -42,6 +42,12 @@ export default defineConfig({
         // Teaching content, the page editor, course setup and course administration (items 2.12 to 2.20).
         "src/features/content/**",
         "src/features/course-admin/**",
+        // Forums, messages, groups, classes and the calendar (items 4.08 to 4.15, 2.32).
+        "src/features/forums/**",
+        "src/features/messages/**",
+        "src/features/groups/**",
+        "src/features/attendance/**",
+        "src/features/calendar/**",
       ],
       exclude: ["src/**/*.test.*", "src/test/**"],
       reporter: ["text"],

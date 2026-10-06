@@ -142,6 +142,10 @@ class CheckInCodeSerializer(serializers.Serializer):
     code = serializers.CharField(help_text="Show it in the room, as a QR code and as text")
     valid_seconds = serializers.IntegerField()
     expires_at = serializers.DateTimeField()
+    short_code = serializers.CharField(
+        help_text="Six characters to show large in the room for students to type; good this minute and next"
+    )
+    refresh_seconds = serializers.IntegerField(help_text="Ask again after this many seconds: the next minute")
 
 
 class CheckInSerializer(serializers.Serializer):
@@ -351,11 +355,14 @@ class ClassSessionViewSet(IdempotentWrites, TeachingViewSet):
         session = self._taught()
         _check_in_open(session)
         code, seconds = codes.make(session.id)
+        short, refresh = codes.make_short(session.id)
         return Response(
             {
                 "code": code,
                 "valid_seconds": seconds,
                 "expires_at": timezone.now() + timedelta(seconds=seconds),
+                "short_code": short,
+                "refresh_seconds": refresh,
             }
         )
 
@@ -386,13 +393,16 @@ class ClassSessionViewSet(IdempotentWrites, TeachingViewSet):
             return Response(
                 {
                     "code": "code_expired",
-                    "detail": "That code has expired. Scan the code on the screen again.",
+                    "detail": "That code has expired. Use the code on the screen now.",
                 },
                 status=400,
             )
         if problem:
             return Response(
-                {"code": "code_invalid", "detail": "That is not the code for this class. Scan it again."},
+                {
+                    "code": "code_invalid",
+                    "detail": "That is not the code for this class. Check the screen and try again.",
+                },
                 status=400,
             )
         now = timezone.now()

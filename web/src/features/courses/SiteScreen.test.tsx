@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { Assignment, SiteContents } from "../../api/types";
@@ -59,7 +59,7 @@ describe("a course site in the frame (items 2.07 and 2.10)", () => {
   it("names itself in the breadcrumb, and gives each tab an address", async () => {
     const { onTab, setCrumb } = open("content");
     expect(await screen.findByRole("heading", { name: contents.site.title, level: 1 })).toBeInTheDocument();
-    expect(setCrumb).toHaveBeenCalledWith(contents.site.title);
+    await waitFor(() => expect(setCrumb).toHaveBeenCalledWith(contents.site.title));
     expect(screen.getByRole("tab", { name: "Content" })).toHaveAttribute("aria-selected", "true");
     await userEvent.click(screen.getByRole("tab", { name: "Gradebook" }));
     expect(onTab).toHaveBeenCalledWith("gradebook");
