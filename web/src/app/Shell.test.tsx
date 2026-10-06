@@ -131,6 +131,7 @@ describe("the frame", () => {
       "My data",
       "My account",
       "Notification settings",
+      "Help",
     ]);
     await user.click(within(menu).getByRole("link", { name: /My data/ }));
     expect(props.onNavigate).toHaveBeenCalledWith("/my-data");
@@ -229,6 +230,7 @@ describe("search", () => {
       "My data",
       "My account",
       "Notification settings",
+      "Help",
     ]);
   });
 

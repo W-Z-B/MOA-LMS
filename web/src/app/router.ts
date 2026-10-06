@@ -64,6 +64,9 @@ export const PAGES: readonly Page[] = [
     under: ["/staff-development", "/certificates"],
   },
   { path: "/admin", label: "Admin", desc: "Accounts, audit log, integration runs, privacy, access review and course administration", roles: [...new Set([...CONSOLE_ROLES, ...ADMIN_ROLES])] },
+  // --- help (item 7.17) ---
+  { path: "/help", label: "Help", desc: "How to do each task, step by step, and asking for help" },
+  // --- end help ---
 ];
 
 /** The pages this person may open. */
@@ -207,3 +210,34 @@ export function quizAddress(path: string): QuizView {
   return { view: "list" };
 }
 // --- end quizzes ---
+
+// --- help (item 7.17) ---
+/**
+ * Help has addresses of its own: #/help lists the help for each role, #/help/student the student's help and
+ * #/help/student/hand-in one task in it. #/help?topic=quizzes&from=/sites/4/quizzes is the Help link at the
+ * top of a page: it opens the reader's own help at that topic. #/help/ask?from=... asks for help from a
+ * page, and #/help/requests (or #/help/requests/12) lists help requests.
+ */
+export type HelpView =
+  | { view: "index" }
+  | { view: "role"; role: string; task: string | null }
+  | { view: "topic"; topic: string; from: string }
+  | { view: "ask"; from: string }
+  | { view: "requests"; id: number | null };
+
+export function helpAddress(path: string): HelpView | null {
+  const [bare, query = ""] = path.split(/\?(.*)/s);
+  const match = bare.match(/^\/help(?:\/([a-z-]+)(?:\/([a-z0-9-]+))?)?\/?$/);
+  if (!match) return null;
+  const params = new URLSearchParams(query);
+  const from = params.get("from") ?? "";
+  const [, first, second] = match;
+  if (!first) {
+    const topic = params.get("topic");
+    return topic ? { view: "topic", topic, from } : { view: "index" };
+  }
+  if (first === "ask") return { view: "ask", from };
+  if (first === "requests") return second && /^\d+$/.test(second) ? { view: "requests", id: Number(second) } : { view: "requests", id: null };
+  return { view: "role", role: first, task: second ?? null };
+}
+// --- end help ---
