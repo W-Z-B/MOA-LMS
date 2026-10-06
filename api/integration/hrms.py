@@ -1,10 +1,11 @@
-"""HRMS links: campus reference data, the staff directory, and staff training completions reported to the
-HRMS training record (items 1.23, 5.06)."""
+"""HRMS links: campus reference data, the staff directory, required training (decision D13), and staff
+training completions reported to the HRMS training record (items 1.23, 5.05, 5.06)."""
 
 from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
+from audit.services import record, snapshot
 from courses.models import Completion, CourseSite
 from integration.client import IntegrationError, call, pages, unreachable, with_retries
 from integration.models import CampusRef, IntegrationRun
@@ -73,14 +74,17 @@ def sync_staff(*, trigger: str = "schedule") -> dict:
                 setattr(person, field, values[field])
             if changed:
                 person.save(update_fields=[*changed, "updated_at"])  # saved one by one: closes accounts
-        # TODO(D13, HRMS): the directory does not yet say who supervises whom. When it sends
-        # supervisor_employee_no, approvals of staff-development enrolments go to that person.
-        if row.get("supervisor_employee_no"):
-            supervisors[person.pk] = row["supervisor_employee_no"]
+        # The directory names each person's supervisor (supervisor_employee_no, null for none): requests to
+        # join a staff-development course go to that person (staffdev.enrolment.approver_for, item 5.02).
+        # A directory that does not send the field leaves the supervisor as it was.
+        if "supervisor_employee_no" in row:
+            supervisors[person.pk] = row["supervisor_employee_no"] or None
         run.ok_()
     for person_id, number in supervisors.items():
-        boss = PersonRef.objects.filter(kind=PersonRef.Kind.STAFF, external_id=number).first()
-        PersonRef.objects.filter(pk=person_id).update(supervisor=boss)
+        boss = None
+        if number:
+            boss = PersonRef.objects.filter(kind=PersonRef.Kind.STAFF, external_id=number).first()
+        PersonRef.objects.filter(pk=person_id).exclude(supervisor=boss).update(supervisor=boss)
     for person in PersonRef.objects.filter(kind=PersonRef.Kind.STAFF, is_active=True).exclude(
         external_id__in=seen
     ):
@@ -160,4 +164,125 @@ def push_training(*, trigger: str = "schedule", only=None) -> dict:
                 reported_at=timezone.now(), external_ref=row["external_ref"]
             )
         run.ok_()
+    return run.finish()
+
+
+REQUIREMENT_FIELDS = (
+    "site",
+    "campus_code",
+    "unit_code",
+    "post_title",
+    "due_days",
+    "renewal_months",
+    "is_active",
+)
+
+
+def _requirement_values(row: dict, site: CourseSite) -> dict:
+    """The LMS's fields for one HRMS requirement. A condition the HRMS leaves null applies to everyone."""
+    return {
+        "site": site,
+        "campus_code": (row.get("campus_code") or "")[:10],
+        "unit_code": (row.get("unit_code") or "")[:20],
+        "post_title": (row.get("post_title") or "")[:160],
+        "due_days": max(1, int(row.get("due_days") or 30)),
+        "renewal_months": row.get("renewal_months") or None,
+        "is_active": True,
+    }
+
+
+@transaction.atomic
+def _keep_requirement(row: dict, site: CourseSite) -> None:
+    """Create or bring up to date the LMS's copy of one HRMS requirement, audited."""
+    from staffdev.models import RequiredTraining
+
+    values = _requirement_values(row, site)
+    requirement = RequiredTraining.objects.filter(hrms_id=row["id"]).first()
+    if requirement is None:
+        requirement = RequiredTraining.objects.create(
+            hrms_id=row["id"], source=RequiredTraining.Source.HRMS, **values
+        )
+        record(None, "create", requirement, after=snapshot(requirement), reason="From the HRMS")
+        return
+    changed = [field for field in REQUIREMENT_FIELDS if getattr(requirement, field) != values[field]]
+    if not changed:
+        return
+    before = snapshot(requirement)
+    for field in changed:
+        setattr(requirement, field, values[field])
+    requirement.save(update_fields=[*changed, "updated_at"])
+    record(None, "update", requirement, before=before, after=snapshot(requirement), reason="From the HRMS")
+
+
+@transaction.atomic
+def _retire_requirement(requirement, reason: str) -> None:
+    before = snapshot(requirement)
+    requirement.is_active = False
+    requirement.save(update_fields=["is_active", "updated_at"])
+    record(None, "update", requirement, before=before, after=snapshot(requirement), reason=reason)
+
+
+def sync_training_requirements(*, trigger: str = "schedule") -> dict:
+    """Required training from the HRMS (decision D13, ADR 0019; item 5.05), scope training:read.
+
+    The HRMS sends every requirement in force each time. Each is kept here under the HRMS's number
+    (RequiredTraining.hrms_id, source hrms) on the staff-development course whose code it names, and the daily
+    required-training run assigns it. A course code the LMS does not have is noted against the run with the
+    HRMS's title, so that a course administrator can make the course; the rest of the run carries on. A
+    requirement the HRMS no longer lists has been retired there and stops being in force here. Requirements
+    course administrators keep in the LMS are never touched, and nothing is retired unless the whole list was
+    read. A refused key (the training:read scope not given) is recorded as a failed run.
+    """
+    from staffdev.models import RequiredTraining
+
+    run = Run(IntegrationRun.Kind.REQUIREMENT_SYNC, trigger)
+    try:
+        rows = with_retries(
+            lambda: list(
+                pages(
+                    settings.HRMS_API_URL,
+                    settings.HRMS_API_KEY,
+                    "/api/v1/integration/training-requirements/",
+                    params={"page_size": 500},
+                )
+            )
+        )
+    except IntegrationError as exc:
+        if not unreachable(exc):
+            run.fail("training-requirements", f"http_{exc.status}", f"The HRMS refused the request: {exc}")
+        run.stop(str(exc))
+        return run.finish()
+    codes = {row.get("course_code") for row in rows if row.get("course_code")}
+    sites = {
+        site.code: site
+        for site in CourseSite.objects.filter(code__in=codes, kind=CourseSite.Kind.STAFF_DEVELOPMENT)
+    }
+    kept, unmatched = set(), set()
+    for row in rows:
+        code, title = row.get("course_code") or "", row.get("title") or ""
+        site = sites.get(code)
+        if site is None:
+            unmatched.add(row["id"])
+            run.note(
+                f"hrms:{row['id']}",
+                "unmatched_course",
+                f"{title}: no staff-development course has the code {code}. Make it and it is read next time."
+                if code
+                else f"{title}: the HRMS gives no LMS course code for it.",
+            )
+            continue
+        _keep_requirement(row, site)
+        kept.add(row["id"])
+        run.ok_()
+    gone = RequiredTraining.objects.filter(source=RequiredTraining.Source.HRMS, is_active=True).exclude(
+        hrms_id__in=kept
+    )
+    for requirement in gone:
+        if requirement.hrms_id in unmatched:
+            _retire_requirement(requirement, "Its course in the HRMS is not one the LMS has")
+            continue  # already noted as unmatched
+        _retire_requirement(requirement, "Retired in the HRMS")
+        run.note(
+            f"hrms:{requirement.hrms_id}", "retired", "No longer listed by the HRMS: no longer in force."
+        )
     return run.finish()

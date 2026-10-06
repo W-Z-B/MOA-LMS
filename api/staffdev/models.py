@@ -162,10 +162,15 @@ class PathEnrolment(models.Model):
 class RequiredTraining(TimeStampedModel):
     """A course that staff must take, by campus, unit and post as the HRMS records them (item 5.05).
 
-    Decision D13 (ADR 0019) puts the requirement in the HRMS. Until the HRMS exposes training requirements,
-    course administrators keep them here. TODO(D13): read them from the HRMS integration API once it lists
-    them, and keep this table as its cache.
+    Decision D13 (ADR 0019) puts the requirement in the HRMS. With HRMS_TRAINING_REQUIREMENTS_SYNC on, the
+    nightly read of the HRMS's list (integration.hrms.sync_training_requirements) keeps the rows whose source
+    is the HRMS, under the HRMS's own number; they are changed in the HRMS, not here. Course administrators
+    keep the rest (source lms).
     """
+
+    class Source(models.TextChoices):
+        LMS = "lms", "Kept in the LMS"
+        HRMS = "hrms", "Kept in the HRMS"
 
     site = models.ForeignKey("courses.CourseSite", on_delete=models.CASCADE, related_name="requirements")
     campus_code = models.CharField(max_length=10, blank=True, help_text="Only staff of this campus")
@@ -177,6 +182,10 @@ class RequiredTraining(TimeStampedModel):
     )
     is_active = models.BooleanField(default=True)
     notes = models.TextField(blank=True)
+    source = models.CharField(max_length=4, choices=Source.choices, default=Source.LMS)
+    hrms_id = models.PositiveIntegerField(
+        null=True, blank=True, unique=True, help_text="The HRMS's own number for a requirement it keeps"
+    )
 
     class Meta:
         ordering = ["site__title", "id"]

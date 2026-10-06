@@ -42,6 +42,19 @@ def sync_staff(timestamp: int | None = None) -> dict:
     return hrms.sync_staff()
 
 
+@app.periodic(cron="0 6 * * *")  # 06:00, before the daily required-training run at 06:30 (decision D13)
+@app.task(name="integration.sync_training_requirements", queue="integration")
+def sync_training_requirements(timestamp: int | None = None) -> dict:
+    from integration import hrms
+
+    if not settings.HRMS_TRAINING_REQUIREMENTS_SYNC:
+        return {"skipped": True}
+    if not _hrms_configured():
+        log.info("integration.sync_training_requirements skipped: HRMS not configured")
+        return {"skipped": True}
+    return hrms.sync_training_requirements()
+
+
 @app.periodic(cron="30 2 * * *")  # 02:30, after the sites and class lists are current (item 1.23)
 @app.task(name="integration.push_marks", queue="integration")
 def push_marks(timestamp: int | None = None) -> dict:

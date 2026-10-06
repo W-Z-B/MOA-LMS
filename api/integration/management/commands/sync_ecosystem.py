@@ -17,6 +17,11 @@ class Command(BaseCommand):
         parser.add_argument("--push-training", action="store_true", help="Report completions to the HRMS")
         parser.add_argument("--site", help="Limit --push-marks to one site code")
         parser.add_argument("--staff", action="store_true", help="Read the staff directory from the HRMS")
+        parser.add_argument(
+            "--training-requirements",
+            action="store_true",
+            help="Read required training from the HRMS (decision D13; scope training:read)",
+        )
 
     def handle(self, *args, **options):
         from integration import hrms, srms
@@ -24,6 +29,9 @@ class Command(BaseCommand):
         try:
             if options["staff"]:
                 self.stdout.write(f"staff: {hrms.sync_staff(trigger='command')}")
+            if options["training_requirements"]:
+                result = hrms.sync_training_requirements(trigger="command")
+                self.stdout.write(f"training requirements: {result}")
             self.stdout.write(f"sites: {srms.sync_sites(current_only=not options['all_terms'])}")
             if options["push_marks"]:
                 sites = CourseSite.objects.filter(source=CourseSite.Source.SRMS)
