@@ -15,6 +15,7 @@ class CourseSite(TimeStampedModel):
     class Kind(models.TextChoices):
         ACADEMIC = "academic", "Academic course"
         STAFF_DEVELOPMENT = "staff_development", "Staff development"
+        OPEN = "open", "Open short course for farmers and extension officers (item 5.07)"
 
     code = models.CharField(max_length=40, unique=True, help_text="SRMS offering code for academic sites")
     title = models.CharField(max_length=200)

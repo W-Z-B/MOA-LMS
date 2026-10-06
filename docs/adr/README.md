@@ -30,6 +30,7 @@ the recommended answer"; GSA may revise any of them by a new record.
 | [0018](0018-text-and-whatsapp-notices.md) | Text messages and WhatsApp for urgent notices only | D12 | Proposed, open |
 | [0019](0019-required-training.md) | The HRMS says which staff must take which training | D13 | Proposed, open |
 | [0020](0020-similarity-check-method.md) | How the similarity check compares work: winnowed fingerprints on GSA's server | D4 | Accepted, carrying out 0006 |
+| [0021](0021-open-short-courses.md) | Open short courses for farmers and extension officers: built, switched off | D0 | Proposed, open |
 
 ## Open decisions with no record yet
 

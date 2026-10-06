@@ -62,6 +62,7 @@ INSTALLED_APPS = [
     "similarity",
     "peerreview",
     "paperquizzes",
+    "opencourses",
 ]
 
 MIDDLEWARE = [
@@ -287,3 +288,10 @@ DECISION_DAYS = int(env("DECISION_DAYS", "7"))
 # GSA's own server, in the background. On by default, as decided; off stops new checks and the report's
 # "check again".
 SIMILARITY_CHECKS = env_bool("SIMILARITY_CHECKS", True)
+
+# Open short courses for farmers and extension officers (item 5.07). Off until GSA decides to offer them
+# (decision D0, ADR 0021). On: a public catalogue of open sites, registration by email, and learner accounts
+# that see open sites only. Registrations: this many an hour from one network address; a link lasts this long.
+OPEN_COURSES_ENABLED = env_bool("OPEN_COURSES_ENABLED", False)
+OPEN_REGISTRATIONS_PER_ADDRESS = int(env("OPEN_REGISTRATIONS_PER_ADDRESS", "5"))
+OPEN_CONFIRM_HOURS = int(env("OPEN_CONFIRM_HOURS", "48"))

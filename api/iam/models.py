@@ -21,6 +21,7 @@ class Role(TimeStampedModel):
     STUDENT = "student"
     AUDITOR = "auditor"
     DPO = "dpo"
+    LEARNER = "learner"
     CODES = (
         (ADMINISTRATOR, "System Administrator"),
         (COURSE_ADMIN, "Course Administrator"),
@@ -28,6 +29,8 @@ class Role(TimeStampedModel):
         (STUDENT, "Student"),
         (AUDITOR, "Auditor"),
         (DPO, "Data Protection Officer"),
+        # Self-registered on open short courses only, never on academic sites (item 5.07).
+        (LEARNER, "Open-course learner"),
     )
     # Lecturers too (decision D14): they release marks that become results in the SRMS.
     MFA_REQUIRED = frozenset({ADMINISTRATOR, COURSE_ADMIN, LECTURER})

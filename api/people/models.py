@@ -14,6 +14,7 @@ class PersonRef(TimeStampedModel):
     class Kind(models.TextChoices):
         STAFF = "staff", "Staff (HRMS employee number)"
         STUDENT = "student", "Student (SRMS student number)"
+        LEARNER = "learner", "Learner on open courses, self-registered (item 5.07)"
 
     kind = models.CharField(max_length=10, choices=Kind.choices)
     external_id = models.CharField(max_length=20, help_text="Employee number or student number")
