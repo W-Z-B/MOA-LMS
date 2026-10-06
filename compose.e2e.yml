@@ -41,6 +41,8 @@ services:
       DEMO_TOTP_SECRET: *totp
       # seed_journeys writes the fictional invitation links and certificate code here for the journeys.
       JOURNEY_LINKS_FILE: /srv/files/journeys/links.json
+      # Open short courses (item 5.07) are off unless GSA decides; on here so their journeys run.
+      OPEN_COURSES_ENABLED: "1"
     volumes:
       - e2e_files:/srv/files
     depends_on:

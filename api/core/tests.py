@@ -131,11 +131,13 @@ def test_journey_data_signs_in_and_teaches_one_course(monkeypatch):
     code = pyotp.TOTP(JOURNEY_TOTP).now()
     assert lecturer.post("/api/v1/auth/mfa/verify/", {"code": code}, format="json").json()["mfa_verified"]
     marking = lecturer.get("/api/v1/home/").json()["teaching"]["to_mark"]
-    # AGR101's hand-in waits longest, so it comes first; then the marking journeys' course (AGR205).
+    # AGR101's hand-in waits longest, so it comes first; then the marking journeys' course (AGR205), then
+    # AGR210's essays for the similarity and peer review journeys.
     assert [row["title"] for row in marking] == [
         "Crop calendar for a kitchen garden: 1 to mark",
         "Soil profile report: 2 to mark",
         "Soil texture test: 2 to mark",
+        "Grazing plan essay: 3 to mark",
     ]
 
     # The marking journeys' course: a report handed in as a PDF a day late, with a rubric and a penalty.
@@ -169,6 +171,18 @@ def test_journey_data_for_staff_development_invitations_and_the_console(monkeypa
     again = json.loads(links_file.read_text())
     assert again["certificate"] == written["certificate"]
     assert written["certificate"]["code"] == "JRNY-0000-2026"
+
+    # The similarity, peer review and open short course journeys (items 3.20, 4.13, 5.07): Nadia copied a
+    # passage of Lisa's essay, the essays are given out two each for review, and two registrations wait.
+    from assessments.models import Assignment
+    from peerreview.models import PeerReview
+    from similarity.models import SimilarityDocument
+
+    assert len(again["open_courses"]) == 2 and again["open_courses"][0].startswith("/#/open-courses/confirm/")
+    essay = Assignment.objects.get(title="Grazing plan essay")
+    assert PeerReview.objects.filter(setup__assignment=essay).count() == 6
+    copied = SimilarityDocument.objects.get(submission__student__external_id="S2026923")
+    assert copied.matches.count() == 1 and copied.overall_percent > 50
 
     # The invitation opens a new student's account, once: after the password is chosen it is not offered.
     assert len(written["invitations"]) == 2 and written["invitations"][0].startswith("/#/set-password/")
