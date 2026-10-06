@@ -104,7 +104,7 @@ class HelpRequestSerializer(serializers.ModelSerializer):
         return obj.asked_by_id == self.context["request"].user.pk
 
 
-class AskSerializer(serializers.Serializer):
+class HelpAskSerializer(serializers.Serializer):
     subject = serializers.CharField(max_length=160)
     message = serializers.CharField(max_length=4000)
     page = serializers.CharField(max_length=200, required=False, allow_blank=True, default="")
@@ -130,7 +130,7 @@ class AskSerializer(serializers.Serializer):
         return value
 
 
-class AnswerSerializer(serializers.Serializer):
+class HelpAnswerSerializer(serializers.Serializer):
     answer = serializers.CharField(max_length=4000)
 
     def validate_answer(self, value: str) -> str:
@@ -174,7 +174,7 @@ class HelpRequestViewSet(viewsets.GenericViewSet):
         return Response(HelpRequestSerializer(item, context={"request": request}).data)
 
     @extend_schema(
-        request=AskSerializer,
+        request=HelpAskSerializer,
         parameters=[IDEMPOTENCY_HEADER],
         responses={
             201: HelpRequestSerializer,
@@ -186,7 +186,7 @@ class HelpRequestViewSet(viewsets.GenericViewSet):
     )
     @idempotent
     def create(self, request):
-        data = AskSerializer(data=request.data)
+        data = HelpAskSerializer(data=request.data)
         data.is_valid(raise_exception=True)
         v = data.validated_data
         client_sent_at = check_client_time(v.get("client_sent_at"))
@@ -221,7 +221,7 @@ class HelpRequestViewSet(viewsets.GenericViewSet):
         return Response(HelpRequestSerializer(item, context={"request": request}).data, status=201)
 
     @extend_schema(
-        request=AnswerSerializer,
+        request=HelpAnswerSerializer,
         responses={
             200: HelpRequestSerializer,
             400: OpenApiTypes.OBJECT,
@@ -235,7 +235,7 @@ class HelpRequestViewSet(viewsets.GenericViewSet):
     def answer(self, request, pk=None):
         if not has_role(request.user, *SITE_ADMIN_ROLES):
             raise PermissionDenied("Course administrators and administrators answer help requests.")
-        data = AnswerSerializer(data=request.data)
+        data = HelpAnswerSerializer(data=request.data)
         data.is_valid(raise_exception=True)
         with transaction.atomic():
             item = get_object_or_404(self.get_queryset().select_for_update(of=("self",)), pk=pk)
