@@ -16,3 +16,13 @@ def daily_summary(timestamp: int | None = None) -> int:
     sent = send_daily_summaries()
     log.info("notifications.daily_summary sent %s", sent)
     return sent
+
+
+@app.task(name="notifications.push", queue="notifications")
+def send_push(notification_id: int) -> int:
+    """Push one notification to the recipient's installed apps (item 4.04)."""
+    from notifications.models import Notification
+    from notifications.push import send
+
+    note = Notification.objects.filter(pk=notification_id).first()
+    return send(note) if note is not None else 0
