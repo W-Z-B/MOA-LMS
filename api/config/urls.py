@@ -28,6 +28,7 @@ urlpatterns = [
     path("api/v1/", include("courses.group_api")),
     path("api/v1/", include("rubrics.api")),
     path("api/v1/", include("courses.api")),
+    path("api/v1/", include("video.urls")),
     path("api/v1/", include("forums.api")),
     path("api/v1/", include("messaging.api")),
     path("api/v1/", include("attendance.api")),

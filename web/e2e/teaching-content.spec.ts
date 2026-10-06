@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { COURSE, PEOPLE, expect, expectAccessible, signIn, signOut, test } from "./support";
+import { COURSE, PEOPLE, expect, expectAccessible, onPhone, signIn, signOut, test } from "./support";
 
 /**
  * Items 2.12 to 2.18: a lecturer writes a page with a heading, a picture and a formula, is warned by the
@@ -117,6 +117,8 @@ test("a student reads the page, with its picture and the formula drawn", async (
   await page.getByRole("link", { name: title }).click();
   await expect(page.getByRole("heading", { name: title, level: 1 })).toBeVisible();
   await expect(page.getByRole("heading", { name: "How seeds wake up", level: 3 })).toBeVisible();
+  // A phone is in data-light mode until the person chooses (item 4.05): the picture waits to be asked for.
+  if (onPhone(testInfo)) await page.getByRole("button", { name: `Show picture: ${ALT}` }).click();
   const picture = page.getByRole("img", { name: ALT });
   await expect(picture).toBeVisible();
   expect(await picture.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true);

@@ -78,6 +78,14 @@ def build(python: list[dict], web: list[dict], policy: dict) -> tuple[str, list[
             problems.append(f"{what} has no named exception with a source")
             continue
         sources.append((row, exception))
+    programs = {
+        name: entry
+        for name, entry in policy.get("exceptions", {}).get("programs", {}).items()
+        if not name.startswith("$")
+    }
+    for name, entry in programs.items():
+        if WEAK_COPYLEFT.search(entry.get("licence", "")) and not entry.get("source"):
+            problems.append(f"program {name} ({entry['licence']}) has no named source")
 
     lines = [
         "# Third-party notices",
@@ -103,6 +111,17 @@ def build(python: list[dict], web: list[dict], policy: dict) -> tuple[str, list[
     for title, rows in parts:
         lines += ["", f"## {title}", "", "| Component | Version | Licence |", "|---|---|---|"]
         lines += [f"| {r['name']} | {r['version']} | {r['licence']} |" for r in rows]
+    lines += [
+        "",
+        "## Programs run beside the product (separate processes, never linked into it)",
+        "",
+        "| Program | Licence | Use | Source |",
+        "|---|---|---|---|",
+    ]
+    lines += [
+        f"| {name} | {e.get('licence', '')} | {e.get('reason', '')} | {e.get('source', '')} |"
+        for name, e in programs.items()
+    ]
     return "\n".join(lines) + "\n", problems
 
 

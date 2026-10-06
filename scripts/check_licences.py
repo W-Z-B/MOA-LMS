@@ -3,7 +3,9 @@
 
 Every package pinned in api/requirements.txt must be installed in the running interpreter and carry a
 permissive licence, or be a named exception in scripts/licence-policy.json. Packages that only appear in
-requirements-dev.txt never ship and are not checked.
+requirements-dev.txt never ship and are not checked. Programs run beside the product as separate processes
+(FFmpeg, ADR 0002 point 6) are named under "programs"; where one is installed, what it says of its own licence
+and build is checked too.
 
 Run where the runtime packages are installed, from the repository root:
     python scripts/check_licences.py
@@ -17,6 +19,8 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
+import subprocess
 import sys
 from importlib import metadata
 from pathlib import Path
@@ -165,6 +169,25 @@ def verdict(name: str, dist: metadata.Distribution, policy: dict) -> tuple[bool,
     return False, "not recognised: " + "; ".join(sorted(set(ids)))
 
 
+def program_verdict(entry: dict, run=subprocess.run, which=shutil.which) -> tuple[bool, str]:
+    """Whether an installed program says what its policy entry requires of it. Not installed: not checked."""
+    check = entry.get("check")
+    if not check:
+        return True, f"named: {entry['licence']}"
+    if which(check["command"][0]) is None:
+        return True, "not installed here; not checked"
+    said = run(check["command"], capture_output=True, text=True, check=False)  # noqa: S603 - from the policy file
+    words = " ".join((said.stdout + said.stderr).split())
+    if check["must_say"] not in words:
+        return False, f"does not say it is {entry['licence']} ({check['must_say']!r} missing)"
+    if check.get("build"):
+        built = run(check["build"], capture_output=True, text=True, check=False)  # noqa: S603
+        wrong = [flag for flag in check.get("must_not_say", []) if flag in built.stdout + built.stderr]
+        if wrong:
+            return False, "built with " + ", ".join(wrong)
+    return True, entry["licence"]
+
+
 def main() -> int:
     policy = json.loads(POLICY_FILE.read_text(encoding="utf-8"))
     installed = {normalise_name(d.metadata["Name"]): d for d in metadata.distributions()}
@@ -178,11 +201,20 @@ def main() -> int:
         rows.append(f"{'ok  ' if ok else 'FAIL'} {name} {dist.version}: {why}")
         if not ok:
             failures.append(f"{name} {dist.version}: {why}")
+    packages = len(rows)
+    # Programs run beside the product (ADR 0002, point 6): checked where they are installed.
+    for name, entry in policy["exceptions"].get("programs", {}).items():
+        if name.startswith("$"):
+            continue
+        ok, why = program_verdict(entry)
+        rows.append(f"{'ok  ' if ok else 'FAIL'} program {name}: {why}")
+        if not ok:
+            failures.append(f"program {name}: {why}")
     print("\n".join(rows))
     if failures:
         print("\nLicence policy (ADR 0002) not met:\n  " + "\n  ".join(failures), file=sys.stderr)
         return 1
-    print(f"\n{len(rows)} shipped Python packages meet the licence policy.")
+    print(f"\n{packages} shipped Python packages and the programs beside them meet the licence policy.")
     return 0
 
 

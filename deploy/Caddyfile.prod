@@ -2,9 +2,15 @@
 	encode zstd gzip
 	# Public host: automatic Let's Encrypt. Isolated LAN: use "tls internal" or a GSA CA certificate.
 
-	# Nothing the application accepts is larger (course files are at most 50 MB, core/uploads.py).
-	request_body {
+	# Nothing the application accepts is larger (course files are at most 50 MB, core/uploads.py), except a
+	# lecture video, put up once at this one address (UPLOAD_LIMIT_VIDEO_MB, 1024 MB by default; item 4.06).
+	@video_upload path /api/v1/videos/
+	@other_upload not path /api/v1/videos/
+	request_body @other_upload {
 		max_size 60MB
+	}
+	request_body @video_upload {
+		max_size 1100MB
 	}
 
 	# Metrics are scraped on the private network (deploy/monitoring/), never from outside (item 7.10).

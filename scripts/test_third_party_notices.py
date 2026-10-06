@@ -67,3 +67,25 @@ def test_a_weak_copyleft_component_without_a_named_source_fails_the_release(tmp_
     assert main([str(py), str(web), "-o", str(out), "--policy", str(policy)]) == 1
     assert "pyphen 0.17 (MPL-1.1) has no named exception" in capsys.readouterr().err
     assert "| pyphen | 0.17 | MPL-1.1 |" in out.read_text(encoding="utf-8")
+
+
+def test_programs_beside_the_product_are_listed_and_an_lgpl_one_needs_its_source():
+    policy = {
+        "exceptions": {
+            "python": {},
+            "npm": {},
+            "programs": {
+                "$comment": "ignored",
+                "ffmpeg": {"licence": "LGPL-2.1-or-later", "reason": "Video.", "source": "Debian ffmpeg"},
+                "openh264": {"licence": "BSD-2-Clause", "reason": "H.264."},
+            },
+        }
+    }
+    text, problems = build([], [], policy)
+    assert problems == []
+    assert (
+        "| ffmpeg | LGPL-2.1-or-later | Video. | Debian ffmpeg |" in text
+        and "| openh264 | BSD-2-Clause |" in text
+    )
+    del policy["exceptions"]["programs"]["ffmpeg"]["source"]
+    assert build([], [], policy)[1] == ["program ffmpeg (LGPL-2.1-or-later) has no named source"]

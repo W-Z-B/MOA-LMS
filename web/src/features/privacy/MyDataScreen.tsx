@@ -20,7 +20,8 @@ function shown(key: string, value: Row[string]): string {
 function Table({ rows, columns, empty, limit = 50 }: { rows: Row[]; columns: Column[]; empty: string; limit?: number }) {
   if (rows.length === 0) return <p className="muted">{empty}</p>;
   return (
-    <div style={{ overflowX: "auto" }}>
+    // A region that can take focus, so the table can be scrolled sideways from a keyboard too (item 4.01).
+    <div className="scroll-x" tabIndex={0} role="region" aria-label={`Table: ${columns.map(([, label]) => label).join(", ")}`}>
       <table>
         <thead>
           <tr>

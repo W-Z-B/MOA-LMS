@@ -87,6 +87,13 @@ def test_journey_data_signs_in_and_teaches_one_course(monkeypatch):
 
     bank = QuestionBank.objects.get(site=site)
     assert [c.name for c in bank.categories.all()] == ["Week 1: What a crop needs"]
+    # The media journeys (items 4.03 to 4.07): a page and a prepared video with its copies and captions,
+    # once, counted against the course's storage.
+    from video.models import Video
+
+    video = Video.objects.get(item__module__site=site)
+    assert video.status == "ready" and video.renditions.count() == 3 and video.captions.count() == 1
+    assert video.item.module.items.count() == 2 and video.item.file_size == video.total_size() > 0
 
     client = APIClient()
     response = client.post(
