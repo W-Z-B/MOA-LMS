@@ -3,7 +3,8 @@
 seed_demo needs the HRMS and the SRMS to name the people and the classes. The journeys run the LMS on its
 own, so this command creates its own small cast instead: a lecturer and two students with accounts, and one
 course site taught with seed_demo's material (content, an announcement, two assignments, a released mark),
-plus what the Homes show: work due this week for Kezia and a hand-in waiting to be marked for the lecturer.
+plus what the Homes show: work due this week for Kezia and a hand-in waiting to be marked for the lecturer,
+and the course's question bank with one category, where the quiz journeys write their questions.
 The accounts share the password in DEMO_USER_PASSWORD. Teaching staff need an authenticator code (ADR 0013),
 so the lecturer's authenticator is enrolled from DEMO_TOTP_SECRET, a fictional secret the journeys also hold
 to compute the code. The draft privacy notice is published, so the journeys read and acknowledge it as
@@ -27,6 +28,7 @@ from courses.models import CourseSite, Membership
 from iam.models import Role, RoleScope, TotpDevice
 from people.models import PersonRef
 from privacy.models import PrivacyNotice
+from quizzes.models import QuestionBank, QuestionCategory
 
 SITE = {
     "code": "AGR101-2026-27-S1-MRP",
@@ -81,6 +83,7 @@ class Command(BaseCommand):
                     )
             SeedDemo()._teach(site)
             self._homes(site)
+            self._question_bank(site)
             PrivacyNotice.objects.filter(published_at__isnull=True).update(published_at=timezone.now())
         self.stdout.write(
             self.style.SUCCESS(f"Journey data ready: {len(CAST)} accounts in {site.code} ({site.title}).")
@@ -111,6 +114,13 @@ class Command(BaseCommand):
             student=tevin,
             defaults={"text": "Demonstration submission.", "submitted_at": now - timedelta(days=1)},
         )
+
+    @staticmethod
+    def _question_bank(site: CourseSite) -> None:
+        """An empty bank for the course, with one category: the quiz journeys (feature 10) write a question
+        in it, build a quiz and publish it. No quiz is seeded, so nothing new is due on the Homes."""
+        bank, _ = QuestionBank.objects.get_or_create(site=site, name="Crop production questions")
+        QuestionCategory.objects.get_or_create(bank=bank, name="Week 1: What a crop needs")
 
     @staticmethod
     def _person(username, kind, external_id, first, last, role, password) -> PersonRef:

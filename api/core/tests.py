@@ -67,6 +67,11 @@ def test_journey_data_signs_in_and_teaches_one_course(monkeypatch):
     assert site.memberships.count() == 3
     assert Assignment.objects.filter(site=site).count() == 3  # with "Field notebook check", for the Homes
     assert Mark.objects.filter(submission__assignment__site=site, is_released=True).count() == 2
+    # The quiz journeys write their questions in the course's bank (feature 10).
+    from quizzes.models import QuestionBank
+
+    bank = QuestionBank.objects.get(site=site)
+    assert [c.name for c in bank.categories.all()] == ["Week 1: What a crop needs"]
 
     client = APIClient()
     response = client.post(
