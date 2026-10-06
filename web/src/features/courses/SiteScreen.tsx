@@ -1,10 +1,9 @@
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { Suspense, useCallback, useEffect, useState, type FormEvent } from "react";
 import { errorMessage, get, patch, post } from "../../api/client";
 import { canTeach, type Licence, type SiteContents } from "../../api/types";
 import { useCrumb } from "../../app/frame";
 import { SITE_TABS, type SiteTab } from "../../app/router";
-import { AssignmentsTab } from "../assignments/AssignmentsTab";
-import { GradebookTab } from "../gradebook/GradebookTab";
+import { AssignmentsTab, GradebookTab } from "../marking/lazy";
 
 interface Props {
   siteId: number;
@@ -82,8 +81,10 @@ export function SiteScreen({ siteId, tab, onTab }: Props) {
         ))}
       </div>
       {tab === "content" && <ContentTab data={data} teaching={teaching} onChanged={load} />}
-      {tab === "assignments" && <AssignmentsTab siteId={siteId} teaching={teaching} />}
-      {tab === "gradebook" && <GradebookTab site={data.site} teaching={teaching} />}
+      <Suspense fallback={<p className="loading">Opening…</p>}>
+        {tab === "assignments" && <AssignmentsTab siteId={siteId} teaching={teaching} />}
+        {tab === "gradebook" && <GradebookTab site={data.site} teaching={teaching} />}
+      </Suspense>
       {tab === "announcements" && <AnnouncementsTab data={data} teaching={teaching} onChanged={load} />}
     </>
   );

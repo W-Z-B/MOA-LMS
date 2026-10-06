@@ -1,9 +1,9 @@
-import type { ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
 import { markingAddress } from "../../app/router";
-import { AccommodationsScreen } from "../accommodations/AccommodationsScreen";
-import { NotificationSettingsScreen } from "../notifications/NotificationSettingsScreen";
-import { RubricsScreen } from "../rubrics/RubricsScreen";
-import { MarkingScreen } from "./MarkingScreen";
+import { AccommodationsScreen, MarkingScreen, NotificationSettingsScreen, RubricsScreen } from "./lazy";
+
+/** While a screen's code arrives. */
+const opening = <p className="loading">Opening…</p>;
 
 /**
  * The screens of assignments, marking, rubrics, accommodations and notification settings that have an address
@@ -12,11 +12,12 @@ import { MarkingScreen } from "./MarkingScreen";
  */
 export function markingScreen(path: string, navigate: (to: string) => void): ReactNode | null {
   const at = markingAddress(path);
+  let screen: ReactNode = null;
   if (at?.kind === "marking")
-    return <MarkingScreen key={at.assignmentId} siteId={at.siteId} assignmentId={at.assignmentId} submissionId={at.submissionId} onNavigate={navigate} />;
-  if (at?.kind === "site-rubrics") return <RubricsScreen key={at.siteId} siteId={at.siteId} />;
-  if (path === "/rubrics") return <RubricsScreen siteId={null} />;
-  if (path === "/accommodations") return <AccommodationsScreen />;
-  if (path === "/notification-settings") return <NotificationSettingsScreen />;
-  return null;
+    screen = <MarkingScreen key={at.assignmentId} siteId={at.siteId} assignmentId={at.assignmentId} submissionId={at.submissionId} onNavigate={navigate} />;
+  else if (at?.kind === "site-rubrics") screen = <RubricsScreen key={at.siteId} siteId={at.siteId} />;
+  else if (path === "/rubrics") screen = <RubricsScreen siteId={null} />;
+  else if (path === "/accommodations") screen = <AccommodationsScreen />;
+  else if (path === "/notification-settings") screen = <NotificationSettingsScreen />;
+  return screen && <Suspense fallback={opening}>{screen}</Suspense>;
 }
