@@ -15,6 +15,10 @@ framework the course follows.
 
 For the quiz journeys (feature 10) it adds the course's question bank with one category, where the
 journeys write their questions.
+
+For the media journeys (items 4.03 to 4.07) it adds a module with a page and a lecture video, already
+prepared (the journey image has no converter): a low, a standard and a sound-only copy made from a two-second
+fictional test picture, a poster frame and English captions.
 The accounts share the password in DEMO_USER_PASSWORD. Teaching staff need an authenticator code (ADR 0013),
 so the lecturer's authenticator is enrolled from DEMO_TOTP_SECRET, a fictional secret the journeys also hold
 to compute the code. The draft privacy notice is published, so the journeys read and acknowledge it as
@@ -51,6 +55,7 @@ from assessments.models import Assignment, Submission, SubmissionAttempt, Submis
 from certificates.models import Certificate
 from core.management.commands.seed_demo import Command as SeedDemo
 from courses.models import Completion, ContentItem, CourseSite, Membership, Module
+from courses.richtext import text_to_html
 from iam import accounts
 from iam.models import Role, RoleScope, TotpDevice
 from people.models import PersonRef
@@ -123,6 +128,8 @@ CAST = [
     ("kezia.persaud", PersonRef.Kind.STUDENT, "S2026901", "Kezia", "Persaud", Role.STUDENT, "student"),
     ("tevin.joseph", PersonRef.Kind.STUDENT, "S2026902", "Tevin", "Joseph", Role.STUDENT, "student"),
 ]
+# The module of the media journeys (items 4.03 to 4.07).
+MEDIA_MODULE = "Week 4: Preparing the ground"
 # The administrator of the console journeys: username, first name, last name.
 ADMINISTRATOR = ("ayesha.ramdin", "Ayesha", "Ramdin")
 # New students with an account but no password yet: one invitation for each journey project.
@@ -204,6 +211,7 @@ class Command(BaseCommand):
             self._talk(site)
             self._practicals(site)
             self._question_bank(site)
+            self._media(site)
             PrivacyNotice.objects.filter(published_at__isnull=True).update(published_at=timezone.now())
             self._administrator(password, secret)
             certificate = self._staff_development()
@@ -577,6 +585,45 @@ class Command(BaseCommand):
         in it, build a quiz and publish it. No quiz is seeded, so nothing new is due on the Homes."""
         bank, _ = QuestionBank.objects.get_or_create(site=site, name="Crop production questions")
         QuestionCategory.objects.get_or_create(bank=bank, name="Week 1: What a crop needs")
+
+    @staticmethod
+    def _media(site: CourseSite) -> None:
+        """A module to keep offline, with a page and a prepared lecture video (items 4.03 to 4.07)."""
+        from pathlib import Path
+
+        from video.convert import count
+        from video.models import CaptionTrack, Rendition, Video
+
+        module, _ = Module.objects.get_or_create(
+            site=site, title=MEDIA_MODULE, defaults={"position": site.modules.count() + 1}
+        )
+        ContentItem.objects.get_or_create(
+            module=module,
+            title="Before you watch",
+            defaults={
+                "body": text_to_html("Watch the short video, then try it on your own bed."),
+                "position": 1,
+            },
+        )
+        item, created = ContentItem.objects.get_or_create(
+            module=module, title="Making a seed bed", defaults={"kind": "video", "position": 2}
+        )
+        if not created:
+            return
+        fixtures = Path(__file__).resolve().parents[3] / "video" / "fixtures"
+        film, still = (fixtures / "lecture.mp4").read_bytes(), (fixtures / "poster.jpg").read_bytes()
+        video = Video.objects.create(item=item, status=Video.Status.READY, duration_seconds=2)
+        for quality, height in (("low", 240), ("standard", 240), ("audio", None)):
+            copy = Rendition(video=video, quality=quality, size=len(film), height=height, bitrate_kbps=200)
+            copy.file.save(f"{quality}.mp4", ContentFile(film), save=False)
+            copy.save()
+        video.poster.save("poster.jpg", ContentFile(still), save=False)
+        video.poster_size = len(still)
+        video.save()
+        CaptionTrack.objects.create(
+            video=video, text="WEBVTT\n\n00:00:00.000 --> 00:00:02.000\nLoosen the soil to a spade's depth.\n"
+        )
+        count(video)
 
     @staticmethod
     def _person(username, kind, external_id, first, last, role, password) -> PersonRef:
