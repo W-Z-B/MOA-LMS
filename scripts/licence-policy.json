@@ -1,5 +1,5 @@
 {
-  "$comment": "Licence policy for components shipped in the product (docs/adr/0002-licence-policy.md). Read by scripts/check_licences.py (Python) and scripts/check_npm_licences.mjs (web). Development and test tools that never ship are reported, not gated.",
+  "$comment": "Licence policy for components shipped in the product (docs/adr/0002-licence-policy.md). Each exception names where its source is obtained, for THIRD-PARTY-NOTICES (scripts/third_party_notices.py, item 7.20). Tools that run beside the product and are not shipped in its images: age (BSD-3-Clause) and rclone (MIT) for backups, Prometheus and Alertmanager (Apache-2.0) for monitoring, Locust (MIT) for load tests; gpg (GPL) may replace age as an external program, never linked. Read by scripts/check_licences.py (Python) and scripts/check_npm_licences.mjs (web). Development and test tools that never ship are reported, not gated.",
   "permissive": [
     "0BSD",
     "Apache-2.0",
@@ -23,19 +23,23 @@
     "python": {
       "psycopg": {
         "licence": "LGPL-3.0-only",
-        "reason": "The PostgreSQL driver Django supports. Used unmodified as a separately installed library."
+        "reason": "The PostgreSQL driver Django supports. Used unmodified as a separately installed library.",
+        "source": "https://github.com/psycopg/psycopg (the sdist of the same version on https://pypi.org/project/psycopg/)"
       },
       "psycopg-binary": {
         "licence": "LGPL-3.0-only",
-        "reason": "Binary build of psycopg, same terms. Used unmodified."
+        "reason": "Binary build of psycopg, same terms. Used unmodified.",
+        "source": "https://github.com/psycopg/psycopg (built from the psycopg sources of the same version)"
       },
       "psycopg-pool": {
         "licence": "LGPL-3.0-only",
-        "reason": "Connection pool from the psycopg project, pulled in by procrastinate. Used unmodified."
+        "reason": "Connection pool from the psycopg project, pulled in by procrastinate. Used unmodified.",
+        "source": "https://github.com/psycopg/psycopg (directory psycopg_pool; sdist on https://pypi.org/project/psycopg-pool/)"
       },
       "pyphen": {
         "licence": "MPL-1.1",
-        "reason": "Hyphenation used by WeasyPrint. Offered under GPL, LGPL or MPL 1.1; GSA takes it under MPL 1.1, unmodified."
+        "reason": "Hyphenation used by WeasyPrint. Offered under GPL, LGPL or MPL 1.1; GSA takes it under MPL 1.1, unmodified.",
+        "source": "https://github.com/Kozea/Pyphen (sdist on https://pypi.org/project/pyphen/)"
       }
     },
     "npm": {}
