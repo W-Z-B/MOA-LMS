@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
-from certificates.api import check_page
+from certificates.api import check_page, issuer_keys, issuer_profile
 from config.views import health
 from iam.permissions import DocsPermission
 from integration.api import integration_urls, reference_urls, run_urls
@@ -46,6 +46,9 @@ urlpatterns = [
     # A package's files, for its sandboxed player, by a signed address (packages/play.py).
     path("api/play/<str:token>/", play, name="package-play-root"),
     path("api/play/<str:token>/<path:entry>", play, name="package-play"),
+    # The issuer of the Open Badges credentials and its public keys, at stable public addresses (5.10).
+    path("api/badges/issuer.json", issuer_profile, name="badge-issuer"),
+    path("api/badges/jwks.json", issuer_keys, name="badge-keys"),
     path("api/v1/reference/", include((reference_urls, "reference"))),
     # Service-to-service API for the GSA ecosystem. Api-Key authentication, scoped.
     path("api/v1/integration/", include((integration_urls, "integration"))),

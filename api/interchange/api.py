@@ -70,7 +70,12 @@ class ContentImportReportSerializer(serializers.Serializer):
 
 @extend_schema(
     request={"multipart/form-data": ContentImportSerializer},
-    responses={200: ContentImportReportSerializer, 400: ErrorSerializer, 403: ErrorSerializer, 404: ErrorSerializer},
+    responses={
+        200: ContentImportReportSerializer,
+        400: ErrorSerializer,
+        403: ErrorSerializer,
+        404: ErrorSerializer,
+    },
     summary="Import a Common Cartridge or a Moodle backup's content into the course, as drafts",
     description="Modules are added after the course's present ones; everything comes in unpublished, with "
     "its "

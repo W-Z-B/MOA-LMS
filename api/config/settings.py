@@ -293,3 +293,7 @@ PACKAGE_MAX_ENTRIES = int(env("PACKAGE_MAX_ENTRIES", "10000"))
 PACKAGE_MAX_UNPACKED_MB = int(env("PACKAGE_MAX_UNPACKED_MB", "500"))
 # How long the signed address of a package's player lasts; opening the package again gives a new one.
 PACKAGE_PLAY_HOURS = int(env("PACKAGE_PLAY_HOURS", "8"))
+# Open Badges 3.0 (item 5.10): each certificate also as a signed credential for the holder's wallet. Off until
+# GSA's permanent web address is settled (decision D9, hosting): the issuer's address, built from PUBLIC_URL,
+# is written into every credential, and changing it later would leave issued credentials unverifiable.
+OPEN_BADGES_ENABLED = env_bool("OPEN_BADGES_ENABLED", False)

@@ -5,7 +5,7 @@ import html
 
 from django.conf import settings
 from django.db.models import OuterRef, Subquery
-from django.http import FileResponse, HttpResponse
+from django.http import FileResponse, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404
 from django.urls import path
 from django.views.decorators.csrf import csrf_exempt
@@ -25,7 +25,7 @@ from rest_framework.response import Response
 from rest_framework.routers import SimpleRouter
 from rest_framework.throttling import AnonRateThrottle
 
-from audit.services import record
+from audit.services import record, record_event
 from certificates import checking, markup, services
 from certificates.models import Certificate, CertificateTemplate
 from core.serializers import ErrorSerializer
@@ -42,6 +42,10 @@ class CertificateSerializer(serializers.ModelSerializer):
     holder = serializers.CharField(source="person.full_name", read_only=True)
     course = serializers.CharField(source="site.title", read_only=True)
     status = serializers.SerializerMethodField(help_text="valid, expired or withdrawn")
+    badge_url = serializers.SerializerMethodField(
+        help_text="Where the holder downloads the certificate as an Open Badges 3.0 credential (item 5.10); "
+        "null when badges are off or the certificate is withdrawn"
+    )
 
     class Meta:
         model = Certificate
@@ -59,8 +63,14 @@ class CertificateSerializer(serializers.ModelSerializer):
             "status",
             "withdrawn_at",
             "withdrawal_reason",
+            "badge_url",
         )
         read_only_fields = fields
+
+    def get_badge_url(self, obj) -> str | None:
+        if not settings.OPEN_BADGES_ENABLED or obj.is_withdrawn:
+            return None
+        return f"/api/v1/certificates/{obj.id}/badge/"
 
     def get_status(self, obj) -> str:
         from django.utils import timezone
@@ -113,6 +123,38 @@ class CertificateViewSet(viewsets.ReadOnlyModelViewSet):
             filename=f"{certificate.reference.replace('/', '-')}.pdf",
             content_type="application/pdf",
         )
+
+    @extend_schema(
+        responses={
+            (200, "application/vc+jwt"): OpenApiTypes.BINARY,
+            404: ErrorSerializer,
+            409: ErrorSerializer,
+        },
+        summary="Download the certificate as an Open Badges 3.0 credential (VC-JWT) for a wallet (item 5.10)",
+    )
+    @action(detail=True, methods=["get"])
+    def badge(self, request, pk=None):
+        from certificates import badges
+
+        certificate = self.get_object()
+        if certificate.is_withdrawn:
+            return Response(
+                {"code": "withdrawn", "detail": "A withdrawn certificate has no credential."},
+                status=status.HTTP_409_CONFLICT,
+            )
+        try:
+            credential = badges.issue(certificate)
+        except badges.BadgesOff:
+            return Response(
+                {"code": "badges_off", "detail": "Digital badges are not issued yet."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        record(request, "download", credential, after={"reference": certificate.reference, "badge": True})
+        response = HttpResponse(credential.jwt, content_type="application/vc+jwt")
+        response["Content-Disposition"] = (
+            f'attachment; filename="{certificate.reference.replace("/", "-")}-badge.jwt"'
+        )
+        return response
 
     @extend_schema(
         request=WithdrawSerializer,
@@ -270,6 +312,59 @@ def check_certificate(request):
     return Response(CheckedSerializer(checking.answer(found)).data)
 
 
+class BadgeCheckSerializer(serializers.Serializer):
+    credential = serializers.CharField(
+        max_length=32 * 1024,
+        help_text="The credential as downloaded: the VC-JWT (three parts joined by dots)",
+    )
+
+
+@extend_schema(
+    request=BadgeCheckSerializer,
+    responses={200: CheckedSerializer, 429: ErrorSerializer},
+    summary="Check an Open Badges credential this LMS issued, without signing in (item 5.10)",
+    description="The signature is checked against the LMS's published keys; the answer then says, as the "
+    "certificate check does, whether the certificate still stands (withdrawn certificates are answered so).",
+    auth=[],
+)
+@api_view(["POST"])
+@authentication_classes([])
+@permission_classes([AllowAny])
+@throttle_classes([CheckThrottle])
+def check_badge(request):
+    from certificates import badges
+
+    data = BadgeCheckSerializer(data=request.data)
+    data.is_valid(raise_exception=True)
+    found, certificate = badges.verify(data.validated_data["credential"])
+    if certificate is not None:
+        record_event(
+            request, "badge_checked", "certificates.certificate", after={"certificate": certificate.pk}
+        )
+    return Response(CheckedSerializer(found).data)
+
+
+def _public_json(body: dict) -> JsonResponse:
+    response = JsonResponse(body, json_dumps_params={"indent": 2})
+    response["Access-Control-Allow-Origin"] = "*"
+    response["Cache-Control"] = "public, max-age=300"
+    return response
+
+
+def issuer_profile(request):
+    """The issuer of the LMS's Open Badges credentials, with its public keys (item 5.10). Public."""
+    from certificates import badges
+
+    return _public_json(badges.issuer_profile())
+
+
+def issuer_keys(request):
+    """The public keys that sign the LMS's credentials, as a JWKS (item 5.10). Public."""
+    from certificates import badges
+
+    return _public_json(badges.jwks())
+
+
 PAGE = """<!doctype html>
 <html lang="en-GB">
 <head>
@@ -281,12 +376,14 @@ body {{ font: 16px/1.5 system-ui, sans-serif; margin: 0; color: #111; background
 main {{ max-width: 34rem; margin: 0 auto; padding: 1rem; }}
 h1 {{ font-size: 1.4rem; color: #2f6b46; }}
 label {{ display: block; margin-top: .8rem; font-weight: 600; }}
-input {{ width: 100%; box-sizing: border-box; padding: .6rem; font-size: 1rem; border: 1px solid #777;
+input, textarea {{ width: 100%; box-sizing: border-box; padding: .6rem; font-size: 1rem;
+  border: 1px solid #777;
   border-radius: 4px; }}
 button {{ margin-top: 1rem; padding: .6rem 1.2rem; font-size: 1rem; background: #2f6b46; color: #fff;
   border: 0; border-radius: 4px; }}
 .answer {{ margin-top: 1.2rem; padding: .8rem; border-radius: 4px; background: #fff;
   border: 2px solid #777; }}
+h2 {{ font-size: 1.15rem; margin-top: 2rem; }} textarea {{ min-height: 6rem; font-family: monospace; }}
 .genuine {{ border-color: #2f6b46; }} .withdrawn, .no_match, .too_many_attempts {{ border-color: #a33; }}
 dl {{ margin: .5rem 0 0; }} dt {{ font-weight: 600; }} dd {{ margin: 0 0 .4rem; }}
 </style>
@@ -302,6 +399,7 @@ dl {{ margin: .5rem 0 0; }} dt {{ font-weight: 600; }} dd {{ margin: 0 0 .4rem; 
 <button type="submit">Check</button>
 </form>
 {answer}
+{badge}
 </main></body>
 </html>"""
 
@@ -328,11 +426,42 @@ def _answer_html(answer: dict) -> str:
     return f'<div class="answer {status_class}" role="status"><p>{escape(answer["detail"])}</p>{listed}</div>'
 
 
+BADGE_FORM = """<h2>Check a digital badge</h2>
+<p>A digital badge (an Open Badges credential) from {org} is a long line of letters joined by dots. Paste it
+here to check it.</p>
+<form method="post">
+<label for="credential">Digital badge</label>
+<textarea id="credential" name="credential" required maxlength="32768" spellcheck="false"></textarea>
+<button type="submit">Check the badge</button>
+</form>
+{answer}"""
+
+
+def _badge_answer(request, token: str) -> str:
+    from certificates import badges
+
+    found, certificate = badges.verify(token[: 32 * 1024])
+    if certificate is not None:
+        record_event(
+            request, "badge_checked", "certificates.certificate", after={"certificate": certificate.pk}
+        )
+    return _answer_html(found)
+
+
+def _badge_form(answer: str) -> str:
+    """The badge check, on the page only while badges are issued (OPEN_BADGES_ENABLED)."""
+    if not settings.OPEN_BADGES_ENABLED:
+        return ""
+    return BADGE_FORM.format(org=html.escape(settings.CERTIFICATE_ORGANISATION), answer=answer)
+
+
 @csrf_exempt  # nothing is changed for the person asking, and they hold no session here
 def check_page(request):
     """The check as a page of its own, for anyone without the web app: no script, no sign-in (item 5.09)."""
-    reference, answer = "", ""
-    if request.method == "POST":
+    reference, answer, badge_answer = "", "", ""
+    if request.method == "POST" and "credential" in request.POST:
+        badge_answer = _badge_answer(request, request.POST.get("credential") or "")
+    elif request.method == "POST":
         reference = (request.POST.get("reference") or "").strip()[:40]
         code = (request.POST.get("code") or "").strip()[:40]
         if reference and code:
@@ -344,7 +473,10 @@ def check_page(request):
     elif request.method != "GET":
         return HttpResponse(status=405)
     body = PAGE.format(
-        org=html.escape(settings.CERTIFICATE_ORGANISATION), reference=html.escape(reference), answer=answer
+        org=html.escape(settings.CERTIFICATE_ORGANISATION),
+        reference=html.escape(reference),
+        answer=answer,
+        badge=_badge_form(badge_answer),
     )
     response = HttpResponse(body, content_type="text/html; charset=utf-8")
     response["Content-Security-Policy"] = (
@@ -359,4 +491,8 @@ def check_page(request):
 router = SimpleRouter()
 router.register("certificates", CertificateViewSet, basename="certificate")
 router.register("certificate-templates", TemplateViewSet, basename="certificate-template")
-urlpatterns = [path("certificates/check/", check_certificate, name="certificate-check"), *router.urls]
+urlpatterns = [
+    path("certificates/check/", check_certificate, name="certificate-check"),
+    path("certificates/check-badge/", check_badge, name="certificate-check-badge"),
+    *router.urls,
+]
