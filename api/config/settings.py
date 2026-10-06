@@ -59,6 +59,7 @@ INSTALLED_APPS = [
     "attendance",
     "calendars",
     "rubrics",
+    "terms",
 ]
 
 MIDDLEWARE = [
@@ -69,6 +70,7 @@ MIDDLEWARE = [
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "iam.middleware.SessionActivityMiddleware",  # idle and absolute time-outs; the session list
+    "terms.guard.ClosedSiteMiddleware",  # closed course sites refuse changes (item 7.12)
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -279,3 +281,14 @@ ATTENDANCE_LATE_AFTER_MINUTES = int(env("ATTENDANCE_LATE_AFTER_MINUTES", "10"))
 # To do (items 2.07 to 2.09): days after which work to mark, and a decision, are marked overdue.
 MARKING_DAYS = int(env("MARKING_DAYS", "14"))
 DECISION_DAYS = int(env("DECISION_DAYS", "7"))
+
+# Term life-cycle (item 7.12). Sites take work until the end of their term's close date and this many days
+# after it, unless the term sets its own grace; then they are read-only for appeals. They are archived when
+# the retention schedule's period for course sites has passed (privacy rule "course-sites"; this is the
+# default until that rule exists). TERMS_FROM_SRMS takes the calendar from the SRMS's integration API, which
+# the SRMS does not offer yet: off until GSA and the SRMS agree it; course administrators enter terms.
+# TERM_CLOSE_AFTER_DAYS: for a term from the SRMS, the close date this many days after teaching ends.
+TERM_GRACE_DAYS = int(env("TERM_GRACE_DAYS", "2"))
+TERM_ARCHIVE_MONTHS = int(env("TERM_ARCHIVE_MONTHS", "12"))
+TERMS_FROM_SRMS = env_bool("TERMS_FROM_SRMS", False)
+TERM_CLOSE_AFTER_DAYS = int(env("TERM_CLOSE_AFTER_DAYS", "28"))

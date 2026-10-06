@@ -28,7 +28,7 @@ describe("course administration on the Admin page (course administrators and adm
     const onNavigate = vi.fn();
     render(<CourseAdminLinks onNavigate={onNavigate} />);
     const nav = screen.getByRole("navigation", { name: "Course administration" });
-    expect(within(nav).getAllByRole("link").map((a) => a.getAttribute("href"))).toEqual(["#/admin/templates", "#/admin/takedowns", "#/admin/storage"]);
+    expect(within(nav).getAllByRole("link").map((a) => a.getAttribute("href"))).toEqual(["#/admin/templates", "#/admin/takedowns", "#/admin/storage", "#/admin/terms"]);
     expect(await within(nav).findByText("Takedown requests (2 waiting)")).toBeInTheDocument();
     await userEvent.click(within(nav).getByRole("link", { name: /Course templates/ }));
     expect(onNavigate).toHaveBeenCalledWith("/admin/templates");

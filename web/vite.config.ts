@@ -66,6 +66,8 @@ export default defineConfig({
         "src/features/practicals/**",
         // Quizzes (feature 10): the tab, attempts, banks and the question editor.
         "src/features/quizzes/**",
+        // The term calendar (item 7.12).
+        "src/features/terms/**",
       ],
       exclude: ["src/**/*.test.*", "src/test/**"],
       reporter: ["text"],

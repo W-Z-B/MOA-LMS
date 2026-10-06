@@ -101,6 +101,7 @@ class RetentionRule(models.Model):
     class Action(models.TextChoices):
         DELETE = "delete", "Delete"
         REVIEW = "review", "Reviewed by GSA; the system removes nothing"
+        ARCHIVE = "archive", "Archived: a read-only export is kept; nothing is deleted"
 
     code = models.SlugField(unique=True)
     name = models.CharField(max_length=120)

@@ -370,6 +370,11 @@ class AnnouncementSerializer(serializers.ModelSerializer):
 class SiteSerializer(serializers.ModelSerializer):
     my_role = serializers.SerializerMethodField()
     members = serializers.SerializerMethodField()
+    phase = serializers.SerializerMethodField(
+        help_text="open, grace (the close date has passed; work still taken), closed (read-only for appeals) "
+        "or archived: the term life-cycle, item 7.12"
+    )
+    closed_notice = serializers.SerializerMethodField(help_text="Why the site cannot be changed, when closed")
 
     class Meta:
         model = CourseSite
@@ -387,6 +392,8 @@ class SiteSerializer(serializers.ModelSerializer):
             "storage_allowance_mb",
             "my_role",
             "members",
+            "phase",
+            "closed_notice",
         )
         read_only_fields = ("source",)
         extra_kwargs = {
@@ -407,6 +414,25 @@ class SiteSerializer(serializers.ModelSerializer):
 
     def get_members(self, obj) -> int:
         return obj.memberships.filter(is_active=True).count()
+
+    def _phase(self, obj):
+        from terms import lifecycle
+        from terms.models import SiteArchive, Term
+
+        cache = self.context.setdefault("_term_cache", {})
+        if "terms" not in cache:  # once for a whole list of sites
+            cache["terms"] = {term.code: term for term in Term.objects.all()}
+            cache["archived"] = set(SiteArchive.objects.values_list("site_id", flat=True))
+        return lifecycle.phase_from(cache["terms"].get(obj.term_code), obj.pk in cache["archived"])
+
+    def get_phase(self, obj) -> str:
+        return self._phase(obj).phase
+
+    def get_closed_notice(self, obj) -> str | None:
+        from terms import lifecycle
+
+        phase = self._phase(obj)
+        return lifecycle.explain(obj, phase) if phase.locked else None
 
 
 class OrderSerializer(serializers.Serializer):

@@ -90,6 +90,9 @@ export function SiteScreen({ siteId, tab, onTab }: Props) {
           </button>
         )}
       </div>
+      {/* --- terms: a closed site says so (item 7.12) --- */}
+      {data.site.closed_notice && <p className="notice">{data.site.closed_notice}</p>}
+      {/* --- end terms --- */}
       <div className="tabs" role="tablist">
         {SITE_TABS.map((t) => (
           <button key={t} role="tab" aria-selected={tab === t} className={tab === t ? "tab active" : "tab"} onClick={() => onTab(t)}>

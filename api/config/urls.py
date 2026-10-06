@@ -6,6 +6,8 @@ from certificates.api import check_page
 from config.views import health
 from iam.permissions import DocsPermission
 from integration.api import integration_urls, reference_urls, run_urls
+from terms.api import download_archive
+from terms.api import router as terms_router
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -35,6 +37,8 @@ urlpatterns = [
     path("api/v1/approvals/", include("approvals.urls")),
     path("api/v1/staff-development/", include("staffdev.api")),
     path("api/v1/", include("certificates.api")),
+    path("api/v1/", include(terms_router.urls)),
+    path("api/v1/site-archives/<int:pk>/download/", download_archive, name="site-archive-download"),
     # The public certificate check as a page of its own, without sign-in or script (item 5.09).
     path("api/check-certificate/", check_page, name="certificate-check-page"),
     path("api/v1/reference/", include((reference_urls, "reference"))),

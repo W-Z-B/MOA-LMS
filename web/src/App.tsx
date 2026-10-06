@@ -4,7 +4,7 @@ import { SIGNED_OUT_EVENT, get } from "./api/client";
 import { ADMIN_ROLES, hasAnyRole, type Me } from "./api/types";
 import { usesCampusSwitch } from "./app/people";
 import { Shell } from "./app/Shell";
-import { adminAddress, contentAddress, forumAddress, messageAddress, siteAddress, useHashRoute } from "./app/router";
+import { adminAddress, contentAddress, forumAddress, isTermsAddress, messageAddress, siteAddress, useHashRoute } from "./app/router";
 import { AccountScreen } from "./features/account/AccountScreen";
 import { CalendarScreen } from "./features/calendar/CalendarScreen";
 import { ForumScreen } from "./features/forums/ForumScreen";
@@ -37,6 +37,9 @@ const CourseSetupScreen = lazy(() => import("./features/content/CourseSetupScree
 const TemplatesScreen = lazy(() => import("./features/course-admin/TemplatesScreen"));
 const TakedownsScreen = lazy(() => import("./features/course-admin/TakedownsScreen"));
 const StorageAllowancesScreen = lazy(() => import("./features/course-admin/StorageAllowancesScreen"));
+// --- terms: the term calendar (item 7.12), fetched when first opened ---
+const TermsScreen = lazy(() => import("./features/terms/TermsScreen"));
+// --- end terms ---
 
 const later = (screen: ReactNode) => <Suspense fallback={<p className="loading">Opening…</p>}>{screen}</Suspense>;
 
@@ -168,6 +171,16 @@ export default function App() {
   else if (path === "/courses" || path === "/sites") screen = <MyCoursesScreen campusCode={campus} onNavigate={navigate} />;
   else if (path === "/account") screen = <AccountScreen />;
   else if (path.startsWith("/my-data")) screen = <MyDataScreen />;
+  // --- terms: the term calendar (item 7.12) ---
+  else if (isTermsAddress(path))
+    screen = hasAnyRole(me, ADMIN_ROLES) ? (
+      later(<TermsScreen />)
+    ) : (
+      <p role="alert" className="error">
+        The term calendar is for course administrators and administrators.
+      </p>
+    );
+  // --- end terms ---
   // Course administration parts of Admin (items 2.17, 2.19, 2.20); the console below owns #/admin itself.
   else if (admin && admin !== "home" && !hasAnyRole(me, ADMIN_ROLES))
     screen = (

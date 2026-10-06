@@ -63,6 +63,7 @@ def test_the_schedule_is_seeded_as_proposals_to_be_confirmed(seeded):
         "audit-log": (84, False, None),
         "login-attempts": (12, True, None),
         "notifications": (24, True, None),
+        "course-sites": (12, True, None),
     }
     assert all("to be confirmed by GSA" in r.note for r in RetentionRule.objects.all())
 
@@ -162,7 +163,7 @@ def test_who_keeps_the_schedule_and_what_cannot_be_disposed_of_here(
     assert zero.status_code == 400
 
     auditor = client_for(make_user("the.auditor", "auditor"))
-    assert len(auditor.get("/api/v1/privacy/retention-rules/").json()) == 6
+    assert len(auditor.get("/api/v1/privacy/retention-rules/").json()) == 7
     assert auditor.patch(f"/api/v1/privacy/retention-rules/{work.id}/", {"keep_months": 1}).status_code == 403
     assert client_for(course_admin).get("/api/v1/privacy/retention-rules/").status_code == 403
     assert (
