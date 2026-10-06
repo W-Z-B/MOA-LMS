@@ -41,10 +41,15 @@ services:
       DEMO_TOTP_SECRET: *totp
       # seed_journeys writes the fictional invitation links and certificate code here for the journeys.
       JOURNEY_LINKS_FILE: /srv/files/journeys/links.json
+      # Open short courses (item 5.07) are off unless GSA decides; on here so their journeys run.
+      OPEN_COURSES_ENABLED: "1"
       # The desktop and phone runs sign the one fictional lecturer in with the same code at once.
       MFA_REFUSE_REUSED_CODES: "0"
       # Digital badges (item 5.10) are off until GSA's address is settled; the journeys check them.
       OPEN_BADGES_ENABLED: "1"
+      # Required training read from the HRMS (decision D13) is off until GSA confirms; on here so the journeys
+      # see a requirement the HRMS keeps as read-only. No HRMS is configured, so the nightly read is skipped.
+      HRMS_TRAINING_REQUIREMENTS_SYNC: "1"
     volumes:
       - e2e_files:/srv/files
     depends_on:

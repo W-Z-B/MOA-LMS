@@ -533,6 +533,27 @@ def next_page(attempt: Attempt, user=None, now=None) -> Attempt:
     return attempt
 
 
+def mark_answers(attempt: Attempt, now=None) -> None:
+    """Mark every answer of the attempt by its question type's rules (quizzes.marking): the one way answers
+    are marked, online or keyed in from a paper sitting (item 3.24)."""
+    now = now or timezone.now()
+    answers = list(attempt.answers.select_related("version__question"))
+    for answer in answers:
+        result = marking.mark(answer.qtype, answer.version.data, answer.response)
+        answer.needs_manual = result.needs_manual
+        answer.auto_feedback = result.feedback
+        if result.fraction is None:
+            answer.fraction = answer.awarded = None
+        else:
+            answer.fraction = Decimal(str(result.fraction)).quantize(Decimal("0.0000001"))
+            answer.awarded = (answer.fraction * answer.max_mark).quantize(FOUR_PLACES, rounding=ROUND_HALF_UP)
+        answer.updated_at = now
+    # One statement for every answer, not one each: a class hands in at once (item 7.08).
+    AttemptAnswer.objects.bulk_update(
+        answers, ["needs_manual", "auto_feedback", "fraction", "awarded", "updated_at"], batch_size=200
+    )
+
+
 def submit_attempt(attempt: Attempt, *, user=None, auto=False, now=None) -> Attempt:
     """Finish the attempt and mark everything that can be marked automatically."""
     now = now or timezone.now()
@@ -540,23 +561,7 @@ def submit_attempt(attempt: Attempt, *, user=None, auto=False, now=None) -> Atte
         attempt = Attempt.objects.select_for_update().get(pk=attempt.pk)
         if attempt.state != Attempt.State.IN_PROGRESS:
             return attempt
-        answers = list(attempt.answers.select_related("version__question"))
-        for answer in answers:
-            result = marking.mark(answer.qtype, answer.version.data, answer.response)
-            answer.needs_manual = result.needs_manual
-            answer.auto_feedback = result.feedback
-            if result.fraction is None:
-                answer.fraction = answer.awarded = None
-            else:
-                answer.fraction = Decimal(str(result.fraction)).quantize(Decimal("0.0000001"))
-                answer.awarded = (answer.fraction * answer.max_mark).quantize(
-                    FOUR_PLACES, rounding=ROUND_HALF_UP
-                )
-            answer.updated_at = now
-        # One statement for every answer, not one each: a class hands in at once (item 7.08).
-        AttemptAnswer.objects.bulk_update(
-            answers, ["needs_manual", "auto_feedback", "fraction", "awarded", "updated_at"], batch_size=200
-        )
+        mark_answers(attempt, now)
         attempt.state = Attempt.State.FINISHED
         attempt.submitted_at = min(now, attempt.deadline) if (auto and attempt.deadline) else now
         attempt.auto_submitted = auto

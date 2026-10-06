@@ -7,6 +7,7 @@ the completion rules, the paths and the requirements. Students do not see the st
 
 from datetime import date
 
+from django.conf import settings
 from django.db import transaction
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
@@ -278,8 +279,11 @@ class CatalogueViewSet(viewsets.ReadOnlyModelViewSet):
         if not has_role(request.user, *MANAGERS):
             raise PermissionDenied("Only course administrators change the catalogue.")
         site = get_object_or_404(CourseSite, pk=site)
-        if site.kind != CourseSite.Kind.STAFF_DEVELOPMENT:
-            return _refused("not_staff_development", "Only staff-development sites go in the catalogue.", 400)
+        # Open short courses (item 5.07) keep their summary, places and completion rules here too.
+        if site.kind not in (CourseSite.Kind.STAFF_DEVELOPMENT, CourseSite.Kind.OPEN):
+            return _refused(
+                "not_staff_development", "Only staff-development and open sites go in the catalogue.", 400
+            )
         current = CatalogueEntry.objects.filter(site=site).first()
         data = CatalogueEntrySerializer(current, data=request.data)
         data.is_valid(raise_exception=True)
@@ -568,13 +572,22 @@ class LearningPathViewSet(mixins.CreateModelMixin, mixins.UpdateModelMixin, view
 # Required training (item 5.05)
 
 
+def kept_in_hrms(requirement: RequiredTraining) -> bool:
+    """A requirement read from the HRMS is changed there while the LMS reads its list (decision D13)."""
+    return settings.HRMS_TRAINING_REQUIREMENTS_SYNC and requirement.source == RequiredTraining.Source.HRMS
+
+
 class RequiredTrainingSerializer(serializers.ModelSerializer):
     site_title = serializers.CharField(source="site.title", read_only=True)
     applies_to = serializers.CharField(source="describe", read_only=True)
     assigned = serializers.IntegerField(source="assignments.count", read_only=True)
+    editable = serializers.SerializerMethodField(
+        help_text="Whether course administrators may change it here: not when the HRMS keeps it (D13)"
+    )
 
     class Meta:
         model = RequiredTraining
+        read_only_fields = ("source",)
         fields = (
             "id",
             "site",
@@ -588,7 +601,12 @@ class RequiredTrainingSerializer(serializers.ModelSerializer):
             "is_active",
             "notes",
             "assigned",
+            "source",
+            "editable",
         )
+
+    def get_editable(self, obj) -> bool:
+        return not kept_in_hrms(obj)
 
     def validate_site(self, site):
         if site.kind != CourseSite.Kind.STAFF_DEVELOPMENT:
@@ -633,7 +651,8 @@ class AssignedSerializer(serializers.Serializer):
 class RequiredTrainingViewSet(
     mixins.CreateModelMixin, mixins.UpdateModelMixin, viewsets.ReadOnlyModelViewSet
 ):
-    """Required training, kept by course administrators until the HRMS lists requirements (decision D13)."""
+    """Required training. Course administrators keep their own; those read from the HRMS are read-only while
+    HRMS_TRAINING_REQUIREMENTS_SYNC is on (decision D13)."""
 
     serializer_class = RequiredTrainingSerializer
     permission_classes = [RolePermission]
@@ -651,6 +670,15 @@ class RequiredTrainingViewSet(
 
     def get_queryset(self):
         return RequiredTraining.objects.select_related("site")
+
+    @extend_schema(responses={200: RequiredTrainingSerializer, 409: ErrorSerializer})
+    def partial_update(self, request, *args, **kwargs):
+        if kept_in_hrms(self.get_object()):
+            return _refused(
+                "kept_in_hrms",
+                "This requirement is kept in the HRMS. Change it there: the LMS reads it each night.",
+            )
+        return super().partial_update(request, *args, **kwargs)
 
     @transaction.atomic
     def perform_create(self, serializer):

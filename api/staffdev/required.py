@@ -1,10 +1,12 @@
 """Required training (item 5.05): courses staff must take by campus, unit or post, with due dates, reminders,
 renewal before a completion expires, and the report of who is overdue.
 
-Decision D13 (ADR 0019, proposed) puts the requirement in the HRMS, which knows each person's post. Until the
-HRMS lists requirements, course administrators keep them in the LMS (RequiredTraining), matched against the
-post, unit and campus the HRMS staff directory sends (integration.hrms.sync_staff).
-TODO(D13): read the requirements from the HRMS integration API once it exposes them.
+Decision D13 (ADR 0019) puts the requirement in the HRMS, which knows each person's post. With
+HRMS_TRAINING_REQUIREMENTS_SYNC on, the HRMS's list is read each night before the daily run here
+(integration.hrms.sync_training_requirements, scope training:read) and kept as RequiredTraining rows whose
+source is the HRMS; those are read-only in the LMS. Course administrators keep their own requirements beside
+them (source lms), and do so for all of them while the setting is off. Either way, each requirement is matched
+against the post, unit and campus the HRMS staff directory sends (integration.hrms.sync_staff).
 """
 
 from datetime import date, timedelta

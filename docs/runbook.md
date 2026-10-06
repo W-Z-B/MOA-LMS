@@ -85,9 +85,11 @@ Then edit `.env` (`.env.example` explains each line):
 | `TZ` | `America/Guyana` |
 
 Leave the optional settings at their defaults unless GSA has decided otherwise. Settings that wait for a
-decision by GSA are off by default and stay off until GSA says so: `TERMS_FROM_SRMS`, `AI_ENABLED`,
-`SRMS_COMPETENCY_PUSH`, `MESSAGING_STUDENT_TO_STUDENT`, push notices (`VAPID_*`) and automatic captions
-(`VIDEO_TRANSCRIBE_COMMAND`). Never set `DEMO_USER_PASSWORD` or `DEMO_TOTP_SECRET` on a real server.
+decision by GSA are off by default and stay off until GSA says so: `TERMS_FROM_SRMS`,
+`HRMS_TRAINING_REQUIREMENTS_SYNC` (required training read from the HRMS, decision D13: switch it on once the
+HRMS has given the LMS's key the `training:read` scope), `AI_ENABLED`, `SRMS_COMPETENCY_PUSH`,
+`MESSAGING_STUDENT_TO_STUDENT`, push notices (`VAPID_*`) and automatic captions (`VIDEO_TRANSCRIBE_COMMAND`).
+Never set `DEMO_USER_PASSWORD` or `DEMO_TOTP_SECRET` on a real server.
 
 **Before going further, put a copy of `.env` in the sealed envelope with the backup keys** ([Keys](#keys)).
 Without `FIELD_ENCRYPTION_KEY`, no backup can be fully used: authenticator secrets, accommodation reasons
@@ -412,6 +414,7 @@ real times:
 | `insights.early_alerts` | `15 4 * * *` | 04:15 daily | 00:15 | Early alerts about students who may need help |
 | `terms.lifecycle` | `30 4 * * *` | 04:30 daily | 00:30 | Closes terms and archives old ones |
 | `iam.access_review_reminder` | `0 6 * * 1` | 06:00 Mondays | 02:00 Mondays | Reminds the reviewers when the term's access review is due |
+| `integration.sync_training_requirements` | `0 6 * * *` | 06:00 daily | 02:00 | Required training from the HRMS, only if `HRMS_TRAINING_REQUIREMENTS_SYNC` is on |
 | `staffdev.required_training` | `30 6 * * *` | 06:30 daily | 02:30 | Required training: who must do what, and reminders |
 | `approvals.chase_decisions` | `0 7 * * 1-5` | 07:00 weekdays | 03:00 weekdays | Chases decisions that have waited too long |
 | `assessments.due_reminders` | `5 * * * *` | 5 past each hour | 5 past each hour | Reminders of work coming due |
@@ -551,7 +554,8 @@ check of the audit log has not run for two days, which usually means the worker 
 
 Alerts **LmsSiblingSyncFailing** (the latest run of a kind did not finish cleanly, for an hour) and
 **LmsSiblingSyncStale** (no run of a kind for two days). The `kind` says which: staff from the HRMS, training
-to the HRMS, coursework totals to the SRMS, outcomes from the SRMS, competency results to the SRMS.
+to the HRMS, required training from the HRMS, coursework totals to the SRMS, outcomes from the SRMS,
+competency results to the SRMS.
 
 1. Admin, **Integration runs**: open the run and read its errors. Each refused row names its record.
 2. "Could not be reached": is the other system up? Is its address right in `.env`? A 401 or 403 means the
@@ -559,7 +563,11 @@ to the HRMS, coursework totals to the SRMS, outcomes from the SRMS, competency r
 3. Rows refused one by one usually mean data to correct in the HRMS or SRMS: send the list to its
    administrator.
 4. Run it again once fixed: `dc exec api python manage.py sync_ecosystem --staff`, `--push-marks`
-   (optionally `--site <code>`) or `--push-training`.
+   (optionally `--site <code>`), `--push-training` or `--training-requirements`.
+5. Required training from the HRMS: a note `unmatched_course` names a requirement whose LMS course code no
+   staff-development course has, with the HRMS's title. Make the course with that code (or have the HRMS
+   correct the code) and it is read on the next run. A failed run with `http_403` means the LMS's HRMS key
+   lacks the `training:read` scope.
 
 The nightly copy of **course sites and class lists from the SRMS** (`integration.sync_srms`) is not yet
 recorded as a run, so these alerts do not cover it ([Open actions](#open-actions)). Look for
@@ -657,8 +665,10 @@ dc up -d --force-recreate api worker
 
 ### Service keys for the HRMS and SRMS
 
-- **Keys the LMS holds** (`HRMS_API_KEY`, `SRMS_API_KEY`): ask the other system's administrator for a new
-  key, put it in `.env`, `dc up -d --force-recreate api worker`, then ask them to withdraw the old one. Check
+- **Keys the LMS holds** (`HRMS_API_KEY`, `SRMS_API_KEY`): the HRMS key needs the scopes `staff:read`,
+  `org:read`, `training:write` and, for required training from the HRMS, `training:read`; the SRMS key
+  `academics:read`, `marks:write` and, for the attendance totals, `attendance:write`. To change one, ask the
+  other system's administrator for a new key, put it in `.env`, `dc up -d --force-recreate api worker`, then ask them to withdraw the old one. Check
   the next run in Admin, **Integration runs**.
 - **Keys the LMS issued**: `dc exec api python manage.py create_service_client --name srms --scopes sites:read`
   makes a new key for that name and the old one **stops at once**; the key is shown once. Agree a time with the

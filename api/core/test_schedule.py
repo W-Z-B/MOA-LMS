@@ -26,6 +26,9 @@ INTENDED = {
     "integration.sync_staff": ("01:45", None),
     "integration.push_marks": ("02:30", None),
     "integration.push_training": ("02:45", None),
+    "integration.sync_training_requirements": ("06:00", None),
+    "opencourses.purge_registrations": ("03:40", None),
+    "peerreview.allocate_due": ("every hour at :20", None),
     "notifications.daily_summary": ("17:00", None),
     "privacy.retention_purge": ("04:00", None),
     "staffdev.completion_sweep": ("02:15", None),
@@ -50,7 +53,9 @@ def test_every_periodic_job_runs_at_its_intended_local_time():
     for name, (at, weekdays) in INTENDED.items():
         times = runs(jobs[name], 14)
         if at.startswith("every hour"):
-            assert {t.strftime(":%M") for t in times} == {":05"} and len({t.hour for t in times}) == 14, name
+            assert {t.strftime(":%M") for t in times} == {at[-3:]} and len({t.hour for t in times}) == 14, (
+                name
+            )
             continue
         assert {t.strftime("%H:%M") for t in times} == {at}, name
         days = {t.strftime("%a") for t in times}

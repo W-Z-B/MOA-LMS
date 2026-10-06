@@ -179,3 +179,12 @@ def test_a_forged_forwarded_for_header_does_not_reach_the_records(student):
     client.post("/api/v1/auth/login/", {"username": "26MRP0001", "password": PASSWORD}, format="json")
     assert LoginAttempt.objects.get().source_ip == "190.80.1.2"
     assert AuditLog.objects.filter(action="login").latest("at").source_ip == "190.80.1.2"
+
+
+def test_a_self_registered_learner_needs_no_authenticator_code():
+    """Open-course learners (item 5.07) read only their own short courses: the auditor and DPO change
+    leaves them out."""
+    from iam.models import Role
+
+    assert Role.LEARNER not in Role.MFA_REQUIRED and Role.STUDENT not in Role.MFA_REQUIRED
+    assert {Role.AUDITOR, Role.DPO} <= Role.MFA_REQUIRED

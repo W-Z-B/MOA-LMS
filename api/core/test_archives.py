@@ -116,3 +116,18 @@ def test_encrypted_and_oddly_compressed_entries_are_refused():
         archive.infolist()[1].compress_type = zipfile.ZIP_LZMA
         with pytest.raises(archives.ArchiveRefused, match="compression"):
             archives.checked(archive, max_entries=10, max_bytes=archives.MB)
+
+
+def test_similarity_extraction_refuses_a_zip_bomb_and_reads_a_real_file():
+    """Hand-ins read for the similarity check (similarity.extract) meet the same checks."""
+    from similarity.extract import Unreadable, file_text
+
+    with pytest.raises(Unreadable, match="far more"):
+        file_text("essay.docx", bomb())
+    with pytest.raises(Unreadable, match="could not be opened"):
+        file_text("essay.docx", b"PK\x03\x04 not a zip")
+    w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+    words = office(
+        {"word/document.xml": f'<w:document xmlns:w="{w}"><w:p><w:t>Soil</w:t></w:p></w:document>'.encode()}
+    )
+    assert file_text("essay.docx", words) == "Soil"

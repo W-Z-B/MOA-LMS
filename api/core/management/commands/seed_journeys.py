@@ -38,6 +38,10 @@ but who have not chosen a password yet. Their invitation links, and the certific
 are written as JSON to the file JOURNEY_LINKS_FILE names, where the journeys read them: a link to choose a
 password is signed afresh each time and is never printed.
 
+For the similarity, peer review and paper quiz journeys (items 3.20, 3.24, 4.13) it adds AGR210 Pasture and
+Forage: three students' essays, one copying a passage of another, each checked, and given out for peer review;
+and a quiz to print. For the open short course journeys (item 5.07) it adds an open course and two
+registrations waiting for their links, which go in JOURNEY_LINKS_FILE too (open_courses).
 For the outside-tool journeys (item 6.07) it registers a fictional tool, with names and emails off, and places
 it in a module of its own on AGR101 with a gradebook column.
 """
@@ -46,6 +50,7 @@ import hashlib
 import json
 import os
 import re
+import secrets
 from datetime import datetime, timedelta
 from decimal import Decimal
 
@@ -78,7 +83,7 @@ from quizzes.models import QuestionBank, QuestionCategory
 from rubrics.models import Rubric
 from rubrics.services import replace_criteria
 from staffdev.completion import record_completion
-from staffdev.models import CatalogueEntry
+from staffdev.models import CatalogueEntry, RequiredTraining
 
 SITE = {
     "code": "AGR101-2026-27-S1-MRP",
@@ -174,6 +179,74 @@ RUBRIC = [
     ("Interpretation", [(0, "None"), (5, "Some reasoning"), (10, "Clear and supported by the profile")]),
 ]
 
+# --- assessment extras (items 3.20, 3.24, 4.13, 5.07): the similarity, peer review and paper quiz journeys'
+# course, and an open short course. The desktop run reviews as Lisa, the phone run as Omar.
+FORAGE_SITE = {
+    "code": "AGR210-2026-27-S1-MRP",
+    "title": "Pasture and Forage",
+    "term_code": "2026-27-S1",
+    "campus_code": "MRP",
+    "description": "Grasses, legumes and grazing for cattle, sheep and goats.",
+}
+FORAGE_CAST = [
+    ("lisa.thomas", PersonRef.Kind.STUDENT, "S2026931", "Lisa", "Thomas", Role.STUDENT, "student"),
+    ("omar.khan", PersonRef.Kind.STUDENT, "S2026932", "Omar", "Khan", Role.STUDENT, "student"),
+    ("nadia.ali", PersonRef.Kind.STUDENT, "S2026933", "Nadia", "Ali", Role.STUDENT, "student"),
+]
+_GRAZING = (
+    "The pasture is divided into six paddocks with electric fencing, and the herd moves to a fresh paddock "
+    "every four days so that each paddock rests for at least twenty days before it is grazed again. "
+    "During the dry season the stocking rate falls to one animal for each hectare and a half, and the "
+    "animals get cut grass and molasses blocks in the afternoon when the pasture is short."
+)
+FORAGE_ESSAYS = [
+    "My grazing plan for the school farm. " + _GRAZING + " Water troughs are cleaned every week.",
+    "This plan rests on Brachiaria and a legume such as Leucaena planted along the drains, cut and carried "
+    "to the pen twice a day in the dry months, with the herd kept off the wettest ground near the trench.",
+    "A dry season plan. " + _GRAZING + " I would also plant Leucaena near the pens for extra protein.",
+]
+FORAGE_RUBRIC = [
+    ("Knowledge of pasture", [(0, "Missing"), (5, "Some knowledge shown"), (10, "Thorough and accurate")]),
+    ("Use of the farm's records", [(0, "None"), (5, "Some use"), (10, "Plan built on the records")]),
+]
+FORAGE_QUESTIONS = [
+    (
+        "multichoice",
+        "Which is a legume grown for forage?",
+        {
+            "single": True,
+            "choices": [
+                {"id": "a", "text": "Leucaena", "fraction": 1},
+                {"id": "b", "text": "Brachiaria", "fraction": 0},
+                {"id": "c", "text": "Sugar cane", "fraction": 0},
+            ],
+        },
+    ),
+    ("truefalse", "A rested paddock grows back faster than one grazed every day.", {"correct": True}),
+    (
+        "multichoice",
+        "How long should a paddock rest in the dry season, at least?",
+        {
+            "single": True,
+            "choices": [
+                {"id": "a", "text": "Two days", "fraction": 0},
+                {"id": "b", "text": "Twenty days", "fraction": 1},
+            ],
+        },
+    ),
+]
+OPEN_COURSE = {
+    "code": "OPEN-POULTRY-2026",
+    "title": "Backyard poultry keeping",
+    "description": "A short course for farmers and extension officers.",
+}
+# Fictional people registering for the open course: one for each journey project.
+OPEN_LEARNERS = [
+    ("farmer.desktop@example.org", "Sita", "Persaud"),
+    ("farmer.phone@example.org", "Dev", "Ramsaran"),
+]
+# --- end assessment extras ---
+
 
 # --- insight --- (items 3.11, 6.01 to 6.06): the insight journeys' course, its two students, and a head of
 # department (username, first name, last name) for the crops unit that Marlon is in.
@@ -241,11 +314,12 @@ class Command(BaseCommand):
             self._administrator(password, secret)
             certificate = self._staff_development()
             links = self._invitations()
+            open_links = self._assessment_extras(password)
         target = os.environ.get("JOURNEY_LINKS_FILE", "")
         if target:
             os.makedirs(os.path.dirname(target) or ".", exist_ok=True)
             with open(target, "w", encoding="utf-8") as out:
-                json.dump({"invitations": links, "certificate": certificate}, out)
+                json.dump({"invitations": links, "certificate": certificate, "open_courses": open_links}, out)
         self.stdout.write(
             self.style.SUCCESS(f"Journey data ready: {len(CAST)} accounts in {site.code} ({site.title}).")
         )
@@ -532,6 +606,19 @@ class Command(BaseCommand):
                     certificate.check_code = CERTIFICATE_CODE
                     certificate.save(update_fields=["check_code"])
                 found = {"reference": certificate.reference, "code": CERTIFICATE_CODE}
+        # Required training (item 5.05, decision D13): one kept in the LMS, one read from the HRMS.
+        RequiredTraining.objects.get_or_create(
+            site=CourseSite.objects.get(code="SD-101"), post_title="Farm Supervisor", hrms_id=None
+        )
+        RequiredTraining.objects.get_or_create(
+            hrms_id=9001,
+            defaults={
+                "site": CourseSite.objects.get(code="SD-102"),
+                "source": RequiredTraining.Source.HRMS,
+                "unit_code": "FARM",
+                "renewal_months": 24,
+            },
+        )
         return found
 
     @staticmethod
@@ -639,6 +726,149 @@ class Command(BaseCommand):
         in it, build a quiz and publish it. No quiz is seeded, so nothing new is due on the Homes."""
         bank, _ = QuestionBank.objects.get_or_create(site=site, name="Crop production questions")
         QuestionCategory.objects.get_or_create(bank=bank, name="Week 1: What a crop needs")
+
+    # --- assessment extras: similarity, peer review, paper quizzes, open courses (3.20, 3.24, 4.13, 5.07) ---
+    def _assessment_extras(self, password: str) -> list[str]:
+        """AGR210 Pasture and Forage, for the similarity, peer review and paper quiz journeys: three students
+        have handed in an essay marked by rubric, an hour ago, after its due date passed; Nadia's copies a
+        long passage of Lisa's, and every hand-in has been checked. The work is given out for peer review
+        (two pieces each, due in five days), and the course has a published quiz to print. Also a published
+        open short course, and two registrations waiting for their emailed link, one for each journey project:
+        the links are returned for JOURNEY_LINKS_FILE."""
+        from opencourses.models import OpenRegistration
+        from peerreview.models import PeerReviewSetup
+        from peerreview.services import allocate
+        from quizzes import schemas
+        from quizzes.models import Question, QuestionVersion, Quiz, QuizSlot
+        from similarity.models import SimilarityDocument
+        from similarity.services import check
+
+        site, _ = CourseSite.objects.get_or_create(
+            code=FORAGE_SITE["code"],
+            defaults={
+                **{k: v for k, v in FORAGE_SITE.items() if k != "code"},
+                "source": "local",
+                "is_published": True,
+            },
+        )
+        lecturer = PersonRef.objects.get(kind=PersonRef.Kind.STAFF, external_id="E0901")
+        Membership.objects.get_or_create(site=site, person=lecturer, defaults={"role": "lecturer"})
+        students = []
+        for username, kind, external_id, first, last, role, site_role in FORAGE_CAST:
+            person = self._person(username, kind, external_id, first, last, role, password)
+            Membership.objects.get_or_create(site=site, person=person, defaults={"role": site_role})
+            students.append(person)
+        rubric = Rubric.objects.filter(site=site, title="Grazing plan rubric").first()
+        if rubric is None:
+            rubric = Rubric.objects.create(site=site, title="Grazing plan rubric", kind=Rubric.Kind.SCORED)
+            replace_criteria(
+                rubric,
+                [
+                    {"title": title, "levels": [{"points": p, "description": d} for p, d in levels]}
+                    for title, levels in FORAGE_RUBRIC
+                ],
+            )
+        now = timezone.now()
+        essay, made = Assignment.objects.get_or_create(
+            site=site,
+            title="Grazing plan essay",
+            defaults={
+                "instructions": "Write a grazing plan for the school's pasture for the dry season.",
+                "opens_at": now - timedelta(days=10),
+                "due_at": now - timedelta(minutes=90),
+                "max_mark": 20,
+                "weight": 1,
+                "is_published": True,
+                "requires_integrity": True,
+                "rubric": rubric,
+            },
+        )
+        for person, text in zip(students, FORAGE_ESSAYS, strict=True):
+            if Submission.objects.filter(assignment=essay, student=person).exists():
+                continue
+            at = now - timedelta(hours=1)
+            submission = Submission.objects.create(
+                assignment=essay, student=person, text=text, submitted_at=at, is_late=True
+            )
+            SubmissionAttempt.objects.create(
+                submission=submission,
+                number=1,
+                submitted_by=person,
+                submitted_at=at,
+                text=text,
+                is_late=True,
+                receipt=rules.new_receipt(),
+                content_hash=rules.content_hash(text, []),
+                integrity_statement=rules.INTEGRITY_STATEMENT,
+            )
+        for submission in essay.submissions.order_by("student__external_id"):
+            if not SimilarityDocument.objects.filter(submission=submission).exists():
+                check(submission.attempts.get())
+        setup, _ = PeerReviewSetup.objects.get_or_create(
+            assignment=essay,
+            defaults={
+                "reviews_each": 2,
+                "reviews_due_at": now + timedelta(days=5),
+                "peer_weight": Decimal(20),
+            },
+        )
+        if setup.allocated_at is None:
+            allocate(setup)
+        bank, _ = QuestionBank.objects.get_or_create(site=site, name="Pasture questions")
+        category, _ = QuestionCategory.objects.get_or_create(bank=bank, name="Forage")
+        quiz, made = Quiz.objects.get_or_create(
+            site=site, title="Forage quiz", defaults={"is_published": True, "weight": 0}
+        )
+        if made:
+            for position, (qtype, text, data) in enumerate(FORAGE_QUESTIONS, start=1):
+                question = Question.objects.create(bank=bank, category=category, qtype=qtype, name=text[:60])
+                QuestionVersion.objects.create(
+                    question=question, text=text, data=schemas.validate_question(qtype, text, data)
+                )
+                QuizSlot.objects.create(quiz=quiz, position=position, question=question)
+        # The open short course and its waiting registrations (item 5.07; on in the journey stack only).
+        course, made = CourseSite.objects.get_or_create(
+            code=OPEN_COURSE["code"],
+            defaults={
+                **{k: v for k, v in OPEN_COURSE.items() if k != "code"},
+                "kind": CourseSite.Kind.OPEN,
+                "source": "local",
+                "is_published": True,
+            },
+        )
+        if made:
+            module = Module.objects.create(site=course, title="Week 1: Housing")
+            ContentItem.objects.create(
+                module=module, title="A dry, airy house", body="<p>Keep the litter dry.</p>"
+            )
+        CatalogueEntry.objects.get_or_create(
+            site=course,
+            defaults={
+                "summary": "Housing, feeding and keeping a small flock healthy.",
+                "audience": "Farmers and extension officers",
+                "length_hours": Decimal("6"),
+                "self_enrol": CatalogueEntry.Enrol.OPEN,
+            },
+        )
+        links = []
+        for email, first, last in OPEN_LEARNERS:
+            if get_user_model().objects.filter(username=email).exists():
+                continue  # the journey has registered already
+            token = secrets.token_urlsafe(32)
+            OpenRegistration.objects.create(
+                email=email,
+                first_name=first,
+                last_name=last,
+                site=course,
+                token_hash=hashlib.sha256(token.encode()).hexdigest(),
+                notice_version=PrivacyNotice.objects.order_by("-version")
+                .values_list("version", flat=True)
+                .first(),
+            )
+            links.append(f"/#/open-courses/confirm/{token}")
+        return links
+
+    # --- end assessment extras ---
 
     # --- packaged content, the library and interchange (items 5.10, 5.12 to 5.14, 6.08) ---
     @staticmethod

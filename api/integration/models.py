@@ -87,6 +87,7 @@ class IntegrationRun(models.Model):
         TRAINING_PUSH = "training_push", "Training completions to the HRMS"
         MARKS_PUSH = "marks_push", "Coursework totals to the SRMS"
         STAFF_SYNC = "staff_sync", "Staff records from the HRMS"
+        REQUIREMENT_SYNC = "requirement_sync", "Required training from the HRMS"
         OUTCOME_SYNC = "outcome_sync", "Learning outcomes from the SRMS course outlines"
         COMPETENCY_PUSH = "competency_push", "Competency results and outcome standings to the SRMS"
 

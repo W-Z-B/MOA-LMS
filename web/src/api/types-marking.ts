@@ -3,6 +3,8 @@
  * the serializers of api/assessments, api/rubrics and api/notifications; keep in step with /api/docs.
  */
 
+import type { PeerSummary } from "./types-assess";
+
 export type LatePenalty = "none" | "per_day" | "per_hour";
 export type Moderation = "none" | "sample" | "double";
 export type RubricKind = "scored" | "descriptive" | "guide";
@@ -142,6 +144,8 @@ export interface AssignmentDetail {
   my_due_at: string | null;
   my_submission: WorkSubmission | null;
   submissions_count: number | null;
+  /** Peer review (item 4.13): its dates and state, or null when the assignment has none. */
+  peer_review?: PeerSummary | null;
 }
 
 export interface Attempt {

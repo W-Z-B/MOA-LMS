@@ -15,6 +15,11 @@ when people use it, so that the privacy notice can say it and anyone adding a fe
 | Reading of the privacy notice | Once per version | Acknowledgements, audit log | Administrators, the DPO | With the account |
 | Viewing or downloading one's own record | Each time | Audit log | Administrators, the auditor | With the audit log |
 | Notifications sent, and whether read | Each one | Notifications | The person | 2 years, removed nightly |
+| The words of each hand-in, its fingerprints and what it shares with other GSA work (item 3.20) | Each hand-in | Similarity tables, on GSA's server | The course's teaching staff; the other work named only to staff of both courses | With the submission: deleted with it |
+| Viewing or re-running a similarity report | Each time | Audit log | Administrators, the auditor | With the audit log |
+| Peer reviews written: rubric scores and comment (item 4.13) | Each review | Peer reviews, audit log | The reviewer; the student reviewed once released, without the reviewer's name; the teaching staff | With the submission |
+| Paper quiz answers keyed in (item 3.24) | Each answer sheet | Quiz attempts, audit log | The student as the quiz's review options allow, the teaching staff | With quiz attempts |
+| Registration for an open short course: name, email, network address (item 5.07, when GSA turns it on) | Each request | Open registrations | The system | Unconfirmed: deleted when the link expires (48 hours); confirmed: with the account |
 | First opening of a course item (a page opened, a file downloaded, or marked complete), once per item | The first time only | Item completions | The student; the course's teaching staff, as progress and course analytics (items 2.16, 6.01, 6.02) | With the course's records |
 | Early alerts: a visible rule (missed work, falling marks, no recorded activity for a number of days) matched, with its evidence and what a person decided | Checked nightly; one alert per piece of evidence | Early alerts, audit log | The course's teaching staff and course administrators; never shown to the student as a label; included in the copy of a person's record produced for a request (item 6.05) | With the course's records |
 | Viewing or exporting a report that leaves a course (courses, staff development) | Each time | Audit log | Administrators, the auditor | With the audit log |

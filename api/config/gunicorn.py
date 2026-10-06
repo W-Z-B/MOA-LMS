@@ -43,7 +43,7 @@ graceful_timeout = 30  # a stop or a release lets requests under way finish for 
 max_requests = 2000
 max_requests_jitter = 200
 # The heartbeat file of each worker lives in memory, not on the container's (read-only) disk.
-worker_tmp_dir = "/dev/shm"
+worker_tmp_dir = "/dev/shm"  # noqa: S108 - a tmpfs of its own in the container (deploy/compose.prod.yml)
 # Requests are logged by the application itself, as JSON with their request id (config/observability.py).
 accesslog = None
 errorlog = "-"

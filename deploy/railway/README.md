@@ -40,7 +40,7 @@ Secrets are generated on the operator's machine and stored in Railway; none is k
 | `DJANGO_SECRET_KEY`, `FIELD_ENCRYPTION_KEY` | secrets (`scripts/gen-secret.sh`). Losing `FIELD_ENCRYPTION_KEY` makes encrypted identifiers unreadable |
 | `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` | references to `lms-db`: `${{lms-db.PGHOST}}` and so on |
 | `HRMS_API_URL`, `SRMS_API_URL` | `http://${{hrms.RAILWAY_PRIVATE_DOMAIN}}:8080`, `http://${{srms.RAILWAY_PRIVATE_DOMAIN}}:8080` |
-| `HRMS_API_KEY`, `SRMS_API_KEY` | secrets; the HRMS and the SRMS register their hashes by reference |
+| `HRMS_API_KEY`, `SRMS_API_KEY` | secrets; the HRMS and the SRMS register their hashes by reference, for the client `lms`, with the scopes `staff:read org:read training:write training:read` (HRMS) and `academics:read marks:write attendance:write` (SRMS) |
 | `SMTP_*` | empty: email is written to the log |
 
 ## First administrator

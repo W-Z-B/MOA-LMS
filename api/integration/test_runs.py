@@ -158,6 +158,34 @@ def test_the_staff_directory_closes_the_accounts_of_those_who_left(lecturer, mak
 
 
 @pytest.mark.django_db
+def test_the_directory_moves_and_clears_supervisors(lecturer, make_person, ecosystem):  # noqa: F811
+    """Decision D13: supervisor_employee_no in the directory decides who approves staff-development requests
+    (staffdev.enrolment.approver_for); a change of supervisor, or none, comes across too."""
+    from integration.hrms import sync_staff
+    from staffdev.enrolment import approver_for
+
+    other = make_person("staff", "E0002", "Ram", "Das")
+    hire = {**STAFF, "employee_no": "E0007", "first_name": "New", "last_name": "Hire"}
+    others = [STAFF, {**STAFF, "employee_no": "E0002"}]
+    ecosystem["staff"] = [*others, {**hire, "supervisor_employee_no": "E0001"}]
+    sync_staff()
+    person = PersonRef.objects.get(external_id="E0007")
+    assert approver_for(person) == lecturer
+    ecosystem["staff"] = [*others, {**hire, "supervisor_employee_no": "E0002"}]
+    sync_staff()
+    person.refresh_from_db()
+    assert person.supervisor == other
+    ecosystem["staff"] = [*others, hire]  # a directory that does not send the field changes nothing
+    sync_staff()
+    person.refresh_from_db()
+    assert person.supervisor == other
+    ecosystem["staff"] = [*others, {**hire, "supervisor_employee_no": None}]
+    sync_staff()
+    person.refresh_from_db()
+    assert person.supervisor is None and approver_for(person) is None
+
+
+@pytest.mark.django_db
 def test_an_unreadable_directory_changes_nobody(lecturer, ecosystem, monkeypatch):  # noqa: F811
     from integration import hrms
 

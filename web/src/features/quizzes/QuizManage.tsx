@@ -7,6 +7,7 @@ import { BackLink } from "./AttemptPlayer";
 import { QuizQuestions } from "./QuizQuestions";
 import { getAll, plainText, toLocalInput } from "./quizUtil";
 import { QuizSettings } from "./QuizSettings";
+import { PaperQuizzes } from "../assess/PaperQuizzes";
 
 const SECTION_LABEL: Record<QuizSection, string> = {
   settings: "Settings",
@@ -15,6 +16,7 @@ const SECTION_LABEL: Record<QuizSection, string> = {
   marking: "Marking",
   results: "Results",
   statistics: "Statistics",
+  paper: "On paper",
 };
 
 interface Props {
@@ -65,6 +67,7 @@ export function QuizManage({ siteId, quizId, section, onOpen, onBack }: Props) {
       {section === "marking" && <MarkingQueue quiz={quiz} onOpen={onOpen} />}
       {section === "results" && <Results quiz={quiz} onOpen={onOpen} />}
       {section === "statistics" && <Statistics quiz={quiz} />}
+      {section === "paper" && <PaperQuizzes quizId={quiz.id} />}
     </>
   );
 }

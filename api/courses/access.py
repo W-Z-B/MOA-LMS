@@ -18,8 +18,19 @@ def person_of(user):
     return getattr(user, "person", None)
 
 
+def is_learner(user) -> bool:
+    """A self-registered learner on open short courses (item 5.07): open sites only, never academic ones,
+    whatever memberships or roles the account may be given by mistake."""
+    person = person_of(user)
+    return (person is not None and person.kind == "learner") or (
+        has_role(user, Role.LEARNER) and not has_role(user, *SITE_ADMIN_ROLES, Role.AUDITOR, Role.LECTURER)
+    )
+
+
 def site_role(user, site: CourseSite) -> str | None:
     """'admin', a membership role, 'auditor' (read-only), or None when the user has no access."""
+    if is_learner(user) and site.kind != CourseSite.Kind.OPEN:
+        return None
     if has_role(user, *SITE_ADMIN_ROLES):
         return ADMIN
     person = person_of(user)
@@ -50,6 +61,8 @@ def visible_sites(user):
     teaching = mine & Q(memberships__role__in=[Membership.SiteRole.LECTURER, Membership.SiteRole.ASSISTANT])
     learning = mine & Q(memberships__role=Membership.SiteRole.STUDENT, is_published=True)
     # An archived site (item 7.12) leaves members' lists; course administrators and the auditor keep it.
+    if is_learner(user):
+        return qs.filter(learning, kind=CourseSite.Kind.OPEN).filter(archive__isnull=True).distinct()
     return qs.filter(teaching | learning).filter(archive__isnull=True).distinct()
 
 

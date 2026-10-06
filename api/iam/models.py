@@ -21,6 +21,7 @@ class Role(TimeStampedModel):
     STUDENT = "student"
     AUDITOR = "auditor"
     DPO = "dpo"
+    LEARNER = "learner"
     # Reports (items 6.03, 6.04): a head of department reads them for the units of their grants
     # (RoleScope.unit_code), the Registrar for their campus, or every campus when the grant names none.
     HEAD_OF_DEPARTMENT = "head_of_department"
@@ -32,6 +33,8 @@ class Role(TimeStampedModel):
         (STUDENT, "Student"),
         (AUDITOR, "Auditor"),
         (DPO, "Data Protection Officer"),
+        # Self-registered on open short courses only, never on academic sites (item 5.07).
+        (LEARNER, "Open-course learner"),
         (HEAD_OF_DEPARTMENT, "Head of Department"),
         (REGISTRAR, "Registrar"),
     )

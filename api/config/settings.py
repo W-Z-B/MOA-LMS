@@ -26,8 +26,8 @@ CSRF_TRUSTED_ORIGINS = [f"https://{h}" for h in ALLOWED_HOSTS if h not in {"loca
 # Keys for application-layer encryption of sensitive values (core.crypto). One key: FIELD_ENCRYPTION_KEY.
 # While the key is being changed: FIELD_ENCRYPTION_KEYS=new,old (newest first; it wins over
 # FIELD_ENCRYPTION_KEY), then `manage.py rotate_field_key`, then the old key moves to
-# AUDIT_CHAIN_RETIRED_KEYS, where it only verifies the audit entries sealed before the change (docs/runbook.md,
-# changing the key).
+# AUDIT_CHAIN_RETIRED_KEYS, where it only verifies the audit entries sealed before the change
+# (docs/runbook.md, changing the key).
 FIELD_ENCRYPTION_KEYS = [k.strip() for k in env("FIELD_ENCRYPTION_KEYS", "").split(",") if k.strip()]
 FIELD_ENCRYPTION_KEY = env("FIELD_ENCRYPTION_KEY", "") or (FIELD_ENCRYPTION_KEYS[:1] or [""])[0]
 AUDIT_CHAIN_RETIRED_KEYS = [k.strip() for k in env("AUDIT_CHAIN_RETIRED_KEYS", "").split(",") if k.strip()]
@@ -67,6 +67,10 @@ INSTALLED_APPS = [
     "calendars",
     "helpdesk",
     "rubrics",
+    "similarity",
+    "peerreview",
+    "paperquizzes",
+    "opencourses",
     "terms",
     # Packaged content (SCORM, H5P), statements, the content library, course interchange (5.12 to 5.14, 6.08)
     "packages",
@@ -292,6 +296,11 @@ ESCALATE_AFTER_DAYS = int(env("ESCALATE_AFTER_DAYS", "2"))
 RENEWAL_WINDOW_DAYS = int(env("RENEWAL_WINDOW_DAYS", "60"))
 # Days before a required course is due on which a reminder goes.
 REQUIRED_TRAINING_REMIND_DAYS = int(env("REQUIRED_TRAINING_REMIND_DAYS", "7"))
+# Decision D13 (ADR 0019): the HRMS lists who must take which training; the LMS reads the list each night
+# before the daily required-training run (HRMS scope training:read). Off until GSA gives the LMS's HRMS key
+# that scope. While it is on, the requirements the HRMS keeps are read-only here; course administrators keep
+# the rest.
+HRMS_TRAINING_REQUIREMENTS_SYNC = env_bool("HRMS_TRAINING_REQUIREMENTS_SYNC", False)
 
 # Certificates (items 5.08 to 5.11): the heading, the reference prefix, where they are checked, and how many
 # wrong codes one address, or one reference, may try within LOGIN_LOCKOUT_MINUTES.
@@ -313,6 +322,17 @@ ATTENDANCE_LATE_AFTER_MINUTES = int(env("ATTENDANCE_LATE_AFTER_MINUTES", "10"))
 MARKING_DAYS = int(env("MARKING_DAYS", "14"))
 DECISION_DAYS = int(env("DECISION_DAYS", "7"))
 
+# Similarity check (item 3.20, decision D4, ADR 0045): each hand-in is compared with other GSA submissions on
+# GSA's own server, in the background. On by default, as decided; off stops new checks and the report's
+# "check again".
+SIMILARITY_CHECKS = env_bool("SIMILARITY_CHECKS", True)
+
+# Open short courses for farmers and extension officers (item 5.07). Off until GSA decides to offer them
+# (decision D0, ADR 0046). On: a public catalogue of open sites, registration by email, and learner accounts
+# that see open sites only. Registrations: this many an hour from one network address; a link lasts this long.
+OPEN_COURSES_ENABLED = env_bool("OPEN_COURSES_ENABLED", False)
+OPEN_REGISTRATIONS_PER_ADDRESS = int(env("OPEN_REGISTRATIONS_PER_ADDRESS", "5"))
+OPEN_CONFIRM_HOURS = int(env("OPEN_CONFIRM_HOURS", "48"))
 # Term life-cycle (item 7.12). Sites take work until the end of their term's close date and this many days
 # after it, unless the term sets its own grace; then they are read-only for appeals. They are archived when
 # the retention schedule's period for course sites has passed (privacy rule "course-sites"; this is the

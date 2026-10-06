@@ -1,9 +1,10 @@
 """Reading zip files people upload without being overwhelmed by them (ASVS 12.1.2: zip bombs).
 
 Every place that opens an uploaded zip goes through these checks before it unpacks anything: Word and
-PowerPoint files read for AI drafting (assist.services), question packages (quizzes.formats), SCORM and H5P
-packages, Common Cartridges and older Moodle backups (packages.archive, which the importers use), and the
-Office check at upload (core.uploads, which only lists names).
+PowerPoint files read for AI drafting (assist.services) and for the similarity check (similarity.extract),
+question packages (quizzes.formats), SCORM and H5P packages, Common Cartridges and older Moodle backups
+(packages.archive, which the importers use), and the Office check at upload (core.uploads, which only lists
+names).
 
 - At most `max_entries` entries, and at most `max_bytes` once unpacked, by the sizes the zip declares;
 - no entry above 1 MB unpacked may be more than MAX_RATIO times its packed size;

@@ -68,6 +68,9 @@ States) holds fictional data only and is never used for personal data.
 | Students | Course memberships, from SRMS class lists | The SRMS | Giving access to course material | Functions of a public body |
 | Students | Submitted work (files and text), time of submission, late flag, receipt code and content fingerprint | The student | Assessment; proof of what was handed in and when | Functions of a public body |
 | Students | Marks, rubric scores, written and spoken feedback, released or not | Lecturers | Assessment; coursework totals sent to the SRMS | Functions of a public body |
+| Students | The words of their work and its fingerprints, compared with other GSA work on GSA's server; matching passages (item 3.20, ADR 0045) | The LMS | Academic integrity: evidence for a lecturer to judge, never a decision by itself | Functions of a public body |
+| Students | Peer reviews they write and receive (item 4.13): seen by classmates without names | Students | Learning by assessing; optionally part of the mark | Functions of a public body |
+| Open-course learners (only if GSA turns it on, ADR 0046) | Name and email address they give, network address of the request | The person | Short courses for farmers and extension officers | Consent given when registering; to confirm with GSA |
 | Students | Quiz attempts: answers, marks, and the events of each attempt (started, answer saved, page changed, submitted), in server time | The student, the system | Assessment; fairness when an attempt is questioned | Functions of a public body |
 | Students | Practical observations against criteria, logbook entries, photographs and scans of their work, and a location if the person recording taps "Add my location" | Lecturers, assessors, the student | Competency-based assessment (TVET Act 2004 standards) | Functions of a public body |
 | Students | Competency results by unit and element | Lecturers | Records of competence alongside marks (ADR 0017) | Functions of a public body |
@@ -98,7 +101,7 @@ The LMS owns no person and no result: it holds people by reference to the system
 |---|---|---|
 | SRMS to LMS, nightly | Offerings; students' number, name, email and campus; class lists | Date of birth, national identifiers, address, fees, results of other courses |
 | LMS to SRMS | Each student's weighted coursework percentage; attendance totals for courses that need them (SRMS side not built yet) | Individual submissions, feedback, attempts or messages |
-| HRMS to LMS | Staff number, name, email, campus, post, unit; required training | National identifiers, pay, health, address |
+| HRMS to LMS | Staff number, name, email, campus, post, unit, supervisor's staff number; required training by post, unit and campus (scope `training:read`, decision D13) | National identifiers, pay, health, address |
 | LMS to HRMS | Staff development completions | Anything about students |
 | SRMS and HRMS from LMS | Course sites: code, title, term, campus (scope `sites:read`) | Anything about people |
 
