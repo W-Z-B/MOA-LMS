@@ -4,7 +4,7 @@ import { SIGNED_OUT_EVENT, get } from "./api/client";
 import { ADMIN_ROLES, hasAnyRole, type Me } from "./api/types";
 import { usesCampusSwitch } from "./app/people";
 import { Shell } from "./app/Shell";
-import { adminAddress, contentAddress, forumAddress, messageAddress, siteAddress, useHashRoute } from "./app/router";
+import { adminAddress, contentAddress, forumAddress, messageAddress, packageAddress, siteAddress, useHashRoute } from "./app/router";
 import { AccountScreen } from "./features/account/AccountScreen";
 import { CalendarScreen } from "./features/calendar/CalendarScreen";
 import { ForumScreen } from "./features/forums/ForumScreen";
@@ -37,6 +37,11 @@ const CourseSetupScreen = lazy(() => import("./features/content/CourseSetupScree
 const TemplatesScreen = lazy(() => import("./features/course-admin/TemplatesScreen"));
 const TakedownsScreen = lazy(() => import("./features/course-admin/TakedownsScreen"));
 const StorageAllowancesScreen = lazy(() => import("./features/course-admin/StorageAllowancesScreen"));
+// --- packaged content, the library and interchange (items 5.12 to 5.14, 6.08): loaded when first opened ---
+const PackageScreen = lazy(() => import("./features/packages/PackageScreen"));
+const TransferScreen = lazy(() => import("./features/packages/TransferScreen"));
+const LibraryScreen = lazy(() => import("./features/packages/LibraryScreen"));
+// --- end packaged content ---
 
 const later = (screen: ReactNode) => <Suspense fallback={<p className="loading">Opening…</p>}>{screen}</Suspense>;
 
@@ -128,6 +133,7 @@ export default function App() {
   const admin = adminAddress(path);
   const forum = forumAddress(path);
   const messages = messageAddress(path);
+  const packaged = packageAddress(path);
   const campus = usesCampusSwitch(me) ? campusCode : null;
   // Marking, rubrics, accommodations and notification settings have addresses of their own.
   const marking = markingScreen(path, navigate);
@@ -148,6 +154,12 @@ export default function App() {
         onNavigate={navigate}
       />,
     );
+  // --- packaged content, the library and interchange ---
+  else if (packaged?.view === "package")
+    screen = later(<PackageScreen key={packaged.itemId} siteId={packaged.siteId} itemId={packaged.itemId} />);
+  else if (packaged?.view === "transfer") screen = later(<TransferScreen siteId={packaged.siteId} />);
+  else if (packaged?.view === "library") screen = later(<LibraryScreen path={packaged.rest} onNavigate={navigate} />);
+  // --- end packaged content ---
   // --- talk: forums, messages and the calendar (items 4.08 to 4.11, 2.32) ---
   else if (forum?.thread) screen = <ThreadScreen key={forum.thread} forumId={forum.forum ?? 0} threadId={forum.thread} />;
   else if (forum?.forum) screen = <ForumScreen key={forum.forum} forumId={forum.forum} onNavigate={navigate} />;

@@ -80,6 +80,7 @@ class PackageSerializer(serializers.ModelSerializer):
     )
     my_attempts = serializers.SerializerMethodField(help_text="The requester's own attempts (not previews)")
     attempts_left = serializers.SerializerMethodField(help_text="Null when there is no limit")
+    activity = serializers.SerializerMethodField(help_text="The package's xAPI activity id (item 6.09)")
     my_result = serializers.SerializerMethodField(
         help_text="What counts for the requester: {fraction, state}, as in the gradebook"
     )
@@ -106,6 +107,7 @@ class PackageSerializer(serializers.ModelSerializer):
             "my_attempts",
             "attempts_left",
             "my_result",
+            "activity",
         )
         read_only_fields = ("item", "standard", "version_label", "scos", "entries", "unpacked_bytes")
 
@@ -127,6 +129,9 @@ class PackageSerializer(serializers.ModelSerializer):
         if not obj.max_attempts:
             return None
         return max(obj.max_attempts - len(self._mine(obj)), 0)
+
+    def get_activity(self, obj) -> str:
+        return services.activity_iri(obj)
 
     def get_my_result(self, obj) -> dict:
         request = self.context.get("request")

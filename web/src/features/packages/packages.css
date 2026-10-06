@@ -1,0 +1,92 @@
+/* Packaged content, the library and course interchange (items 5.12 to 5.14, 6.08). */
+
+.package-view,
+.library-view,
+.transfer-view {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.package-start {
+  display: grid;
+  gap: 0.75rem;
+  max-width: 32rem;
+}
+
+/* The sandboxed player: as wide as the page, tall enough for a lesson, never wider than a phone. */
+.player {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.player iframe {
+  width: 100%;
+  min-height: 70vh;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-control);
+  background: var(--card);
+}
+
+.package-table {
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.package-table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.package-table th,
+.package-table td {
+  text-align: left;
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--rule-soft);
+  vertical-align: top;
+}
+
+.library-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-end;
+}
+
+.library-filters label {
+  flex: 1 1 12rem;
+}
+
+.library-item .tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.report-list li {
+  overflow-wrap: anywhere;
+}
+
+.licence-line {
+  overflow-wrap: anywhere;
+}
+
+.check-line {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  min-height: 44px;
+}
+
+.check-line input {
+  width: auto;
+  min-width: 1.25rem;
+  min-height: 1.25rem;
+}
+
+details > summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}

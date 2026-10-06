@@ -46,3 +46,14 @@ describe("certificates (items 5.08 to 5.11)", () => {
     expect(await screen.findByText(/No certificates yet/)).toBeInTheDocument();
   });
 });
+
+describe("certificates as digital badges (item 5.10)", () => {
+  it("offers the credential for a wallet when the server issues one", async () => {
+    fakeServer({ "GET /certificates/": page([certificate({ badge_url: "/api/v1/certificates/9/badge/" }), certificate({ id: 10, badge_url: null })]) });
+    render(<Certificates me={staff} />);
+    const list = await screen.findByRole("list", { name: "Certificates" });
+    const [badged, plain] = within(list).getAllByRole("listitem");
+    expect(within(badged).getByRole("link", { name: "Download the digital badge: GSA/LMS/2026/0001" })).toHaveAttribute("href", "/api/v1/certificates/9/badge/");
+    expect(within(plain).queryByRole("link", { name: /digital badge/ })).not.toBeInTheDocument();
+  });
+});

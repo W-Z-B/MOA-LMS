@@ -1,7 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import type { Me } from "../api/types";
-import { PAGES, pageOf, pagesFor, siteAddress, useHashRoute } from "./router";
+import { PAGES, packageAddress, pageOf, pagesFor, siteAddress, useHashRoute } from "./router";
 
 const person = (roles: string[], is_superuser = false, person_kind: Me["person_kind"] = "staff"): Me => ({
   id: 1,
@@ -21,7 +21,7 @@ describe("pages by role", () => {
     const own = ["Home", "To do", "My courses", "Messages", "Calendar", "Discussion", "My data", "My account", "Notification settings"];
     expect(pagesFor(person(["student"], false, "student")).map((p) => p.label)).toEqual(own);
     expect(pagesFor(person([], false, null)).map((p) => p.label)).toEqual(own);
-    expect(pagesFor(person(["lecturer"])).map((p) => p.label)).toEqual([...own, "Staff development"]);
+    expect(pagesFor(person(["lecturer"])).map((p) => p.label)).toEqual([...own, "Staff development", "Content library"]);
     expect(pagesFor(person([])).map((p) => p.label)).toEqual([...own, "Staff development"]);
   });
 
@@ -73,3 +73,17 @@ describe("hash routing", () => {
     expect(result.current[0]).toBe("/sites/4/assignments");
   });
 });
+
+// --- packaged content, the library and interchange (items 5.12 to 5.14, 6.08) ---
+describe("packaged content addresses", () => {
+  it("opens a package, the import and export screen, and the library's parts", () => {
+    expect(packageAddress("/sites/4/packages/12")).toEqual({ view: "package", siteId: 4, itemId: 12 });
+    expect(packageAddress("/sites/4/transfer")).toEqual({ view: "transfer", siteId: 4 });
+    expect(packageAddress("/library")).toEqual({ view: "library", rest: "" });
+    expect(packageAddress("/library/share?item=12")).toEqual({ view: "library", rest: "/share?item=12" });
+    expect(packageAddress("/sites/4/packages")).toBeNull();
+    expect(packageAddress("/libraryx")).toBeNull();
+    expect(pageOf("/library/banks")?.label).toBe("Content library");
+  });
+});
+// --- end packaged content ---
