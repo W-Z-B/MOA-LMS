@@ -215,3 +215,26 @@ def test_a_marking_guide_criterion_counts_its_points_and_a_descriptive_one_gives
 
     assert cells[str(lo1.id)]["standing"] == "not_yet" and cells[str(lo1.id)]["percent"] == "30.0"
     assert cells[str(lo2.id)]["standing"] == "no_evidence"
+
+
+def test_the_evidence_a_lecturer_may_link_is_the_sites_own(
+    site, lecturer, student, make_assignment, client_for
+):
+    from quizzes.models import QuizSlot
+
+    rubric, criterion, _ = _rubric(site)
+    make_assignment("Soil report", rubric=rubric)
+    bank = QuestionBank.objects.create(name="AGR101 questions", site=site)
+    own = Question.objects.create(bank=bank, qtype="shortanswer", name="pH")
+    shared = QuestionBank.objects.create(name="Department bank", department_code="CROPS")
+    borrowed = Question.objects.create(bank=shared, qtype="shortanswer", name="Borrowed")
+    Question.objects.create(bank=shared, qtype="shortanswer", name="Not used here")
+    quiz = Quiz.objects.create(site=site, title="Soils quiz")
+    QuizSlot.objects.create(quiz=quiz, position=1, question=borrowed)
+
+    data = client_for(lecturer.user).get(f"/api/v1/sites/{site.id}/outcome-evidence/").json()
+
+    assert [a["title"] for a in data["assignments"]] == ["Soil report"]
+    assert {q["id"] for q in data["questions"]} == {own.id, borrowed.id}
+    assert data["criteria"] == [{"id": criterion.id, "title": "Report rubric: Method"}]
+    assert client_for(student.user).get(f"/api/v1/sites/{site.id}/outcome-evidence/").status_code == 403

@@ -9,6 +9,7 @@ The reports are read by the roles named in insights.reports, for the rows their 
 from datetime import date
 
 from django.db import IntegrityError, transaction
+from django.db.models import Q
 from django.http import StreamingHttpResponse
 from django.shortcuts import get_object_or_404
 from django.urls import path
@@ -537,6 +538,47 @@ def outcome_link(request, link_id: int):
     return Response(status=204)
 
 
+class EvidenceChoiceSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    title = serializers.CharField()
+
+
+class EvidenceChoicesSerializer(serializers.Serializer):
+    assignments = EvidenceChoiceSerializer(many=True)
+    questions = EvidenceChoiceSerializer(many=True)
+    criteria = EvidenceChoiceSerializer(many=True)
+
+
+@extend_schema(
+    responses={200: EvidenceChoicesSerializer, 403: ErrorSerializer, 404: ErrorSerializer},
+    summary="What on the site can be linked to an outcome: assignments, quiz questions, rubric criteria",
+)
+@api_view(["GET"])
+@permission_classes([RolePermission])
+def outcome_evidence(request, pk: int):
+    from quizzes.models import QuizSlot
+
+    site = _teaching_site(request, pk)
+    assignments = Assignment.objects.filter(site=site).order_by("due_at", "id")
+    in_quizzes = QuizSlot.objects.filter(quiz__site=site, question__isnull=False).values("question_id")
+    questions = (
+        Question.objects.filter(Q(bank__site=site) | Q(pk__in=in_quizzes), is_archived=False)
+        .distinct()
+        .order_by("name", "id")
+    )
+    rubrics = Q(rubric__site=site) | Q(rubric__in=assignments.exclude(rubric=None).values("rubric_id"))
+    criteria = (
+        RubricCriterion.objects.filter(rubrics).select_related("rubric").order_by("rubric__title", "position")
+    )
+    return Response(
+        {
+            "assignments": [{"id": a.id, "title": a.title} for a in assignments],
+            "questions": [{"id": q.id, "title": q.name} for q in questions],
+            "criteria": [{"id": c.id, "title": f"{c.rubric.title}: {c.title}"} for c in criteria],
+        }
+    )
+
+
 @extend_schema(
     responses={200: StandingsSerializer, 403: ErrorSerializer, 404: ErrorSerializer},
     summary="Each student's standing on each outcome, for teaching staff (item 3.11)",
@@ -859,6 +901,7 @@ urlpatterns = [
     path("sites/<int:pk>/outcomes/", site_outcomes, name="site-outcomes"),
     path("sites/<int:pk>/outcomes/<int:outcome_id>/links/", outcome_links, name="site-outcome-links"),
     path("sites/<int:pk>/outcome-standings/", outcome_standings, name="site-outcome-standings"),
+    path("sites/<int:pk>/outcome-evidence/", outcome_evidence, name="site-outcome-evidence"),
     path("sites/<int:pk>/alerts/", site_alerts, name="site-alerts"),
     path("outcomes/<int:outcome_id>/", local_outcome, name="outcome-detail"),
     path("outcome-links/<int:link_id>/", outcome_link, name="outcome-link-detail"),
