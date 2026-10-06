@@ -21,6 +21,10 @@
   ],
   "exceptions": {
     "python": {
+      "certifi": {
+        "licence": "MPL-2.0",
+        "reason": "The certificate authorities requests trusts, pulled in by pywebpush to reach the browsers' push services (item 4.04). Used unmodified."
+      },
       "psycopg": {
         "licence": "LGPL-3.0-only",
         "reason": "The PostgreSQL driver Django supports. Used unmodified as a separately installed library."
@@ -33,11 +37,48 @@
         "licence": "LGPL-3.0-only",
         "reason": "Connection pool from the psycopg project, pulled in by procrastinate. Used unmodified."
       },
+      "py-vapid": {
+        "licence": "MPL-2.0",
+        "reason": "Signs push notices with GSA's VAPID key; part of pywebpush (item 4.04, ADR 0011). Used unmodified."
+      },
       "pyphen": {
         "licence": "MPL-1.1",
         "reason": "Hyphenation used by WeasyPrint. Offered under GPL, LGPL or MPL 1.1; GSA takes it under MPL 1.1, unmodified."
+      },
+      "pywebpush": {
+        "licence": "MPL-2.0",
+        "reason": "Web Push: encrypts each notice for the one browser that subscribed (item 4.04, ADR 0011, decision D10). Used unmodified, as a separately installed library."
       }
     },
-    "npm": {}
+    "npm": {},
+    "programs": {
+      "$comment": "Programs run beside the product as separate processes, never linked into it (ADR 0002, point 6). scripts/check_licences.py runs each check where the program is installed.",
+      "ffmpeg": {
+        "licence": "LGPL-2.1-or-later",
+        "reason": "Converts lecture video to a low, a standard and a sound-only copy and takes the poster frame (items 4.06, 4.07; ADR 0015, decision D3). Built in api/Dockerfile from Debian's source with LGPL parts only (OpenH264, BSD-2-Clause, for H.264), and run as a separate program by the job worker.",
+        "check": {
+          "command": [
+            "ffmpeg",
+            "-hide_banner",
+            "-L"
+          ],
+          "must_say": "Lesser General Public",
+          "build": [
+            "ffmpeg",
+            "-hide_banner",
+            "-buildconf"
+          ],
+          "must_not_say": [
+            "--enable-gpl",
+            "--enable-nonfree",
+            "--enable-version3"
+          ]
+        }
+      },
+      "whisper.cpp": {
+        "licence": "MIT",
+        "reason": "Optional speech recognition for captions on GSA's own server (ADR 0015). Not in the image: GSA installs it and names it in VIDEO_TRANSCRIBE_COMMAND. Permissive; listed so every program the product runs is named."
+      }
+    }
   }
 }
