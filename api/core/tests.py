@@ -73,6 +73,14 @@ def test_journey_data_signs_in_and_teaches_one_course(monkeypatch):
     assert {m.person.external_id for m in later.memberships.all()} == {"E0901"}
     assert Assignment.objects.filter(site=site).count() == 3  # with "Field notebook check", for the Homes
     assert Mark.objects.filter(submission__assignment__site=site, is_released=True).count() == 2
+    # The practicals journeys' task (items 3.12 to 3.15): three criteria, the critical one mapped to the
+    # framework the site follows, and no weight, so it changes no coursework figure.
+    from practicals.models import PracticalTask, SiteFramework
+
+    task = PracticalTask.objects.get(site=site)
+    assert task.is_published and task.weight == 0 and task.criteria.count() == 3
+    assert task.criteria.get(is_critical=True).performance_criteria.get().code == "PC1.1.1"
+    assert SiteFramework.objects.get(site=site).framework.units.count() == 1
 
     client = APIClient()
     response = client.post(
