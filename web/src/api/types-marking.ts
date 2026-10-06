@@ -289,6 +289,8 @@ export interface GradebookRow {
   quizzes: Record<string, { attempts: number; state: string; percent: string | null }>;
   practicals: Record<string, { state: ItemState; percent: string | null }>;
   forums: Record<string, { state: ItemState; percent: string | null }>;
+  /** Columns outside tools post scores to (item 6.07), keyed by line item id. */
+  tools?: Record<string, { state: ItemState; percent: string | null }>;
   categories: Record<string, string | null>;
   coursework_percent: string | null;
   srms: SrmsState | null;
@@ -301,11 +303,12 @@ export interface GradebookData {
   quizzes: (GradebookColumn & { counts: boolean; grading_method: string })[];
   practicals: GradebookColumn[];
   forums: GradebookColumn[];
+  tools?: (GradebookColumn & { tool: string })[];
   rows: GradebookRow[];
 }
 
 export interface WorkingItem {
-  kind: "assignment" | "quiz" | "practical" | "forum";
+  kind: "assignment" | "quiz" | "practical" | "forum" | "tool";
   id: number;
   title: string;
   category: number | null;

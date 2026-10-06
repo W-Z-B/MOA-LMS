@@ -93,6 +93,9 @@ export const SITE_TABS = [
   // --- practicals --- (items 3.12 to 3.15): each has addresses below it, #/sites/4/practicals/12/observe
   "practicals",
   "logbook",
+  // --- tools and AI help --- (items 6.07, 6.11, 6.12): AI help is shown only where it may be used
+  "tools",
+  "ai",
 ] as const;
 export type SiteTab = (typeof SITE_TABS)[number];
 
@@ -207,3 +210,8 @@ export function quizAddress(path: string): QuizView {
   return { view: "list" };
 }
 // --- end quizzes ---
+
+// --- tools and AI help ---
+/** #/admin/tools: the outside tools course administrators register (item 6.07). */
+export const isToolsAdmin = (path: string) => path.split("?")[0] === "/admin/tools";
+// --- end tools and AI help ---

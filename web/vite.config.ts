@@ -66,6 +66,9 @@ export default defineConfig({
         "src/features/practicals/**",
         // Quizzes (feature 10): the tab, attempts, banks and the question editor.
         "src/features/quizzes/**",
+        // Outside tools and AI help (items 6.07, 6.11, 6.12).
+        "src/features/tools/**",
+        "src/features/ai/**",
       ],
       exclude: ["src/**/*.test.*", "src/test/**"],
       reporter: ["text"],

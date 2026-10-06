@@ -27,6 +27,42 @@ function open(html = "<p>Seeds need water.</p>") {
   return { onChange, last: () => onChange.mock.calls.at(-1)?.[0] as string };
 }
 
+describe("AI help with a picture's description (item 6.11)", () => {
+  it("fills a suggestion for the lecturer to check, and reports it used only when the picture is added", async () => {
+    const used = vi.fn();
+    const suggest = vi.fn().mockResolvedValue({ text: "Maize seedlings in rows", used });
+    const onChange = vi.fn();
+    render(<RichEditor initialHtml="<p>Seeds.</p>" onChange={onChange} pictures={pictures} label="Page text" describe={suggest} />);
+    await screen.findByRole("textbox", { name: "Page text" });
+    await userEvent.click(screen.getByRole("button", { name: "Picture" }));
+    await userEvent.click(screen.getByRole("button", { name: "Suggest a description" }));
+    expect(suggest).toHaveBeenCalledWith(pictures[0]);
+    expect(await screen.findByRole("status")).toHaveTextContent("Suggested with AI help: check that it says what matters");
+    const alt = screen.getByLabelText(/What the picture shows/);
+    expect(alt).toHaveValue("Maize seedlings in rows");
+    expect(used).not.toHaveBeenCalled();
+    await userEvent.type(alt, " ten days after sowing");
+    await userEvent.click(screen.getByRole("button", { name: "Add picture" }));
+    expect(used).toHaveBeenCalledOnce();
+    expect(onChange.mock.calls.at(-1)?.[0]).toContain('alt="Maize seedlings in rows ten days after sowing"');
+  });
+
+  it("says so when no suggestion can be made", async () => {
+    render(<RichEditor initialHtml="" onChange={vi.fn()} pictures={pictures} label="Page text" describe={() => Promise.reject(new Error("down"))} />);
+    await screen.findByRole("textbox", { name: "Page text" });
+    await userEvent.click(screen.getByRole("button", { name: "Picture" }));
+    await userEvent.click(screen.getByRole("button", { name: "Suggest a description" }));
+    expect(await screen.findByRole("status")).toHaveTextContent("No suggestion could be made. Write the description yourself.");
+  });
+
+  it("offers nothing where AI help is off", async () => {
+    open();
+    await screen.findByRole("textbox", { name: "Page text" });
+    await userEvent.click(screen.getByRole("button", { name: "Picture" }));
+    expect(screen.queryByRole("button", { name: "Suggest a description" })).not.toBeInTheDocument();
+  });
+});
+
 describe("the page editor (item 2.12)", () => {
   it("opens with the page's text in a named text box and a labelled toolbar", async () => {
     open();
