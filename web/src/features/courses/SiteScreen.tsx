@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { lazy, Suspense, useCallback, useEffect, useState, type FormEvent } from "react";
 import { errorMessage, get, patch, post } from "../../api/client";
 import { canTeach, type Assignment, type Gradebook, type Licence, type Paginated, type SiteContents, type Submission } from "../../api/types";
 import { dmyTime } from "../../app/format";
@@ -6,6 +6,9 @@ import { useCrumb } from "../../app/frame";
 import { submitAssignmentText } from "../../app/offlineQueue";
 import { SITE_TABS, type SiteTab } from "../../app/router";
 import { SendState } from "../../app/SendState";
+
+// The quiz screens load when the Quizzes tab is first opened, so they add nothing to the shell (page weight).
+const QuizzesTab = lazy(() => import("../quizzes/QuizzesTab").then((m) => ({ default: m.QuizzesTab })));
 
 interface Props {
   siteId: number;
@@ -17,6 +20,7 @@ interface Props {
 const TAB_LABEL: Record<SiteTab, string> = {
   content: "Content",
   assignments: "Assignments",
+  quizzes: "Quizzes",
   gradebook: "Gradebook",
   announcements: "Announcements",
 };
@@ -84,6 +88,11 @@ export function SiteScreen({ siteId, tab, onTab }: Props) {
       </div>
       {tab === "content" && <ContentTab data={data} teaching={teaching} onChanged={load} />}
       {tab === "assignments" && <AssignmentsTab siteId={siteId} teaching={teaching} />}
+      {tab === "quizzes" && (
+        <Suspense fallback={<p className="loading">Loading quizzes…</p>}>
+          <QuizzesTab siteId={siteId} teaching={teaching} />
+        </Suspense>
+      )}
       {tab === "gradebook" && <GradebookTab siteId={siteId} />}
       {tab === "announcements" && <AnnouncementsTab data={data} teaching={teaching} onChanged={load} />}
     </>

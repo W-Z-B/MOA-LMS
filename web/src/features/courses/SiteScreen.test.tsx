@@ -39,7 +39,7 @@ const assignment: Assignment = {
   submissions_count: null,
 };
 
-function open(tab: "content" | "assignments", routes: Record<string, unknown> = {}) {
+function open(tab: "content" | "assignments" | "quizzes", routes: Record<string, unknown> = {}) {
   fakeServer({
     "GET /sites/9/contents/": { body: contents },
     "GET /assignments/": { body: { count: 1, next: null, previous: null, results: [assignment] } },
@@ -87,5 +87,10 @@ describe("a course site in the frame (items 2.07 and 2.10)", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("No connection.");
     expect(pendingCount()).toBe(0);
     expect(within(document.body).queryByText("Waiting to send")).not.toBeInTheDocument();
+  });
+
+  it("loads the Quizzes tab when it is opened (feature 10)", async () => {
+    open("quizzes", { "GET /quizzes/": { body: { count: 0, next: null, previous: null, results: [] } } });
+    expect(await screen.findByText("No quizzes yet.")).toBeInTheDocument();
   });
 });

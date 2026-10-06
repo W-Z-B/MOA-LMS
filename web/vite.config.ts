@@ -36,6 +36,8 @@ export default defineConfig({
         "src/features/home/**",
         "src/features/todo/**",
         "src/features/courses/MyCoursesScreen.tsx",
+        // Quizzes (feature 10): the tab, attempts, banks and the question editor.
+        "src/features/quizzes/**",
       ],
       exclude: ["src/**/*.test.*", "src/test/**"],
       reporter: ["text"],

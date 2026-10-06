@@ -45,7 +45,8 @@ describe("pages by role", () => {
   it("reads a course site and its tab from the address, opening Content for a tab it does not know", () => {
     expect(siteAddress("/sites/4")).toEqual({ id: 4, tab: "content" });
     expect(siteAddress("/sites/4/gradebook")).toEqual({ id: 4, tab: "gradebook" });
-    expect(siteAddress("/sites/4/quizzes")).toEqual({ id: 4, tab: "content" });
+    expect(siteAddress("/sites/4/quizzes/12/attempts/30")).toEqual({ id: 4, tab: "quizzes" });
+    expect(siteAddress("/sites/4/no-such-tab")).toEqual({ id: 4, tab: "content" });
     expect(siteAddress("/courses")).toBeNull();
   });
 });
