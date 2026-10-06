@@ -24,6 +24,7 @@ Caddy, Docker Compose. Every component is MIT, BSD, Apache 2.0, PostgreSQL or PS
 | `api/people` | Person references keyed by employee number or student number |
 | `api/courses` | Course sites (from SRMS offerings or created locally, academic or staff development), memberships, modules, pages, files and links, announcements that notify students, completions; access is decided by site membership; students see published material only; files are served through authenticated, audited downloads |
 | `api/assessments` | Assignments with weights, submissions (text or file, late flag, closed when late work is not allowed), marking with release control, gradebook, weighted coursework percentage |
+| `api/privacy` | Versioned privacy notice acknowledged at sign-in, a person's own record to read and download, correction requests, the retention schedule with disposal approved by a second person, the breach register (see `docs/privacy/`) |
 | `api/integration` | Scoped service keys; sites and class lists pulled from the SRMS; coursework totals pushed to the SRMS; staff training completions pushed to the HRMS |
 | `api/core`, `api/audit`, `api/iam`, `api/notifications` | Shared skeleton: field encryption, insert-only audit log, system roles, session login with TOTP, account lockout, notifications |
 | `web/` | My courses, course site with content, assignments (submit, mark, release), gradebook and announcements |

@@ -19,6 +19,7 @@ from iam.models import LoginAttempt, TotpDevice, UserSession
 from iam.permissions import MFA_SESSION_KEY
 from iam.services import account_locked, address_blocked, person_payload, requires_mfa, role_codes
 from iam.sessions import describe_device, end_sessions
+from privacy.services import notice_due
 
 
 class LoginSerializer(serializers.Serializer):
@@ -44,6 +45,9 @@ class MeSerializer(serializers.Serializer):
     person_kind = serializers.CharField(allow_null=True, help_text="staff or student")
     external_id = serializers.CharField(
         allow_null=True, help_text="HRMS employee number or SRMS student number"
+    )
+    privacy_notice_due = serializers.IntegerField(
+        allow_null=True, help_text="Version of the privacy notice still to be read, or null"
     )
 
 
@@ -73,6 +77,7 @@ def _me_payload(user, session) -> dict:
         "is_superuser": bool(user.is_superuser),
         "mfa_required": requires_mfa(user),
         "mfa_verified": bool(session.get(MFA_SESSION_KEY, False)),
+        "privacy_notice_due": notice_due(user),  # the notice version still to read (item 1.18)
         **person_payload(user),
     }
 

@@ -22,6 +22,7 @@ export interface NavItem {
 
 export const NAV: NavItem[] = [
   { path: "/", label: "My courses" },
+  { path: "/my-data", label: "My data" },
   { path: "/admin", label: "Admin", roles: ["administrator", "course_admin"] },
   { path: "/account", label: "My account" },
 ];
