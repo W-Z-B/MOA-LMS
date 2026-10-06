@@ -65,7 +65,15 @@ export interface ContentItem {
   download_url: string | null;
   url: string;
   is_published: boolean;
+  /** Release conditions in words, for teaching staff; null for everyone else. */
+  conditions: string | null;
+  licence: Licence;
+  open_licence: string;
+  source: string;
+  under_review: boolean;
 }
+
+export type Licence = "gsa_own" | "open_licence" | "fair_dealing" | "permission_held" | "unknown";
 
 export interface Module {
   id: number;

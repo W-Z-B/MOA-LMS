@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { errorMessage, get, patch, post } from "../../api/client";
-import { canTeach, type Assignment, type Gradebook, type Paginated, type SiteContents, type Submission } from "../../api/types";
+import { canTeach, type Assignment, type Gradebook, type Licence, type Paginated, type SiteContents, type Submission } from "../../api/types";
 
 interface Props {
   siteId: number;
@@ -75,15 +75,52 @@ export function SiteScreen({ siteId, onNavigate }: Props) {
   );
 }
 
+type ItemKind = "page" | "file" | "link";
+
+interface ItemDraft {
+  module: number;
+  kind: ItemKind;
+  title: string;
+  body: string;
+  url: string;
+  file: File | null;
+  licence: Licence | "";
+  open_licence: string;
+  source: string;
+}
+
+const LICENCES: { value: Licence; label: string }[] = [
+  { value: "gsa_own", label: "GSA's own material" },
+  { value: "open_licence", label: "Under an open licence" },
+  { value: "fair_dealing", label: "Used under fair dealing (research or private study)" },
+  { value: "permission_held", label: "Used with the owner's permission" },
+];
+
+const OPEN_LICENCES = [
+  { value: "cc_by", label: "CC BY" },
+  { value: "cc_by_sa", label: "CC BY-SA" },
+  { value: "cc_by_nc", label: "CC BY-NC" },
+  { value: "cc0", label: "CC0" },
+  { value: "other", label: "Another open licence" },
+];
+
+const ADD_LABEL: Record<ItemKind, string> = { page: "Add page", file: "Upload file", link: "Add link" };
+
+function blankDraft(module: number, kind: ItemKind): ItemDraft {
+  // Pages are GSA's own unless said otherwise; for a file or a link the lecturer must say whose it is.
+  return { module, kind, title: "", body: "", url: "", file: null, licence: kind === "page" ? "gsa_own" : "", open_licence: "", source: "" };
+}
+
 function ContentTab({ data, teaching, onChanged }: { data: SiteContents; teaching: boolean; onChanged: () => void }) {
   const [moduleTitle, setModuleTitle] = useState("");
-  const [item, setItem] = useState<{ module: number; title: string; body: string } | null>(null);
+  const [item, setItem] = useState<ItemDraft | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   async function addModule(e: FormEvent) {
     e.preventDefault();
     try {
-      await post("/modules/", { site: data.site.id, title: moduleTitle, position: data.modules.length + 1 });
+      await post("/modules/", { site: data.site.id, title: moduleTitle });
       setModuleTitle("");
       onChanged();
     } catch (err) {
@@ -94,18 +131,43 @@ function ContentTab({ data, teaching, onChanged }: { data: SiteContents; teachin
   async function addItem(e: FormEvent) {
     e.preventDefault();
     if (!item) return;
+    const common = {
+      module: item.module,
+      kind: item.kind,
+      title: item.title,
+      licence: item.licence,
+      open_licence: item.licence === "open_licence" ? item.open_licence : "",
+      source: item.source,
+    };
+    setSaving(true);
     try {
-      await post("/content/", { module: item.module, kind: "page", title: item.title, body: item.body });
+      if (item.kind === "file") {
+        const form = new FormData();
+        Object.entries(common).forEach(([key, value]) => form.set(key, String(value)));
+        if (item.file) form.set("file", item.file);
+        await post("/content/", form);
+      } else if (item.kind === "link") {
+        await post("/content/", { ...common, url: item.url });
+      } else {
+        await post("/content/", { ...common, body: item.body, body_format: "text" });
+      }
       setItem(null);
+      setError(null);
       onChanged();
     } catch (err) {
-      setError(errorMessage(err, "Could not add the page."));
+      setError(errorMessage(err, `Could not add the ${item.kind}.`));
+    } finally {
+      setSaving(false);
     }
   }
 
   return (
     <>
-      {error && <p className="error">{error}</p>}
+      {error && (
+        <p role="alert" className="error">
+          {error}
+        </p>
+      )}
       {data.modules.length === 0 && <p className="muted">No content yet.</p>}
       {data.modules.map((m) => (
         <section className="module" key={m.id}>
@@ -114,17 +176,29 @@ function ContentTab({ data, teaching, onChanged }: { data: SiteContents; teachin
             {m.items.map((i) => (
               <li key={i.id}>
                 <strong>{i.title}</strong> {!i.is_published && <span className="pill">Draft</span>}
-                {i.kind === "page" && <p style={{ margin: "4px 0 0", whiteSpace: "pre-wrap" }}>{i.body}</p>}
+                {i.under_review && <span className="pill">Under review</span>}
+                {teaching && i.conditions && (
+                  <p className="muted small" style={{ margin: "2px 0 0" }}>
+                    {i.conditions}
+                  </p>
+                )}
+                {/* Page bodies are HTML cleaned on the server against an allow-list (courses.richtext). */}
+                {i.kind === "page" && <div className="page-body" style={{ margin: "4px 0 0" }} dangerouslySetInnerHTML={{ __html: i.body }} />}
                 {i.kind === "file" && i.download_url && (
                   <p style={{ margin: "4px 0 0" }}>
                     <a href={i.download_url}>{i.filename}</a>
                   </p>
                 )}
                 {i.kind === "link" && (
-                  <p style={{ margin: "4px 0 0" }}>
-                    <a href={i.url} target="_blank" rel="noreferrer">
+                  <p style={{ margin: "4px 0 0", overflowWrap: "anywhere" }}>
+                    <a href={i.url} target="_blank" rel="noopener noreferrer">
                       {i.url}
                     </a>
+                  </p>
+                )}
+                {i.source && (
+                  <p className="muted small" style={{ margin: "2px 0 0" }}>
+                    Source: {i.source}
                   </p>
                 )}
               </li>
@@ -134,26 +208,102 @@ function ContentTab({ data, teaching, onChanged }: { data: SiteContents; teachin
             (item?.module === m.id ? (
               <form className="stack sub-form" onSubmit={addItem}>
                 <label>
-                  Page title
+                  Title
                   <input id={`item-title-${m.id}`} value={item.title} onChange={(e) => setItem({ ...item, title: e.target.value })} required />
                 </label>
+                {item.kind === "page" && (
+                  <label>
+                    Text
+                    <textarea id={`item-body-${m.id}`} value={item.body} onChange={(e) => setItem({ ...item, body: e.target.value })} />
+                  </label>
+                )}
+                {item.kind === "file" && (
+                  <label>
+                    File (PDF, photograph, Word, Excel or PowerPoint)
+                    <input
+                      id={`item-file-${m.id}`}
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,.docx,.xlsx,.pptx"
+                      onChange={(e) => setItem({ ...item, file: e.target.files?.[0] ?? null })}
+                      required
+                    />
+                  </label>
+                )}
+                {item.kind === "link" && (
+                  <label>
+                    Web address
+                    <input
+                      id={`item-url-${m.id}`}
+                      type="url"
+                      inputMode="url"
+                      placeholder="https://"
+                      value={item.url}
+                      onChange={(e) => setItem({ ...item, url: e.target.value })}
+                      required
+                    />
+                  </label>
+                )}
                 <label>
-                  Text
-                  <textarea id={`item-body-${m.id}`} value={item.body} onChange={(e) => setItem({ ...item, body: e.target.value })} />
+                  Whose material is this?
+                  <select id={`item-licence-${m.id}`} value={item.licence} onChange={(e) => setItem({ ...item, licence: e.target.value as Licence })} required>
+                    <option value="" disabled>
+                      Choose…
+                    </option>
+                    {LICENCES.map((l) => (
+                      <option key={l.value} value={l.value}>
+                        {l.label}
+                      </option>
+                    ))}
+                  </select>
                 </label>
+                {item.licence === "open_licence" && (
+                  <label>
+                    Which open licence
+                    <select id={`item-open-${m.id}`} value={item.open_licence} onChange={(e) => setItem({ ...item, open_licence: e.target.value })} required>
+                      <option value="" disabled>
+                        Choose…
+                      </option>
+                      {OPEN_LICENCES.map((l) => (
+                        <option key={l.value} value={l.value}>
+                          {l.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+                {item.licence !== "" && item.licence !== "gsa_own" && (
+                  <label>
+                    Source and credit
+                    <input
+                      id={`item-source-${m.id}`}
+                      value={item.source}
+                      placeholder="Author, title, where it comes from"
+                      onChange={(e) => setItem({ ...item, source: e.target.value })}
+                      required
+                    />
+                  </label>
+                )}
                 <div className="actions">
                   <button type="button" className="secondary" onClick={() => setItem(null)}>
                     Cancel
                   </button>
-                  <button type="submit">Add page</button>
+                  <button type="submit" disabled={saving}>
+                    {saving ? "Saving…" : ADD_LABEL[item.kind]}
+                  </button>
                 </div>
               </form>
             ) : (
-              <p style={{ margin: "10px 0 0" }}>
-                <button className="secondary" onClick={() => setItem({ module: m.id, title: "", body: "" })}>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
+                <button className="secondary" onClick={() => setItem(blankDraft(m.id, "page"))}>
                   Add a page
                 </button>
-              </p>
+                <button className="secondary" onClick={() => setItem(blankDraft(m.id, "file"))}>
+                  Upload a file
+                </button>
+                <button className="secondary" onClick={() => setItem(blankDraft(m.id, "link"))}>
+                  Add a link
+                </button>
+              </div>
             ))}
         </section>
       ))}
