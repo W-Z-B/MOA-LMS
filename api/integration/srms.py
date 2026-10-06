@@ -116,6 +116,36 @@ def push_marks(site: CourseSite) -> dict:
     return {**result, "sent": marks}
 
 
+def push_all_marks(*, trigger: str = "schedule") -> dict:
+    """The nightly push of coursework totals for every published SRMS site (item 1.23).
+
+    A site the SRMS refuses is recorded and the others carry on; students it does not know are named, and
+    totals it holds locked (its result is past draft) are counted, in the run's notes. When the SRMS cannot
+    be reached, even after the retries, the run stops; the next run sends everything again, which the SRMS
+    accepts as the same.
+    """
+    from integration.client import IntegrationError, unreachable, with_retries
+    from integration.models import IntegrationRun
+    from integration.runs import Run
+
+    run = Run(IntegrationRun.Kind.MARKS_PUSH, trigger)
+    for site in CourseSite.objects.filter(source=CourseSite.Source.SRMS, is_published=True):
+        try:
+            result = with_retries(lambda site=site: push_marks(site))
+        except IntegrationError as exc:
+            if unreachable(exc):
+                run.stop(f"The SRMS could not be reached: {exc}")
+                break
+            run.fail(site.code, f"http_{exc.status}", str(exc))
+            continue
+        run.ok_()
+        for student_no in result.get("unknown", []):
+            run.note(f"{site.code}:{student_no}", "unknown_student", "The SRMS does not know this student")
+        if result.get("locked"):
+            run.note(site.code, "locked", f"{len(result['locked'])} totals are locked in the SRMS")
+    return run.finish()
+
+
 def push_attendance(site: CourseSite) -> dict:
     """Send each student's attendance totals to the SRMS (decision D6, ADR 0008, item 4.15), for a course
     whose programme makes attendance a condition (attendance.models.AttendancePolicy.send_to_srms).

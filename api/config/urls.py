@@ -2,9 +2,10 @@ from django.contrib import admin
 from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
+from certificates.api import check_page
 from config.views import health
 from iam.permissions import DocsPermission
-from integration.api import integration_urls, reference_urls
+from integration.api import integration_urls, reference_urls, run_urls
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -30,6 +31,12 @@ urlpatterns = [
     path("api/v1/", include("audit.urls")),
     path("api/v1/", include("core.urls")),
     path("api/v1/privacy/", include("privacy.urls")),
+    path("api/v1/", include(run_urls)),
+    path("api/v1/approvals/", include("approvals.urls")),
+    path("api/v1/staff-development/", include("staffdev.api")),
+    path("api/v1/", include("certificates.api")),
+    # The public certificate check as a page of its own, without sign-in or script (item 5.09).
+    path("api/check-certificate/", check_page, name="certificate-check-page"),
     path("api/v1/reference/", include((reference_urls, "reference"))),
     # Service-to-service API for the GSA ecosystem. Api-Key authentication, scoped.
     path("api/v1/integration/", include((integration_urls, "integration"))),

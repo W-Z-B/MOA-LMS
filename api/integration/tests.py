@@ -6,6 +6,7 @@ from rest_framework.test import APIClient
 
 from assessments.models import Mark, Submission
 from courses.models import Completion, CourseSite, Membership
+from integration.client import IntegrationError
 from integration.models import ServiceClient
 from people.models import PersonRef
 
@@ -50,7 +51,15 @@ def ecosystem(settings, monkeypatch):
 
     settings.SRMS_API_URL, settings.SRMS_API_KEY = "http://srms-api:8000", "k"
     settings.HRMS_API_URL, settings.HRMS_API_KEY = "http://hrms-api:8000", "k"
-    state = {"roster": list(ROSTER), "staff": [STAFF], "posted": []}
+    settings.INTEGRATION_RETRY_SECONDS = 0
+    state = {
+        "roster": list(ROSTER),
+        "staff": [STAFF],
+        "posted": [],
+        "unknown": set(),
+        "down": 0,
+        "marks": None,
+    }
 
     def fake_pages(base, key, path, params=None):
         if "offerings" in path:
@@ -62,7 +71,12 @@ def ecosystem(settings, monkeypatch):
         raise AssertionError(path)
 
     def fake_call(base, key, path, params=None, data=None):
+        if state["down"]:
+            state["down"] -= 1
+            raise IntegrationError(f"{path} could not be reached")
         state["posted"].append((path, data))
+        if "coursework-marks" in path and state["marks"] is not None:
+            return state["marks"]
         if "coursework-marks" in path:
             return {
                 "offering_code": data["offering_code"],
@@ -71,6 +85,8 @@ def ecosystem(settings, monkeypatch):
                 "unknown": [],
             }
         if "training-completions" in path:
+            if data["employee_no"] in state["unknown"]:
+                raise IntegrationError(f"{path} answered HTTP 404", status=404)
             return {"created": True}
         if path.endswith("/org/"):
             return {
@@ -138,11 +154,12 @@ def test_staff_training_completions_are_reported_to_the_hrms_once(lecturer, ecos
     Completion.objects.create(
         site=site, person=lecturer, completed_on=date(2026, 10, 9), certificate="Certificate"
     )
-    assert push_training() == {"reported": 1}
+    assert push_training()["ok"] == 1
     path, data = ecosystem["posted"][-1]
     assert path.endswith("/training-completions/")
     assert data["external_ref"] == "lms:SD-101:E0001" and data["employee_no"] == "E0001"
-    assert push_training() == {"reported": 0}
+    assert data["expiry_date"] is None
+    assert push_training()["ok"] == 0
 
 
 @pytest.mark.django_db

@@ -73,3 +73,34 @@ class CampusRef(models.Model):
 
     def __str__(self) -> str:
         return self.name
+
+
+class IntegrationRun(models.Model):
+    """One run of a push to, or a pull from, a sibling system, and how each row fared (item 1.23).
+
+    A row the other system refuses (an employee it does not know, a result already locked) is counted as
+    failed and named in errors; the rest of the run carries on. A run stopped because the other system could
+    not be reached says so in `stopped`, and what was not sent is sent on the next run.
+    """
+
+    class Kind(models.TextChoices):
+        TRAINING_PUSH = "training_push", "Training completions to the HRMS"
+        MARKS_PUSH = "marks_push", "Coursework totals to the SRMS"
+        STAFF_SYNC = "staff_sync", "Staff records from the HRMS"
+
+    kind = models.CharField(max_length=20, choices=Kind.choices)
+    trigger = models.CharField(max_length=20, default="schedule", help_text="schedule, completion or command")
+    started_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+    ok = models.PositiveIntegerField(default=0)
+    failed = models.PositiveIntegerField(default=0)
+    errors = models.JSONField(
+        default=list, blank=True, help_text='[{"ref": ..., "code": ..., "detail": ...}]'
+    )
+    stopped = models.CharField(max_length=300, blank=True, help_text="Why the run stopped early, if it did")
+
+    class Meta:
+        ordering = ["-started_at", "-id"]
+
+    def __str__(self) -> str:
+        return f"{self.get_kind_display()} at {self.started_at:%Y-%m-%d %H:%M}"

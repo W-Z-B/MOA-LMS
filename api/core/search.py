@@ -1,5 +1,5 @@
 """Search (items 2.07 to 2.09): one box that finds sites, content, assignments, quizzes, forum
-threads and people.
+threads, people and staff-development courses in the catalogue (item 5.02).
 
 Search never finds what the person could not open: each kind is looked for inside the same list its own
 page shows, so a student finds only the published, released items of their own courses, and never finds
@@ -130,6 +130,23 @@ def _people(user, q: str) -> list[dict]:
     return rows
 
 
+def _catalogue(user, q: str) -> list[dict]:
+    """Staff-development courses in the catalogue (item 5.02): for members of staff, and for course
+    administrators and auditors; never for students."""
+    from staffdev.models import CatalogueEntry
+
+    person = getattr(user, "person", None)
+    if not has_role(user, *BROAD_READ_ROLES) and (person is None or person.kind != PersonRef.Kind.STAFF):
+        return []
+    entries = CatalogueEntry.objects.filter(site__kind="staff_development", site__is_published=True).filter(
+        Q(site__title__icontains=q) | Q(site__code__icontains=q) | Q(summary__icontains=q)
+    )
+    return [
+        _hit(e.site_id, e.site.title, e.audience or e.site.code, f"/staff-development/{e.site_id}")
+        for e in entries.select_related("site").order_by("site__title", "id")[:SHOWN]
+    ]
+
+
 class HitSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     title = serializers.CharField()
@@ -144,6 +161,7 @@ class SearchSerializer(serializers.Serializer):
     quizzes = HitSerializer(many=True)
     threads = HitSerializer(many=True, help_text="Forum threads, by title")
     people = HitSerializer(many=True, help_text="Always empty for a student")
+    catalogue = HitSerializer(many=True, help_text="Staff-development courses; always empty for a student")
 
 
 @extend_schema(
@@ -166,5 +184,6 @@ def search(request):
         "quizzes": _quizzes(user, q),
         "threads": _threads(user, q),
         "people": _people(user, q),
+        "catalogue": _catalogue(user, q),
     }
     return Response(SearchSerializer(found).data)

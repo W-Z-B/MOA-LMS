@@ -117,3 +117,23 @@ class AccessReview(models.Model):
 
     def __str__(self) -> str:
         return f"Access review {self.reviewed_at:%d/%m/%Y} by {self.reviewed_by}"
+
+
+class PasswordResetRequest(models.Model):
+    """A request for a password link, kept to limit how often one address, or one account, may ask.
+
+    What was typed is not kept: only the account it matched, if any, and the address it came from.
+    """
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.CASCADE, related_name="+"
+    )
+    source_ip = models.GenericIPAddressField(null=True, blank=True)
+    at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ["-at"]
+        indexes = [models.Index(fields=["source_ip", "at"], name="resetrequest_ip_at")]
+
+    def __str__(self) -> str:
+        return f"Password link asked for at {self.at:%Y-%m-%d %H:%M}"

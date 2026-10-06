@@ -51,6 +51,9 @@ INSTALLED_APPS = [
     "privacy",
     "quizzes",
     "practicals",
+    "approvals",
+    "staffdev",
+    "certificates",
     "forums",
     "messaging",
     "attendance",
@@ -231,6 +234,36 @@ INTEGRATION_TIMEOUT_SECONDS = int(env("INTEGRATION_TIMEOUT_SECONDS", "15"))
 # Privacy (items 1.18, 1.19): days within which a correction request is to be answered.
 PRIVACY_RESPONSE_DAYS = int(env("PRIVACY_RESPONSE_DAYS", "30"))
 
+# Accounts (item 1.22): opened from the synced person records; the person chooses a password through a
+# one-use emailed link. Links point at the web app, PUBLIC_URL (the first public origin when unset).
+PUBLIC_URL = (env("PUBLIC_URL") or (PUBLIC_ORIGINS or [f"https://{ALLOWED_HOSTS[0]}"])[0]).rstrip("/")
+INVITATION_DAYS = int(env("INVITATION_DAYS", "7"))
+PASSWORD_RESET_MINUTES = int(env("PASSWORD_RESET_MINUTES", "60"))
+# Django's own limit is set to the longest; each kind of link checks its own, stricter, limit.
+PASSWORD_RESET_TIMEOUT = max(INVITATION_DAYS * 24 * 3600, PASSWORD_RESET_MINUTES * 60)
+PASSWORD_RESETS_PER_ADDRESS = int(env("PASSWORD_RESETS_PER_ADDRESS", "5"))
+PASSWORD_RESETS_PER_ACCOUNT = 3
+
+# Integration runs (item 1.23): a call that cannot reach the sibling system is tried this many times,
+# waiting INTEGRATION_RETRY_SECONDS, then twice that, between tries.
+INTEGRATION_ATTEMPTS = int(env("INTEGRATION_ATTEMPTS", "3"))
+INTEGRATION_RETRY_SECONDS = float(env("INTEGRATION_RETRY_SECONDS", "5"))
+
+# Approvals (ported from the HRMS approvals engine): a decision waits DECISION_DAYS working days (set with
+# To do below) before a reminder, and ESCALATE_AFTER_DAYS more before it goes on to the next person up.
+ESCALATE_AFTER_DAYS = int(env("ESCALATE_AFTER_DAYS", "2"))
+
+# Staff development (Phase 5). A completion that expires is open for renewal this many days before it does.
+RENEWAL_WINDOW_DAYS = int(env("RENEWAL_WINDOW_DAYS", "60"))
+# Days before a required course is due on which a reminder goes.
+REQUIRED_TRAINING_REMIND_DAYS = int(env("REQUIRED_TRAINING_REMIND_DAYS", "7"))
+
+# Certificates (items 5.08 to 5.11): the heading, the reference prefix, where they are checked, and how many
+# wrong codes one address, or one reference, may try within LOGIN_LOCKOUT_MINUTES.
+CERTIFICATE_ORGANISATION = env("CERTIFICATE_ORGANISATION", "Guyana School of Agriculture")
+CERTIFICATE_REFERENCE_PREFIX = env("CERTIFICATE_REFERENCE_PREFIX", "GSA/LMS")
+CERTIFICATE_CHECK_URL = env("CERTIFICATE_CHECK_URL", f"{PUBLIC_URL}/api/check-certificate/")
+CERTIFICATE_CHECK_FAILURES = int(env("CERTIFICATE_CHECK_FAILURES", "10"))
 # Conversation (items 4.08 to 4.11). Authors may change or remove their own forum post for this long.
 FORUM_EDIT_MINUTES = int(env("FORUM_EDIT_MINUTES", "30"))
 # Private messages between students: off unless GSA asks for them (feature 23, gap G13).

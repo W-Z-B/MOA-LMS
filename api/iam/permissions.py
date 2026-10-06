@@ -43,3 +43,18 @@ class DocsPermission(BasePermission):
         from django.conf import settings
 
         return settings.API_DOCS_PUBLIC or bool(request.user and request.user.is_authenticated)
+
+
+def role_required(*codes: str) -> type[RolePermission]:
+    """RolePermission for a function view: any of the given roles, for reading and writing alike."""
+
+    class HasRole(RolePermission):
+        def has_permission(self, request, view) -> bool:
+            if not super().has_permission(request, view):
+                return False
+            self.message = "You do not hold a role that permits this action."
+            self.code = "permission_denied"
+            return has_role(request.user, *codes)
+
+    HasRole.__name__ = f"HasRole_{'_'.join(codes)}"
+    return HasRole

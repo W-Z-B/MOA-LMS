@@ -1,16 +1,19 @@
-"""Integration and reference endpoints of the LMS."""
+"""Integration and reference endpoints of the LMS, and the record of integration runs (item 1.23)."""
 
+from django.db.models import Q
 from django.urls import path
-from drf_spectacular.utils import extend_schema
-from rest_framework import serializers
+from drf_spectacular.utils import OpenApiParameter, extend_schema
+from rest_framework import serializers, viewsets
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.response import Response
+from rest_framework.routers import SimpleRouter
 
 from audit.models import AuditLog
 from courses.models import CourseSite
+from iam.models import Role
 from iam.permissions import RolePermission
 from integration.auth import ServiceKeyAuthentication, scope
-from integration.models import CampusRef
+from integration.models import CampusRef, IntegrationRun
 
 
 class ServiceSiteSerializer(serializers.Serializer):
@@ -72,3 +75,68 @@ def campuses(request):
 
 integration_urls = [path("sites/", sites, name="integration-sites")]
 reference_urls = [path("campuses/", campuses, name="reference-campuses")]
+
+
+class RunErrorSerializer(serializers.Serializer):
+    ref = serializers.CharField(
+        help_text="The row: a completion's reference, a site code, an employee number"
+    )
+    code = serializers.CharField()
+    detail = serializers.CharField()
+
+
+class IntegrationRunSerializer(serializers.ModelSerializer):
+    kind_name = serializers.CharField(source="get_kind_display", read_only=True)
+    errors = RunErrorSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = IntegrationRun
+        fields = (
+            "id",
+            "kind",
+            "kind_name",
+            "trigger",
+            "started_at",
+            "finished_at",
+            "ok",
+            "failed",
+            "errors",
+            "stopped",
+        )
+
+
+class IntegrationRunViewSet(viewsets.ReadOnlyModelViewSet):
+    """What each push to and pull from the HRMS and the SRMS did, newest first (item 1.23)."""
+
+    queryset = IntegrationRun.objects.none()
+    serializer_class = IntegrationRunSerializer
+    permission_classes = [RolePermission]
+    read_roles = (Role.ADMINISTRATOR, Role.COURSE_ADMIN, Role.AUDITOR)
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter("kind", str, enum=[k for k, _ in IntegrationRun.Kind.choices]),
+            OpenApiParameter("failed", bool, description="Only runs with a refused row or that stopped"),
+        ],
+        summary="Integration runs, newest first",
+    )
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
+    @extend_schema(summary="One integration run, with each refused row")
+    def retrieve(self, request, *args, **kwargs):
+        return super().retrieve(request, *args, **kwargs)
+
+    def get_queryset(self):
+        qs = IntegrationRun.objects.all()
+        params = self.request.query_params
+        if params.get("kind"):
+            qs = qs.filter(kind=params["kind"])
+        if params.get("failed") in ("1", "true"):
+            qs = qs.filter(Q(failed__gt=0) | ~Q(stopped=""))
+        return qs
+
+
+run_router = SimpleRouter()
+run_router.register("integration-runs", IntegrationRunViewSet, basename="integration-run")
+run_urls = run_router.urls

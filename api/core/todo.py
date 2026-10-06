@@ -6,6 +6,8 @@ requests and correction requests for course administrators, disposals for the ke
 posts reported on the forums they moderate, the register of today's classes they teach, unread messages,
 and, for a student, work due soon and logbook entries handed back. Something that has waited past its time
 limit, or work past its due date, is marked overdue.
+Staff development adds requests to join a course for those who decide them, required training falling
+due, and, for administrators, people still to be invited to an account (items 1.22, 5.02, 5.05).
 """
 
 from datetime import datetime
@@ -263,6 +265,65 @@ def _student(person) -> list[dict]:
     return items
 
 
+def _enrolments(user) -> list[dict]:
+    """Requests to join a staff-development course that the person decides: as the supervisor, standing in
+    for one, or as a course administrator when there is no supervisor (approvals.inbox, item 5.02)."""
+    from approvals.inbox import waiting_for
+
+    return [
+        _item(
+            row["kind"],
+            row["kind_name"],
+            row["title"] + (f" ({row['for_whom']})" if row["for_whom"] else ""),
+            row["since"],
+            row["link"],
+            limit=settings.DECISION_DAYS,
+        )
+        for row in waiting_for(user)
+    ]
+
+
+def _required_training(person) -> list[dict]:
+    """Required training due within the reminder days, or overdue (item 5.05)."""
+    from datetime import time, timedelta
+
+    from staffdev.models import TrainingAssignment
+
+    if person is None:
+        return []
+    soon = timezone.localdate() + timedelta(days=settings.REQUIRED_TRAINING_REMIND_DAYS)
+    open_ = TrainingAssignment.objects.filter(
+        person=person, completed_on__isnull=True, requirement__is_active=True, due_on__lte=soon
+    ).select_related("requirement__site")
+    items = []
+    for row in open_:
+        due = timezone.make_aware(datetime.combine(row.due_on, time.max))
+        site = row.requirement.site
+        item = _item(
+            "required_training", "Required training", site.title, due, f"/sites/{site.id}", due_at=due
+        )
+        item["site_title"] = site.title
+        item["overdue"] = row.due_on < timezone.localdate()
+        items.append(item)
+    return items
+
+
+def _accounts(user) -> list[dict]:
+    """People with no account who have not been invited to choose a password, for administrators (1.22)."""
+    from iam.accounts import uninvited
+    from iam.models import Role
+
+    if not has_role(user, Role.ADMINISTRATOR):
+        return []
+    waiting = uninvited().filter(user__isnull=True)
+    oldest = waiting.order_by("created_at").first()
+    if oldest is None:
+        return []
+    count = waiting.count()
+    title = f"{count} {'person has' if count == 1 else 'people have'} no account yet: invite them"
+    return [_item("accounts", "Accounts to open", title, oldest.created_at, "/admin/accounts")]
+
+
 def to_do_for(user) -> list[dict]:
     """Everything waiting for the user, by due date where there is one and otherwise by how long it has
     waited, oldest first."""
@@ -276,6 +337,9 @@ def to_do_for(user) -> list[dict]:
         *_registers(person),
         *_messages(user),
         *_student(person),
+        *_enrolments(user),
+        *_required_training(person),
+        *_accounts(user),
     ]
     return sorted(items, key=lambda item: item["due_at"] or item["since"])
 
@@ -296,6 +360,9 @@ class ToDoItemSerializer(serializers.Serializer):
             "post_report",
             "register",
             "message",
+            "enrolment",
+            "required_training",
+            "accounts",
         ]
     )
     kind_name = serializers.CharField(help_text="What it is, in words: 'Work to mark', 'Work due'")
