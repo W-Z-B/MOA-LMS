@@ -36,8 +36,15 @@ What the LMS records about your activity, and nothing more
 guessing passwords.
 - Each time you download a course file or a submission.
 - Each submission, mark and change made to a course, with who made it and when.
-The LMS does not record how long you spend on a page, which pages you read, or your location, and it uses \
+- The first time you open each item of a course, to show your progress to you and your lecturers.
+The LMS does not record how long you spend on a page, how often you read it, or your location, and it uses \
 no advertising or tracking cookies. The only cookies keep you signed in and protect forms.
+
+Early alerts: each night the LMS checks three rules that anyone can read: work missed, marks that have \
+fallen, and no activity on a course for some days. When one matches, your lecturers see it with the \
+evidence, such as the work that was not handed in, and a person decides whether to contact you. The LMS \
+does not predict or decide anything about you, and does not label you. You can ask for these records as \
+part of your data.
 
 Why: to run your courses, to mark your work and send your coursework marks to the Student Records system, \
 and to keep the system secure. The legal basis is GSA's public task of education and training.
