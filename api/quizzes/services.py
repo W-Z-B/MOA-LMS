@@ -224,7 +224,13 @@ class Effective:
 
 
 def effective(quiz: Quiz, person) -> Effective:
-    override = QuizOverride.objects.filter(quiz=quiz, student=person).first() if person else None
+    from assessments import preload
+
+    loaded = preload.current(quiz.site_id)
+    if loaded is not None and person is not None:
+        override = loaded.overrides.get((quiz.id, person.pk))
+    else:
+        override = QuizOverride.objects.filter(quiz=quiz, student=person).first() if person else None
     closes_at = quiz.closes_at
     if override and override.closes_at:
         closes_at = override.closes_at
@@ -279,10 +285,17 @@ def _pool(slot, exclude):
 
 
 def quiz_max_mark(quiz: Quiz) -> Decimal:
+    slots = list(quiz.slots.all())
+    # Each question's latest mark in one query, not one a question (item 7.08): the quiz list shows this.
+    latest = dict(
+        QuestionVersion.objects.filter(question_id__in=[s.question_id for s in slots if s.question_id])
+        .order_by("number")
+        .values_list("question_id", "default_mark")
+    )
     total = Decimal(0)
-    for slot in quiz.slots.select_related("question"):
+    for slot in slots:
         if slot.question_id:
-            total += slot.mark or slot.question.latest.default_mark
+            total += slot.mark or latest[slot.question_id]
         else:
             total += (slot.mark or Decimal(1)) * slot.random_count
     return total
@@ -354,9 +367,15 @@ def _build_answers(attempt: Attempt) -> None:
     if quiz.shuffle_questions:
         rng.shuffle(chosen)
     per_page = quiz.questions_per_page
+    # Every question's latest version in one query: a class starting a quiz at once (item 7.08).
+    latest = {}
+    for version in QuestionVersion.objects.filter(question_id__in=[q.id for q, _ in chosen]).order_by(
+        "number"
+    ):
+        latest[version.question_id] = version
     rows = []
     for index, (question, mark) in enumerate(chosen):
-        version = question.latest
+        version = latest[question.id]
         rows.append(
             AttemptAnswer(
                 attempt=attempt,
@@ -521,7 +540,8 @@ def submit_attempt(attempt: Attempt, *, user=None, auto=False, now=None) -> Atte
         attempt = Attempt.objects.select_for_update().get(pk=attempt.pk)
         if attempt.state != Attempt.State.IN_PROGRESS:
             return attempt
-        for answer in attempt.answers.select_related("version__question"):
+        answers = list(attempt.answers.select_related("version__question"))
+        for answer in answers:
             result = marking.mark(answer.qtype, answer.version.data, answer.response)
             answer.needs_manual = result.needs_manual
             answer.auto_feedback = result.feedback
@@ -532,7 +552,11 @@ def submit_attempt(attempt: Attempt, *, user=None, auto=False, now=None) -> Atte
                 answer.awarded = (answer.fraction * answer.max_mark).quantize(
                     FOUR_PLACES, rounding=ROUND_HALF_UP
                 )
-            answer.save(update_fields=["needs_manual", "auto_feedback", "fraction", "awarded", "updated_at"])
+            answer.updated_at = now
+        # One statement for every answer, not one each: a class hands in at once (item 7.08).
+        AttemptAnswer.objects.bulk_update(
+            answers, ["needs_manual", "auto_feedback", "fraction", "awarded", "updated_at"], batch_size=200
+        )
         attempt.state = Attempt.State.FINISHED
         attempt.submitted_at = min(now, attempt.deadline) if (auto and attempt.deadline) else now
         attempt.auto_submitted = auto
@@ -657,7 +681,13 @@ class QuizGrade:
 
 def quiz_grade(quiz: Quiz, person, *, released_only=False, now=None) -> QuizGrade:
     """The student's grade for the quiz by its grading method, as a fraction of the maximum."""
-    attempts = list(Attempt.objects.filter(quiz=quiz, student=person).order_by("number"))
+    from assessments import preload
+
+    loaded = preload.current(quiz.site_id)
+    if loaded is not None:
+        attempts = loaded.attempts.get((quiz.id, person.pk), [])
+    else:
+        attempts = list(Attempt.objects.filter(quiz=quiz, student=person).order_by("number"))
     finished = [a for a in attempts if a.state == Attempt.State.FINISHED]
     in_progress = len(finished) != len(attempts)
     if not finished:

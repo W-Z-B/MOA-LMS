@@ -522,7 +522,10 @@ class AttemptSummarySerializer(serializers.ModelSerializer):
 
     def _visible(self, obj) -> bool:
         request = self.context.get("request")
-        return bool(request and can_teach(request.user, obj.quiz.site)) or services.student_sees_marks(obj)
+        teacher = self.context.get("teacher")  # worked out once for a whole list (item 7.08)
+        if teacher is None:
+            teacher = bool(request and can_teach(request.user, obj.quiz.site))
+        return teacher or services.student_sees_marks(obj)
 
     def get_score(self, obj) -> str | None:
         return (
@@ -688,11 +691,13 @@ class QuizViewSet(TeachingViewSet):
         """Teaching staff: every attempt. Students: their own."""
         quiz = self.get_object()
         services.finish_expired_attempts([quiz])
-        rows = quiz.attempts.select_related("student", "quiz")
-        if not can_teach(request.user, quiz.site):
+        rows = quiz.attempts.select_related("student", "quiz__site")
+        teacher = can_teach(request.user, quiz.site)
+        if not teacher:
             person = person_of(request.user)
             rows = rows.filter(student=person) if person else rows.none()
-        return Response(AttemptSummarySerializer(rows, many=True, context={"request": request}).data)
+        context = {"request": request, "teacher": teacher}
+        return Response(AttemptSummarySerializer(rows, many=True, context=context).data)
 
     @extend_schema(responses={200: OpenApiTypes.OBJECT})
     @action(detail=True, methods=["get"])

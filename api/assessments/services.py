@@ -21,6 +21,7 @@ from decimal import ROUND_HALF_UP, Decimal
 
 from django.utils import timezone
 
+from assessments import preload
 from assessments.models import GradeCategory, SrmsTransfer, Submission
 from assessments.rules import due_for, penalised
 from courses.models import Membership
@@ -30,6 +31,9 @@ COUNTED = ("graded", "zero")
 
 
 def _marks_by_assignment(site, person) -> dict[int, Submission]:
+    loaded = preload.current(site)
+    if loaded is not None:
+        return loaded.submissions.get(person.pk, {})
     submissions = Submission.objects.filter(assignment__site=site, student=person).select_related(
         "mark", "assignment"
     )
@@ -38,6 +42,9 @@ def _marks_by_assignment(site, person) -> dict[int, Submission]:
 
 def _counting_quizzes(site):
     """Quizzes that count towards coursework: published, not practice, weighted (feature 10, item 3.03)."""
+    loaded = preload.current(site)
+    if loaded is not None:
+        return loaded.counting_quizzes
     return site.quizzes.filter(is_published=True, is_practice=False, weight__gt=0)
 
 
@@ -77,8 +84,9 @@ class Item:
 
 def _assignment_items(site, person, released_only, now) -> list[Item]:
     submissions = _marks_by_assignment(site, person)
+    loaded = preload.current(site)
     items = []
-    for assignment in site.assignments.filter(is_published=True):
+    for assignment in loaded.assignments if loaded else site.assignments.filter(is_published=True):
         exact = None
         submission = submissions.get(assignment.id)
         mark = getattr(submission, "mark", None) if submission else None
@@ -164,7 +172,8 @@ def coursework_working(site, person, *, released_only: bool = False, now=None) -
         + _practical_items(site, person, released_only, now)
         + _forum_items(site, person, released_only)
     )
-    categories = list(GradeCategory.objects.filter(site=site))
+    loaded = preload.current(site)
+    categories = loaded.categories if loaded else list(GradeCategory.objects.filter(site=site))
     known = {c.id for c in categories}
     for item in items:
         if item.category_id not in known:
@@ -245,62 +254,65 @@ def gradebook(site, *, only_person=None, released_only: bool = False) -> dict:
     ).select_related("person")
     if only_person is not None:
         members = members.filter(person=only_person)
+    members = list(members.order_by("person__last_name", "person__first_name"))
     rows = []
-    for membership in members.order_by("person__last_name", "person__first_name"):
-        person = membership.person
-        submissions = _marks_by_assignment(site, person)
-        marks = {}
-        for assignment in assignments:
-            submission = submissions.get(assignment.id)
-            mark = getattr(submission, "mark", None) if submission else None
-            visible = mark is not None and (mark.is_released or not released_only)
-            # While names are hidden, the class list does not show an anonymous assignment's marks (3.16).
-            hidden = assignment.names_hidden and not released_only
-            shown = penalised(submission, mark.mark) if visible and not hidden else None
-            marks[str(assignment.id)] = {
-                "submitted": submission is not None,
-                "late": bool(submission and submission.is_late),
-                "mark": str(shown.final) if shown else None,
-                "raw_mark": str(shown.raw) if shown else None,
-                "penalty": str(shown.penalty) if shown else None,
-                "feedback": mark.feedback if shown else "",
-                "anonymous": hidden,
+    # The whole class at once: a few queries, not a dozen for each student (item 7.08).
+    with preload.preloaded(site, people=[m.person_id for m in members]):
+        for membership in members:
+            person = membership.person
+            submissions = _marks_by_assignment(site, person)
+            marks = {}
+            for assignment in assignments:
+                submission = submissions.get(assignment.id)
+                mark = getattr(submission, "mark", None) if submission else None
+                visible = mark is not None and (mark.is_released or not released_only)
+                # While names are hidden, the class list does not show an anonymous assignment's marks (3.16).
+                hidden = assignment.names_hidden and not released_only
+                shown = penalised(submission, mark.mark) if visible and not hidden else None
+                marks[str(assignment.id)] = {
+                    "submitted": submission is not None,
+                    "late": bool(submission and submission.is_late),
+                    "mark": str(shown.final) if shown else None,
+                    "raw_mark": str(shown.raw) if shown else None,
+                    "penalty": str(shown.penalty) if shown else None,
+                    "feedback": mark.feedback if shown else "",
+                    "anonymous": hidden,
+                }
+                if hidden and submission is not None:
+                    marks[str(assignment.id)]["label"] = label_for(submission)
+            quiz_marks = {}
+            for quiz in quizzes:
+                grade = quiz_grade(quiz, person, released_only=released_only)
+                quiz_marks[str(quiz.id)] = {
+                    "attempts": grade.attempts,
+                    "state": grade.state,
+                    "percent": str((grade.fraction * 100).quantize(TWO_PLACES))
+                    if grade.fraction is not None
+                    else None,
+                }
+            working = coursework_working(site, person, released_only=released_only)
+            others = {
+                kind: {
+                    str(i["id"]): {"state": i["state"], "percent": i["percent"]}
+                    for i in working["items"]
+                    if i["kind"] == kind
+                }
+                for kind in ("practical", "forum")
             }
-            if hidden and submission is not None:
-                marks[str(assignment.id)]["label"] = label_for(submission)
-        quiz_marks = {}
-        for quiz in quizzes:
-            grade = quiz_grade(quiz, person, released_only=released_only)
-            quiz_marks[str(quiz.id)] = {
-                "attempts": grade.attempts,
-                "state": grade.state,
-                "percent": str((grade.fraction * 100).quantize(TWO_PLACES))
-                if grade.fraction is not None
-                else None,
-            }
-        working = coursework_working(site, person, released_only=released_only)
-        others = {
-            kind: {
-                str(i["id"]): {"state": i["state"], "percent": i["percent"]}
-                for i in working["items"]
-                if i["kind"] == kind
-            }
-            for kind in ("practical", "forum")
-        }
-        rows.append(
-            {
-                "person_id": person.id,
-                "student_no": person.external_id,
-                "name": person.full_name,
-                "marks": marks,
-                "quizzes": quiz_marks,
-                "practicals": others["practical"],
-                "forums": others["forum"],
-                "categories": {str(c["id"]): c["percent"] for c in working["categories"] if c["id"]},
-                "coursework_percent": working["coursework_percent"],
-                "srms": _srms_state(site, person),
-            }
-        )
+            rows.append(
+                {
+                    "person_id": person.id,
+                    "student_no": person.external_id,
+                    "name": person.full_name,
+                    "marks": marks,
+                    "quizzes": quiz_marks,
+                    "practicals": others["practical"],
+                    "forums": others["forum"],
+                    "categories": {str(c["id"]): c["percent"] for c in working["categories"] if c["id"]},
+                    "coursework_percent": working["coursework_percent"],
+                    "srms": _srms_state(site, person),
+                }
+            )
     return {
         "site": site.code,
         "categories": [
@@ -345,7 +357,11 @@ def _srms_state(site, person) -> dict | None:
     (item 3.18), shown on the gradebook and the marks."""
     from assessments.rules import srms_lock
 
-    latest = SrmsTransfer.objects.filter(site=site, student=person).order_by("-sent_at", "-id").first()
+    loaded = preload.current(site)
+    if loaded is not None:
+        latest = (loaded.transfers.get(person.pk) or [None])[-1]
+    else:
+        latest = SrmsTransfer.objects.filter(site=site, student=person).order_by("-sent_at", "-id").first()
     if latest is None:
         return None
     lock = srms_lock(site, person)

@@ -6,6 +6,7 @@ The SRMS owns offerings, enrolments and results. The LMS mirrors the first two a
 from django.conf import settings
 from django.db import transaction
 
+from assessments import preload
 from assessments.services import coursework_percent
 from courses.models import CourseSite, Membership
 from courses.site_templates import apply_template
@@ -106,10 +107,12 @@ def push_marks(site: CourseSite) -> dict:
     members = Membership.objects.filter(
         site=site, role=Membership.SiteRole.STUDENT, is_active=True
     ).select_related("person")
-    for membership in members:
-        percent = coursework_percent(site, membership.person)
-        if percent is not None:
-            marks.append({"student_no": membership.person.external_id, "mark": str(percent)})
+    members = list(members)
+    with preload.preloaded(site, people=[m.person_id for m in members]):  # the class at once (item 7.08)
+        for membership in members:
+            percent = coursework_percent(site, membership.person)
+            if percent is not None:
+                marks.append({"student_no": membership.person.external_id, "mark": str(percent)})
     if not marks:
         return {"offering_code": site.code, "accepted": [], "locked": [], "unknown": [], "sent": []}
     result = _srms("/api/v1/integration/coursework-marks/", data={"offering_code": site.code, "marks": marks})

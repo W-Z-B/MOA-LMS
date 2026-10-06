@@ -15,6 +15,7 @@ from django.conf import settings
 from django.db.models import Q
 from django.utils import timezone
 
+from assessments import preload
 from assessments.models import (
     Accommodation,
     Assignment,
@@ -55,6 +56,9 @@ class Refusal(Exception):
 def accommodation_of(person) -> Accommodation | None:
     if person is None:
         return None
+    cached = preload.accommodations()
+    if cached is not None and person.pk in cached:
+        return cached[person.pk]
     return Accommodation.objects.filter(person=person, is_active=True).first()
 
 
@@ -104,13 +108,22 @@ def due_for(assignment: Assignment, person) -> Due:
     date moved on by the student's accommodation."""
     due = assignment.due_at
     extended = False
-    if person is not None:
+    loaded = preload.current(assignment.site_id)
+    if person is not None and loaded is not None:
+        group_ids = loaded.groups.get(person.pk, [])
+        extensions = [
+            e
+            for e in loaded.extensions.get(assignment.id, [])
+            if e.student_id == person.pk or e.group_id in group_ids
+        ]
+    elif person is not None:
         group_ids = list(
             person.memberships.filter(site=assignment.site, is_active=True).values_list("groups", flat=True)
         )
         extensions = Extension.objects.filter(assignment=assignment).filter(
             Q(student=person) | Q(group_id__in=[g for g in group_ids if g])
         )
+    if person is not None:
         for extension in extensions:
             if extension.due_at > due:
                 due, extended = extension.due_at, True
@@ -169,6 +182,10 @@ def penalised(submission: Submission, mark: Decimal, due: Due | None = None) -> 
 
 def srms_lock(site, person) -> SrmsTransfer | None:
     """The transfer that locked the student's marks on the site, if the SRMS holds them."""
+    loaded = preload.current(site)
+    if loaded is not None:
+        held = (SrmsTransfer.Outcome.ACCEPTED, SrmsTransfer.Outcome.LOCKED)
+        return next((t for t in loaded.transfers.get(person.pk, []) if t.outcome in held), None)
     return (
         SrmsTransfer.objects.filter(
             site=site,
