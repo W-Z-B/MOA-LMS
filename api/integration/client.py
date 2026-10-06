@@ -8,6 +8,8 @@ import urllib.request
 
 from django.conf import settings
 
+from core import outbound
+
 
 class IntegrationError(Exception):
     """A sibling system could not be reached or refused the request."""
@@ -33,8 +35,14 @@ def call(base_url: str, key: str, path: str, *, params: dict | None = None, data
     if body:
         request.add_header("Content-Type", "application/json")
     try:
-        with urllib.request.urlopen(request, timeout=settings.INTEGRATION_TIMEOUT_SECONDS) as response:  # noqa: S310
+        # On GSA's private network by design (OUTBOUND_PRIVATE_HOSTS); a redirect is refused, never followed,
+        # so the service key cannot be carried to another host (core.outbound).
+        with outbound.urlopen(
+            request, timeout=settings.INTEGRATION_TIMEOUT_SECONDS, configured=True, schemes=("http", "https")
+        ) as response:
             return json.loads(response.read().decode("utf-8") or "{}")
+    except outbound.OutboundRefused as exc:
+        raise IntegrationError(f"{url} was not called: {exc}") from exc
     except urllib.error.HTTPError as exc:
         raise IntegrationError(f"{url} answered HTTP {exc.code}", status=exc.code) from exc
     except (urllib.error.URLError, TimeoutError, ValueError) as exc:

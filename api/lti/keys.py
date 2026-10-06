@@ -18,6 +18,7 @@ from django.conf import settings
 from django.core.cache import cache
 from django.db import transaction
 
+from core import outbound
 from lti.models import PlatformKey, Tool
 
 ALGORITHM = "RS256"
@@ -59,11 +60,12 @@ def sign(claims: dict) -> str:
 
 
 def fetch_json(url: str) -> dict:
-    """GET a JSON document from an address a course administrator registered."""
-    if urlparse(url).scheme not in ("https", "http" if settings.DEBUG else "https"):
+    """GET a JSON document from an address a course administrator registered: https only, never a private
+    network, no redirect followed (core.outbound; OutboundRefused is a ValueError)."""
+    if urlparse(url).scheme != "https":
         raise ValueError("A key set address must start https://.")
     request = urllib.request.Request(url, headers={"Accept": "application/json"})  # noqa: S310 - checked
-    with urllib.request.urlopen(request, timeout=settings.INTEGRATION_TIMEOUT_SECONDS) as response:  # noqa: S310
+    with outbound.urlopen(request, timeout=settings.INTEGRATION_TIMEOUT_SECONDS) as response:
         return json.loads(response.read(1_000_000).decode("utf-8"))
 
 

@@ -20,6 +20,14 @@ ENDPOINT = "https://fcm.googleapis.com/fcm/send/abc123"
 KEYS = {"p256dh": "BOr" + "x" * 84, "auth": "secret-auth-16b"}
 
 
+@pytest.fixture(autouse=True)
+def public_push_services(monkeypatch):
+    """The push services' names look up to a public address (no network in the tests)."""
+    from core import outbound
+
+    monkeypatch.setattr(outbound, "resolve", lambda host, port, **k: [(2, 1, 6, "", ("142.250.0.10", port))])
+
+
 @pytest.fixture
 def vapid(settings):
     settings.VAPID_PUBLIC_KEY, settings.VAPID_PRIVATE_KEY = make_keys()
@@ -147,7 +155,8 @@ def test_the_worker_sends_the_title_and_the_link_and_drops_gone_subscriptions(pe
     )
     sent = []
 
-    def webpush(subscription_info, data, vapid_private_key, vapid_claims, ttl, timeout):
+    def webpush(subscription_info, data, vapid_private_key, vapid_claims, ttl, timeout, requests_session):
+        assert requests_session.max_redirects == 0 and requests_session.trust_env is False
         sent.append(json.loads(data))
         assert vapid_private_key == vapid.VAPID_PRIVATE_KEY and vapid_claims == {"sub": vapid.VAPID_SUBJECT}
         assert subscription_info["keys"] == KEYS

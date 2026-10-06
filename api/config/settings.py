@@ -5,6 +5,7 @@ No secrets are stored in this file.
 
 import os
 from pathlib import Path
+from urllib.parse import urlsplit
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -22,8 +23,14 @@ DEBUG = env_bool("DJANGO_DEBUG", False)
 ALLOWED_HOSTS = [h for h in env("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if h]
 CSRF_TRUSTED_ORIGINS = [f"https://{h}" for h in ALLOWED_HOSTS if h not in {"localhost", "127.0.0.1", "api"}]
 
-# Key for application-layer encryption of sensitive identifiers.
-FIELD_ENCRYPTION_KEY = env("FIELD_ENCRYPTION_KEY", "")
+# Keys for application-layer encryption of sensitive values (core.crypto). One key: FIELD_ENCRYPTION_KEY.
+# While the key is being changed: FIELD_ENCRYPTION_KEYS=new,old (newest first; it wins over
+# FIELD_ENCRYPTION_KEY), then `manage.py rotate_field_key`, then the old key moves to
+# AUDIT_CHAIN_RETIRED_KEYS, where it only verifies the audit entries sealed before the change (docs/runbook.md,
+# changing the key).
+FIELD_ENCRYPTION_KEYS = [k.strip() for k in env("FIELD_ENCRYPTION_KEYS", "").split(",") if k.strip()]
+FIELD_ENCRYPTION_KEY = env("FIELD_ENCRYPTION_KEY", "") or (FIELD_ENCRYPTION_KEYS[:1] or [""])[0]
+AUDIT_CHAIN_RETIRED_KEYS = [k.strip() for k in env("AUDIT_CHAIN_RETIRED_KEYS", "").split(",") if k.strip()]
 
 INSTALLED_APPS = [
     # The admin, with sign-in only through the web app (lockout and authenticator): iam/admin_site.py
@@ -403,6 +410,22 @@ AI_TIMEOUT_SECONDS = int(env("AI_TIMEOUT_SECONDS", "60"))
 # The study helper is switched off while a student has an assignment open (not yet handed in, before its due
 # date) on the site, as for quizzes. GSA may decide assignments should not switch it off.
 AI_HELPER_OFF_DURING_ASSIGNMENTS = env_bool("AI_HELPER_OFF_DURING_ASSIGNMENTS", True)
+
+# Requests the server sends out (core.outbound, ASVS 5.2.6): redirects are never followed, and an address
+# from data (a tool's key set, a push endpoint) may not reach a private network. The sibling systems and the
+# AI model may: they are on GSA's private network at the addresses set above, so their hosts are allowed
+# here, and only for those calls. Name more hosts in OUTBOUND_PRIVATE_HOSTS (comma-separated) if one of them
+# is reached under another name.
+OUTBOUND_PRIVATE_HOSTS = sorted(
+    {
+        host
+        for host in [
+            *(urlsplit(url).hostname for url in (HRMS_API_URL, SRMS_API_URL, AI_OLLAMA_URL) if url),
+            *(h.strip() for h in env("OUTBOUND_PRIVATE_HOSTS", "").split(",")),
+        ]
+        if host
+    }
+)
 
 # Authenticator codes (ASVS 2.2.1, 2.8.4): a wrong code counts as a failed sign-in towards the lockout
 # (LOGIN_MAX_FAILURES in LOGIN_LOCKOUT_MINUTES), which then ends the session; and each code is accepted once.

@@ -32,7 +32,7 @@ class FakeOllama:
         self.sent: list[dict] = []
         self.down = False
 
-    def __call__(self, request, timeout=None):
+    def __call__(self, request, timeout=None, **options):
         if self.down:
             raise OSError("connection refused")
         assert request.full_url == "http://ollama.gsa.internal:11434/api/generate"
@@ -44,7 +44,7 @@ class FakeOllama:
 @pytest.fixture
 def ollama(monkeypatch):
     fake = FakeOllama()
-    monkeypatch.setattr(providers.urllib.request, "urlopen", fake)
+    monkeypatch.setattr("core.outbound.urlopen", fake)
     return fake
 
 
