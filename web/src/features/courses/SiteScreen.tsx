@@ -8,6 +8,7 @@ import { DiscussionTab } from "../forums/DiscussionTab";
 import { GroupsTab } from "../groups/GroupsTab";
 import { ContentTab } from "../content/ContentTab";
 import { AssignmentsTab, GradebookTab } from "../marking/lazy";
+import { showsAiTab, useAiStatus } from "../ai/status";
 
 // Practicals and the logbook load only when their tab is opened (items 3.12 to 3.15).
 const PracticalsTab = lazy(() => import("../practicals/PracticalsTab").then((m) => ({ default: m.PracticalsTab })));
@@ -21,6 +22,10 @@ const InsightsTab = lazy(() => import("../insights/InsightsTab").then((m) => ({ 
 const MyProgress = lazy(() => import("../insights/MyProgress").then((m) => ({ default: m.MyProgress })));
 const tabFor = (tab: SiteTab, teaching: boolean, student: boolean) => (tab === "insights" ? teaching : tab === "progress" ? student : true);
 // --- end insight ---
+// --- tools and AI help --- (items 6.07, 6.11, 6.12): each loads when its tab is first opened.
+const ToolsTab = lazy(() => import("../tools/ToolsTab").then((m) => ({ default: m.ToolsTab })));
+const AiTab = lazy(() => import("../ai/AiTab").then((m) => ({ default: m.AiTab })));
+// --- end tools and AI help ---
 
 interface Props {
   siteId: number;
@@ -42,6 +47,8 @@ const TAB_LABEL: Record<SiteTab, string> = {
   logbook: "Logbook",
   insights: "Insights",
   progress: "My progress",
+  tools: "Tools",
+  ai: "AI help",
 };
 
 /**
@@ -52,6 +59,7 @@ export function SiteScreen({ siteId, tab, onTab }: Props) {
   const [data, setData] = useState<SiteContents | null>(null);
   const [error, setError] = useState<string | null>(null);
   useCrumb(data?.site.title);
+  const [ai, setAi] = useAiStatus(siteId); // the AI help tab shows only where it may be used
 
   const load = useCallback(() => {
     get<SiteContents>(`/sites/${siteId}/contents/`)
@@ -99,7 +107,7 @@ export function SiteScreen({ siteId, tab, onTab }: Props) {
         )}
       </div>
       <div className="tabs" role="tablist">
-        {SITE_TABS.filter((t) => tabFor(t, teaching, data.site.my_role === "student")).map((t) => (
+        {SITE_TABS.filter((t) => tabFor(t, teaching, data.site.my_role === "student") && (t !== "ai" || showsAiTab(ai))).map((t) => (
           <button key={t} role="tab" aria-selected={tab === t} className={tab === t ? "tab active" : "tab"} onClick={() => onTab(t)}>
             {TAB_LABEL[t]}
           </button>
@@ -120,6 +128,8 @@ export function SiteScreen({ siteId, tab, onTab }: Props) {
         {tab === "logbook" && <LogbookTab siteId={siteId} teaching={teaching} />}
         {tab === "insights" && teaching && <InsightsTab siteId={siteId} />}
         {tab === "progress" && data.site.my_role === "student" && <MyProgress siteId={siteId} />}
+        {tab === "tools" && <ToolsTab siteId={siteId} teaching={teaching} modules={data.modules} />}
+        {tab === "ai" && ai && showsAiTab(ai) && <AiTab siteId={siteId} status={ai} modules={data.modules} onStatus={setAi} />}
       </Suspense>
     </>
   );

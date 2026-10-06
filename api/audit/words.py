@@ -45,6 +45,11 @@ RECORDS = {
     "insights.outcomelink": "Evidence for a learning outcome",
     "insights.alert": "Early alert",
     "insights.alertrule": "Early-alert rule",
+    "lti.tool": "Outside tool",
+    "lti.lineitem": "Gradebook column of an outside tool",
+    "lti.score": "Score from an outside tool",
+    "assist.exchange": "AI draft",
+    "assist.siteswitch": "AI help on a course",
 }
 ACTIONS = {
     "create": "Added",
@@ -118,6 +123,11 @@ ACTIONS = {
     "mark_agreed": "Mark agreed after moderation",
     "gradebook_exported": "Gradebook exported",
     "coursework_sent": "Coursework sent to the SRMS",
+    "lti_launch": "Outside tool opened",
+    "lti_score": "Score posted by an outside tool",
+    "lti_class_list": "Class list read by an outside tool",
+    "ai_drafted": "Drafted with AI help",
+    "ai_draft_saved": "Saved from an AI draft",
 }
 # Account events: in the audit viewer and in the sign-ins of a person's record, not among their actions.
 ACCOUNT_EVENTS = (

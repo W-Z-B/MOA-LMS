@@ -18,6 +18,10 @@ when people use it, so that the privacy notice can say it and anyone adding a fe
 | First opening of a course item (a page opened, a file downloaded, or marked complete), once per item | The first time only | Item completions | The student; the course's teaching staff, as progress and course analytics (items 2.16, 6.01, 6.02) | With the course's records |
 | Early alerts: a visible rule (missed work, falling marks, no recorded activity for a number of days) matched, with its evidence and what a person decided | Checked nightly; one alert per piece of evidence | Early alerts, audit log | The course's teaching staff and course administrators; never shown to the student as a label; included in the copy of a person's record produced for a request (item 6.05) | With the course's records |
 | Viewing or exporting a report that leaves a course (courses, staff development) | Each time | Audit log | Administrators, the auditor | With the audit log |
+| Opening an outside tool (LTI launch): which tool, which course, whether names or emails were sent | Each launch | Audit log | Administrators, the auditor | With the audit log |
+| A score an outside tool posts, and a tool reading a class list | Each time | Tool scores, audit log | The student, the course's teaching staff | With the marks; the audit log |
+| A question to the AI study helper: when, by whom, whether answered, which items were the sources (never the question or the answer) | Each question | AI exchanges | The system | 1 year, removed nightly (rule `ai-exchanges`) |
+| An AI draft for a lecturer, and the record it was saved as | Each draft | AI exchanges, audit log ("AI-drafted") | Administrators, the auditor | Drafts 1 year; the audit entry with the audit log |
 
 ## What the LMS does not record
 

@@ -51,6 +51,18 @@ auditor and the Data Protection Officer see records when they check how the syst
 never see your work or marks. Coursework marks go to the Student Records system; staff development
 completions go to the Human Resources system. Nothing is sold or used for marketing.
 
+**Outside tools.** Some courses open outside tools (item 6.07). A tool receives a code that stands for you
+in that tool alone, your role on the course and the course's name; it receives your name or email only
+where GSA has allowed it for that tool [GSA to list the tools and what each receives], and it may send your
+score back to the gradebook.
+
+**AI help.** [Only once GSA switches it on, decision D5.] Lecturers may ask a model run on GSA's own server
+to draft questions, rubric wording or picture descriptions from their own material; they check and edit
+every draft. The study helper answers your questions only from your course's material and shows where the
+answer came from. It is sent your question and the course's material, nothing else about you. Your question
+and its answer are not kept, only that a question was asked ([1 year]). It is switched off while you have a
+quiz or assignment open on that course.
+
 **Students under 18.** The same protections apply to you. A parent or guardian may ask on your behalf
 through the Registry. [GSA to confirm how the Registry checks who is asking.]
 

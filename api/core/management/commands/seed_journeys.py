@@ -30,6 +30,9 @@ completed, with its certificate and a fictional check code), and two new student
 but who have not chosen a password yet. Their invitation links, and the certificate's reference and code,
 are written as JSON to the file JOURNEY_LINKS_FILE names, where the journeys read them: a link to choose a
 password is signed afresh each time and is never printed.
+
+For the outside-tool journeys (item 6.07) it registers a fictional tool, with names and emails off, and places
+it in a module of its own on AGR101 with a gradebook column.
 """
 
 import hashlib
@@ -220,6 +223,7 @@ class Command(BaseCommand):
             self._practicals(site)
             self._question_bank(site)
             self._insight(password, secret)
+            self._tools(site)
             PrivacyNotice.objects.filter(published_at__isnull=True).update(published_at=timezone.now())
             self._administrator(password, secret)
             certificate = self._staff_development()
@@ -586,6 +590,35 @@ class Command(BaseCommand):
                 pass_score=3,
             )
             PracticalCriterion.objects.create(task=task, position=3, text="Tools cleaned and stored")
+
+    @staticmethod
+    def _tools(site: CourseSite) -> None:
+        """A fictional outside tool (item 6.07), registered with names and emails off, placed in a module
+        of its own with a gradebook column. Its addresses do not exist: journeys stop at the launch link."""
+        from lti.models import LineItem, Tool
+        from lti.services import place
+
+        tool, _ = Tool.objects.get_or_create(
+            name="Crop growth simulator",
+            defaults={
+                "description": "Grow a crop through a season and see how water and feeding change it.",
+                "oidc_login_url": "https://tools.gsa.example/login",
+                "launch_url": "https://tools.gsa.example/launch",
+                "deep_linking_url": "https://tools.gsa.example/choose",
+                "jwks_url": "https://tools.gsa.example/jwks",
+            },
+        )
+        if tool.placements.exists():
+            return
+        last = site.modules.order_by("-position").first()
+        module = Module.objects.create(
+            site=site, title="Outside tools", position=(last.position + 1) if last else 1
+        )
+        placement = place(module, tool, "Maize growth simulation")
+        ContentItem.objects.filter(pk=placement.item_id).update(is_published=True)
+        LineItem.objects.create(
+            site=site, tool=tool, placement=placement, label="Maize growth simulation", score_maximum=10
+        )
 
     @staticmethod
     def _question_bank(site: CourseSite) -> None:

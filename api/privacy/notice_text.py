@@ -56,9 +56,19 @@ Who sees it
 - Other students never see your work or your marks.
 - Coursework marks go to the Student Records system; staff training completions go to the Human Resources \
 system. Nothing is sold or shared for marketing.
+- Outside tools a course uses receive a code that stands for you in that tool alone, your \
+role on the course and the course's name. They receive your name or email only where GSA has allowed it \
+for that tool, and may send your score back to the gradebook.
 
 Students under 18: the same protections apply. A parent or guardian may ask on the student's behalf \
 through the Registry.
+
+AI help (only where GSA and your lecturer have switched it on): lecturers may ask a model run on GSA's \
+own server to draft questions, rubric wording or picture descriptions from their own material, and \
+always check and edit the draft. The study helper answers your questions only from your course's \
+material and shows where the answer came from. It is sent your question and the course's material, \
+nothing else about you; your question and its answer are not kept, only that a question was asked \
+(kept 1 year). It is switched off while you have a quiz or assignment open on that course.
 
 How long it is kept (proposed, to be confirmed by GSA)
 - Submissions, marks and feedback: 6 years after the end of the term of the course.
