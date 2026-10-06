@@ -426,13 +426,13 @@ def _answer_html(answer: dict) -> str:
     return f'<div class="answer {status_class}" role="status"><p>{escape(answer["detail"])}</p>{listed}</div>'
 
 
-BADGE_FORM = """<h2>Check a digital badge</h2>
+BADGE_FORM = """<h2>Verify a digital badge</h2>
 <p>A digital badge (an Open Badges credential) from {org} is a long line of letters joined by dots. Paste it
-here to check it.</p>
+here to verify it.</p>
 <form method="post">
 <label for="credential">Digital badge</label>
 <textarea id="credential" name="credential" required maxlength="32768" spellcheck="false"></textarea>
-<button type="submit">Check the badge</button>
+<button type="submit">Verify the badge</button>
 </form>
 {answer}"""
 

@@ -15,6 +15,10 @@ framework the course follows.
 
 For the quiz journeys (feature 10) it adds the course's question bank with one category, where the
 journeys write their questions.
+
+For the packaged content journeys (items 5.10, 5.12 to 5.14, 6.08) it adds a last module to AGR101 with a
+SCORM package and an H5P exercise made in code (packages.samples) that count for nothing, an open resource on
+the library's shelf, and an empty course to import into, AGR190.
 The accounts share the password in DEMO_USER_PASSWORD. Teaching staff need an authenticator code (ADR 0013),
 so the lecturer's authenticator is enrolled from DEMO_TOTP_SECRET, a fictional secret the journeys also hold
 to compute the code. The draft privacy notice is published, so the journeys read and acknowledge it as
@@ -204,6 +208,8 @@ class Command(BaseCommand):
             self._talk(site)
             self._practicals(site)
             self._question_bank(site)
+            lecturer = Membership.objects.get(site=site, role="lecturer").person
+            self._packages(site, lecturer, os.environ.get("JOURNEY_LINKS_FILE", ""))
             PrivacyNotice.objects.filter(published_at__isnull=True).update(published_at=timezone.now())
             self._administrator(password, secret)
             certificate = self._staff_development()
@@ -577,6 +583,71 @@ class Command(BaseCommand):
         in it, build a quiz and publish it. No quiz is seeded, so nothing new is due on the Homes."""
         bank, _ = QuestionBank.objects.get_or_create(site=site, name="Crop production questions")
         QuestionCategory.objects.get_or_create(bank=bank, name="Week 1: What a crop needs")
+
+    # --- packaged content, the library and interchange (items 5.10, 5.12 to 5.14, 6.08) ---
+    @staticmethod
+    def _packages(site: CourseSite, lecturer: PersonRef, target: str) -> None:
+        """A last module of AGR101, "Interactive practice", with a SCORM package and an H5P exercise made in
+        code (packages.samples), counting for nothing so no coursework figure moves; an open educational
+        resource on the library's shelf; an empty, unpublished course to import into (AGR190); and the SCORM
+        package written beside JOURNEY_LINKS_FILE for the journey that puts one up."""
+        from library.models import LibraryItem
+        from packages import archive, samples
+        from packages.models import ContentPackage
+
+        module, _ = Module.objects.get_or_create(
+            site=site, title="Interactive practice", defaults={"position": 90}
+        )
+        for title, data, name in (
+            ("Seed spacing check", samples.scorm_package(), "seed-spacing.zip"),
+            ("Crop pests quiz", samples.h5p_file(), "crop-pests.h5p"),
+        ):
+            if ContentItem.objects.filter(module=module, title=title).exists():
+                continue
+            upload = ContentFile(data, name=name)
+            checked = archive.check(upload)
+            item = ContentItem(module=module, kind="package", title=title, licence="gsa_own", position=90)
+            item.original_name, item.file_size = name, len(data)
+            item.file.save(name, upload, save=False)
+            item.save()
+            ContentPackage.objects.create(
+                item=item,
+                standard=checked.standard,
+                version_label=checked.version_label,
+                scos=[sco.as_dict() for sco in checked.scos],
+                entries=checked.entries,
+                unpacked_bytes=checked.unpacked_bytes,
+            )
+        LibraryItem.objects.get_or_create(
+            title="Integrated pest management for smallholders",
+            defaults={
+                "kind": "link",
+                "url": "https://www.fao.org/pest-and-pesticide-management/ipm/en/",
+                "description": "A fictional entry for the journeys: an open resource on the School's shelf.",
+                "licence": "open_licence",
+                "open_licence": "cc_by_nc",
+                "source": "FAO, Integrated Pest Management pages",
+                "publisher": "FAO",
+                "is_open_resource": True,
+                "tags": ["pests", "IPM"],
+            },
+        )
+        sandbox, _ = CourseSite.objects.get_or_create(
+            code="AGR190-2026-27-S1-MRP",
+            defaults={
+                "title": "Field Crops (imported)",
+                "term_code": "2026-27-S1",
+                "campus_code": "MRP",
+                "source": "local",
+            },
+        )
+        Membership.objects.get_or_create(site=sandbox, person=lecturer, defaults={"role": "lecturer"})
+        if target:
+            os.makedirs(os.path.dirname(target) or ".", exist_ok=True)
+            with open(os.path.join(os.path.dirname(target) or ".", "seed-spacing.zip"), "wb") as out:
+                out.write(samples.scorm_package())
+
+    # --- end packaged content ---
 
     @staticmethod
     def _person(username, kind, external_id, first, last, role, password) -> PersonRef:

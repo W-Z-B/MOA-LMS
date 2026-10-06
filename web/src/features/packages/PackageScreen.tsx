@@ -263,7 +263,7 @@ function Teaching({ pkg, onChanged }: { pkg: ContentPackage; onChanged: () => vo
         {rows === null && <p className="loading">Loading…</p>}
         {rows !== null && rows.length === 0 && <p className="muted">No learner has opened it yet.</p>}
         {rows !== null && rows.length > 0 && (
-          <div className="package-table">
+          <div className="package-table" tabIndex={0} role="region" aria-label="Attempts, scrolls sideways on a narrow screen">
             <table>
               <caption className="sr-only">Every learner's attempts</caption>
               <thead>

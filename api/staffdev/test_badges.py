@@ -103,7 +103,7 @@ def test_badges_wait_for_the_setting(staff, course, client_for, settings):
     assert holder.get("/api/v1/certificates/").json()["results"][0]["badge_url"] is None
     refused = holder.get(f"/api/v1/certificates/{certificate.id}/badge/")
     assert refused.status_code == 404 and refused.json()["code"] == "badges_off"
-    assert "Check a digital badge" not in APIClient().get("/api/check-certificate/").content.decode()
+    assert "Verify a digital badge" not in APIClient().get("/api/check-certificate/").content.decode()
 
 
 @pytest.mark.django_db
@@ -149,7 +149,7 @@ def test_a_presented_credential_is_checked(certificate, course_admin, client_for
 @pytest.mark.django_db
 def test_the_public_page_checks_a_badge_without_script(certificate):
     page = APIClient().get("/api/check-certificate/").content.decode()
-    assert "Check a digital badge" in page and "<script" not in page
+    assert "Verify a digital badge" in page and "<script" not in page
     answered = APIClient().post(
         "/api/check-certificate/", {"credential": certificate.badge.jwt}, REMOTE_ADDR="203.0.113.7"
     )

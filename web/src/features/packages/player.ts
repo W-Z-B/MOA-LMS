@@ -75,6 +75,29 @@ const isMessage = (data: unknown): data is Message =>
   typeof (data as Message).method === "string" &&
   ((data as Message).params === undefined || Array.isArray((data as Message).params));
 
+/**
+ * How the run-time commits: always a synchronous request with the CSRF token, also for the commit that ends a
+ * session. scorm-again sends that one with navigator.sendBeacon, for a page that is closing; here the page
+ * that closes is the package's frame, never this one, and a beacon cannot carry the CSRF token.
+ */
+export class LmsCommits {
+  processHttpRequest(url: string, params: unknown): { result: string; errorCode: number } {
+    const xhr = new XMLHttpRequest();
+    try {
+      xhr.open("POST", url, false);
+      xhr.setRequestHeader("Content-Type", "application/json");
+      xhr.setRequestHeader("X-CSRFToken", csrfToken());
+      xhr.send(JSON.stringify(params));
+      const answer = JSON.parse(xhr.responseText) as { result?: boolean };
+      return xhr.status === 200 && answer.result ? { result: "true", errorCode: 0 } : { result: "false", errorCode: 391 };
+    } catch {
+      return { result: "false", errorCode: 391 };
+    }
+  }
+
+  updateSettings(): void {}
+}
+
 /** The run-time for a SCORM launch: scorm-again's API, loaded only when a package is opened. */
 export async function scormRuntime(launched: Launched): Promise<Api> {
   const settings = {
@@ -83,6 +106,7 @@ export async function scormRuntime(launched: Launched): Promise<Api> {
     lmsCommitUrl: launched.commit_url,
     dataCommitFormat: "json",
     xhrHeaders: { "X-CSRFToken": csrfToken() },
+    httpService: new LmsCommits(),
     logLevel: 5,
   };
   if (launched.standard === "scorm12") {

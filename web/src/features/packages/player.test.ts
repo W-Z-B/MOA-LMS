@@ -69,3 +69,36 @@ describe("the SCORM 2004 run-time", () => {
     expect(api.loaded).toEqual({ learner_id: "S1" });
   });
 });
+
+describe("commits to the LMS", () => {
+  it("are synchronous, with the CSRF token, also at the end of a session, and say when they fail", async () => {
+    const { LmsCommits } = await import("./player");
+    const sent: { headers: Record<string, string>; body?: string; url?: string }[] = [];
+    class FakeXhr {
+      status = 200;
+      responseText = '{"result": true, "errorCode": 0}';
+      headers: Record<string, string> = {};
+      url = "";
+      open(_method: string, url: string, async: boolean) {
+        expect(async).toBe(false);
+        this.url = url;
+      }
+      setRequestHeader(name: string, value: string) {
+        this.headers[name] = value;
+      }
+      send(body: string) {
+        sent.push({ headers: this.headers, body, url: this.url });
+      }
+    }
+    vi.stubGlobal("XMLHttpRequest", FakeXhr);
+    document.cookie = "csrftoken=tok";
+    const commits = new LmsCommits();
+    expect(commits.processHttpRequest("/api/v1/package-attempts/1/commit/?sco=a", { cmi: { core: {} } })).toEqual({ result: "true", errorCode: 0 });
+    expect(sent[0]).toEqual({ url: "/api/v1/package-attempts/1/commit/?sco=a", headers: { "Content-Type": "application/json", "X-CSRFToken": "tok" }, body: '{"cmi":{"core":{}}}' });
+    FakeXhr.prototype.send = function () {
+      throw new Error("offline");
+    };
+    expect(commits.processHttpRequest("/x", {})).toEqual({ result: "false", errorCode: 391 });
+    commits.updateSettings();
+  });
+});

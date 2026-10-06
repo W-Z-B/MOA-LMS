@@ -6,6 +6,24 @@
  */
 (function () {
   "use strict";
+  // A sandboxed page may not use the browser's storage, and reading it throws. Content written for an ordinary
+  // page often reads it all the same, so it gets a store kept in memory for as long as the page is open.
+  ["localStorage", "sessionStorage"].forEach(function (name) {
+    try {
+      void window[name];
+    } catch {
+      var items = {};
+      var store = {
+        key: function (i) { return Object.keys(items)[i] || null; },
+        getItem: function (k) { return Object.prototype.hasOwnProperty.call(items, k) ? items[k] : null; },
+        setItem: function (k, v) { items[k] = String(v); },
+        removeItem: function (k) { delete items[k]; },
+        clear: function () { items = {}; },
+      };
+      Object.defineProperty(store, "length", { get: function () { return Object.keys(items).length; } });
+      Object.defineProperty(window, name, { value: store, configurable: true });
+    }
+  });
   var script = document.currentScript;
   var lms = script && script.getAttribute("data-lms-origin");
   var Client = window.CrossFrameAPI && (window.CrossFrameAPI.default || window.CrossFrameAPI);
