@@ -25,9 +25,9 @@ from audit.services import record, snapshot
 from core.serializers import ErrorSerializer
 from core.uploads import original_name
 from courses import storage
-from courses.access import can_teach, person_of, site_role
+from courses.access import TaughtRecord, can_teach, person_of, site_role
 from courses.api import ContentItemSerializer, for_offline, items_for
-from courses.models import ContentItem, ItemCompletion, Membership
+from courses.models import ContentItem, ItemCompletion, Membership, Module
 from courses.release import complete as record_progress
 from video import captions, transcribe
 from video.models import CaptionTrack, Rendition, Video
@@ -46,6 +46,13 @@ def looks_like_video(upload) -> bool:
     head = upload.read(16)
     upload.seek(0)
     return head[4:8] == b"ftyp" or head.startswith(b"\x1a\x45\xdf\xa3")
+
+
+class ModuleFirstSerializer(serializers.Serializer):
+    """The module, settled before the file is looked at (item 1.15): one on a course the caller cannot open
+    reads as unknown, one on a course they do not teach on is refused."""
+
+    module = TaughtRecord(Module, "site")
 
 
 class VideoUploadSerializer(serializers.Serializer):
@@ -178,6 +185,7 @@ class VideoViewSet(viewsets.GenericViewSet):
         "are ready. The original counts against the site's storage allowance until the copies replace it.",
     )
     def create(self, request):
+        ModuleFirstSerializer(data=request.data, context={"request": request}).is_valid(raise_exception=True)
         upload = VideoUploadSerializer(data=request.data)
         upload.is_valid(raise_exception=True)
         sent = upload.validated_data

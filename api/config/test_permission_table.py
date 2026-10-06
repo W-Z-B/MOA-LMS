@@ -522,10 +522,101 @@ TABLE: dict[str, Access] = {
     "GET /api/v1/privacy/breaches/{pk}/": PRIVACY_READERS,
     "PATCH /api/v1/privacy/breaches/{pk}/": PRIVACY_OFFICERS,
     "POST /api/v1/privacy/breaches/{pk}/close/": PRIVACY_OFFICERS,
+    # --- push notices and offline modules (items 4.04, 4.05) ----------------------------------------------
+    "GET /api/v1/notifications/push/": SIGNED_IN,
+    "POST /api/v1/notifications/push/subscribe/": SIGNED_IN,  # one's own devices (409 while push is off)
+    "POST /api/v1/notifications/push/unsubscribe/": SIGNED_IN,
+    "GET /api/v1/offline/modules/{pk}/": SITE_READERS + HIDDEN,
+    # --- lecture video and captions (items 4.06, 4.07) ----------------------------------------------------
+    "POST /api/v1/videos/": SITE_TEACHERS + HIDDEN,
+    "GET /api/v1/videos/{item}/": SITE_READERS + HIDDEN,
+    "GET /api/v1/videos/{item}/play/{quality}/": SITE_READERS + HIDDEN,
+    "GET /api/v1/videos/{item}/poster/": SITE_READERS + HIDDEN,
+    "POST /api/v1/videos/{item}/convert/": SITE_TEACHERS + HIDDEN,
+    "POST /api/v1/videos/{item}/transcribe/": SITE_TEACHERS + HIDDEN,
+    "POST /api/v1/videos/{item}/captions/": SITE_TEACHERS + HIDDEN,
+    "GET /api/v1/videos/{item}/captions/{language}/": SITE_READERS + HIDDEN,
+    "DELETE /api/v1/videos/{item}/captions/{language}/": SITE_TEACHERS + HIDDEN,
+    "GET /api/v1/videos/{item}/captions/{language}/cues/": SITE_READERS + HIDDEN,
+    "PUT /api/v1/videos/{item}/captions/{language}/cues/": SITE_TEACHERS + HIDDEN,
+    # --- help requests (item 7.17) ------------------------------------------------------------------------
+    "GET /api/v1/help-requests/": OWN + ADMINS,  # the world's request is the student's
+    "POST /api/v1/help-requests/": SIGNED_IN,
+    "GET /api/v1/help-requests/{pk}/": OWN + ADMINS + HIDDEN,
+    "POST /api/v1/help-requests/{pk}/answer/": ADMINS,
+    # --- insights: analytics, progress, outcomes, alerts, reports (items 3.11, 6.01 to 6.06) ---------------
+    "GET /api/v1/sites/{pk}/insights/": SITE_TEACHERS + HIDDEN,
+    "GET /api/v1/sites/{pk}/progress/": SITE_TEACHERS + HIDDEN,
+    "GET /api/v1/sites/{pk}/progress/{person_id}/": SITE_TEACHERS + HIDDEN,
+    "GET /api/v1/sites/{pk}/my-progress/": STUDENTS + HIDDEN,  # from released marks, their own only
+    "GET /api/v1/sites/{pk}/outcomes/": SITE_TEACHERS + HIDDEN,
+    "POST /api/v1/sites/{pk}/outcomes/": SITE_TEACHERS + HIDDEN,
+    "POST /api/v1/sites/{pk}/outcomes/{outcome_id}/links/": SITE_TEACHERS + HIDDEN,
+    "GET /api/v1/sites/{pk}/outcome-standings/": SITE_TEACHERS + HIDDEN,
+    "GET /api/v1/sites/{pk}/outcome-evidence/": SITE_TEACHERS + HIDDEN,
+    "PATCH /api/v1/outcomes/{outcome_id}/": SITE_TEACHERS + HIDDEN,
+    "DELETE /api/v1/outcomes/{outcome_id}/": SITE_TEACHERS + HIDDEN,
+    "DELETE /api/v1/outcome-links/{link_id}/": SITE_TEACHERS + HIDDEN,
+    "GET /api/v1/sites/{pk}/alerts/": SITE_TEACHERS + HIDDEN,  # never a student, never the auditor
+    "POST /api/v1/alerts/{alert_id}/acknowledge/": SITE_TEACHERS + HIDDEN,
+    "POST /api/v1/alerts/{alert_id}/act/": SITE_TEACHERS + HIDDEN,
+    "POST /api/v1/alerts/{alert_id}/dismiss/": SITE_TEACHERS + HIDDEN,
+    "GET /api/v1/alert-rules/": STAFF + ADMINS,  # anyone who teaches somewhere
+    "PATCH /api/v1/alert-rules/{rule_id}/": ADMINS,
+    # The reports also answer a registrar and a head of department within their grants (insights.reports);
+    # those two roles are not among this table's nine.
+    "GET /api/v1/reports/courses/": OVERSEERS,
+    "GET /api/v1/reports/courses/export/": OVERSEERS,
+    "GET /api/v1/reports/staff-development/": OVERSEERS,
+    "GET /api/v1/reports/staff-development/export/": OVERSEERS,
+    # --- outside tools, LTI 1.3 (item 6.07) ---------------------------------------------------------------
+    "GET /api/v1/lti/platform/": ADMINS,
+    "GET /api/v1/tools/": STAFF + ADMINS,  # active tools, for anyone who teaches somewhere
+    "POST /api/v1/tools/": ADMINS,
+    "GET /api/v1/tools/{pk}/": STAFF + ADMINS + HIDDEN,
+    "PATCH /api/v1/tools/{pk}/": ADMINS,
+    "DELETE /api/v1/tools/{pk}/": ADMINS,  # refused while placed (409), as the world's is
+    "POST /api/v1/tool-placements/": SITE_TEACHERS + HIDDEN,
+    "DELETE /api/v1/tool-placements/{pk}/": SITE_TEACHERS + HIDDEN,
+    "PATCH /api/v1/tool-line-items/{pk}/": SITE_TEACHERS + HIDDEN,
+    "GET /api/v1/sites/{pk}/tools/": SITE_READERS + HIDDEN,
+    # Opening a tool needs a person record (the tool is told who it is): administrators have none here.
+    "GET /api/lti/launch/{item_id}/": STUDENTS + LECTURER,
+    "GET /api/lti/choose/": LECTURER + HIDDEN,
+    # What a tool calls. Its credentials are in the message itself (the launch begun by the LMS, a JWT the
+    # tool signed, a client assertion): open to anyone, refused unless those check out (lti/tests.py).
+    "GET /api/lti/jwks/": PUBLIC,
+    "GET /api/lti/auth/": PUBLIC,
+    "POST /api/lti/auth/": PUBLIC,
+    "POST /api/lti/deep-links/": PUBLIC,
+    "POST /api/lti/token/": PUBLIC,
+    # The tool's services take only the bearer token from /api/lti/token/: a person's session is ignored.
+    "GET /api/lti/sites/{site_id}/line-items/": SERVICE_KEY,
+    "POST /api/lti/sites/{site_id}/line-items/": SERVICE_KEY,
+    "GET /api/lti/sites/{site_id}/line-items/{line_item_id}/": SERVICE_KEY,
+    "PUT /api/lti/sites/{site_id}/line-items/{line_item_id}/": SERVICE_KEY,
+    "DELETE /api/lti/sites/{site_id}/line-items/{line_item_id}/": SERVICE_KEY,
+    "POST /api/lti/sites/{site_id}/line-items/{line_item_id}/scores/": SERVICE_KEY,
+    "GET /api/lti/sites/{site_id}/line-items/{line_item_id}/results/": SERVICE_KEY,
+    "GET /api/lti/sites/{site_id}/members/": SERVICE_KEY,
+    # --- AI help (item 7.18; switched on for this module) -------------------------------------------------
+    "GET /api/v1/sites/{pk}/ai/": SITE_READERS + HIDDEN,
+    "PATCH /api/v1/sites/{pk}/ai/": SITE_TEACHERS + HIDDEN,
+    "POST /api/v1/sites/{pk}/ai/drafts/questions/": SITE_TEACHERS + HIDDEN,
+    "POST /api/v1/sites/{pk}/ai/drafts/rubric/": SITE_TEACHERS + HIDDEN,
+    "POST /api/v1/sites/{pk}/ai/drafts/alt-text/": SITE_TEACHERS + HIDDEN,
+    "POST /api/v1/sites/{pk}/ai/ask/": SITE_READERS + HIDDEN,  # the study helper
+    "POST /api/v1/ai/drafts/{pk}/saved/": LECTURER + HIDDEN,  # whoever asked for the draft
 }
 
 # The world record each {pk} names, by the path segment before it.
 SEGMENT_OBJECTS = {
+    "help-requests": "help_request",
+    "tools": "tool",
+    "tool-placements": "placement",
+    "tool-line-items": "line_item",
+    "drafts": "exchange",
+    "alert-rules": "alert_rule",
     "accommodations": "accommodation",
     "announcements": "announcement",
     "assignments": "assignment",
@@ -590,7 +681,20 @@ SEGMENT_OBJECTS = {
     "threads": "thread",
 }
 # A {name} that says what it is, whatever segment precedes it.
-NAMED_OBJECTS = {"site": "sd_site", "code": "receipt", "token": "feed_token", "person_id": "student_person"}
+NAMED_OBJECTS = {
+    "item": "video_item",
+    "site": "sd_site",
+    "code": "receipt",
+    "token": "feed_token",
+    "person_id": "student_person",
+    "outcome_id": "outcome",
+    "link_id": "outcome_link",
+    "alert_id": "alert",
+    "rule_id": "alert_rule",
+    "item_id": "placed_item",
+    "site_id": "site",
+    "line_item_id": "line_item",
+}
 
 
 class Literal:
@@ -602,6 +706,7 @@ class Literal:
 
 # Query strings for the routes that need one; {name} is a world record.
 QUERY: dict[str, str] = {
+    "GET /api/lti/choose/": "?tool={tool}&module={module}",
     "GET /api/v1/questions/export/": "?bank={bank}",
     "GET /api/v1/conversations/recipients/": "?site={site}",
     "GET /api/v1/search/": "?q=soil",
@@ -667,7 +772,16 @@ BODY: dict[str, dict] = {
         "sites": ["sd_site"],
     },
     "POST /api/v1/staff-development/required/": {"site": "sd_site"},
+    "POST /api/v1/tool-placements/": {"module": "module", "tool": "tool", "title": Literal("Soil game")},
+    "POST /api/v1/videos/": {
+        "module": "module",
+        "title": Literal("Lecture 2"),
+        "licence": Literal("gsa_own"),
+    },
 }
+
+# Writes sent as a form, not JSON (what a tool sends; a video upload), so that they reach their own checks.
+FORM = {"POST /api/lti/deep-links/", "POST /api/lti/token/", "POST /api/v1/videos/"}
 
 # Lists inside a record that show some of their rows only to some roles: the world record that must not be
 # listed to a role outside the Access, although that role may open the list.
@@ -691,7 +805,14 @@ DENIED = {401, 403}
 def readable(route: str) -> str:
     """'api/v1/^assignments/(?P<pk>[^/.]+)/$' -> '/api/v1/assignments/{pk}/'."""
     route = route.replace("^", "").replace("$", "")
-    route = re.sub(r"\(\?P<(\w+)>[^)]*\)", r"{\1}", route)
+    while (start := route.find("(?P<")) >= 0:  # a named group, which may hold groups of its own
+        name = route[start + 4 : route.index(">", start)]
+        depth, end = 0, start
+        for end in range(start, len(route)):
+            depth += {"(": 1, ")": -1}.get(route[end], 0) if route[end - 1] != "\\" else 0
+            if depth == 0:
+                break
+        route = f"{route[:start]}{{{name}}}{route[end + 1 :]}"
     route = re.sub(r"<(?:\w+:)?(\w+)>", r"{\1}", route)
     return "/" + route.replace("\\.", ".")
 
@@ -1082,8 +1203,67 @@ def build_world() -> dict:
         records=0,
         files=0,
     )
+    # Help, insights, outside tools and AI help (items 7.17, 3.11, 6.05, 6.07, 7.18).
+    from assist.models import Exchange
+    from helpdesk.models import HelpRequest
+    from insights.alerts import DEFAULTS
+    from insights.models import Alert, AlertRule, Outcome, OutcomeLink
+    from lti import services as lti_services
+    from lti.models import LineItem, Tool
+
+    help_request = HelpRequest.objects.create(asked_by=student.user, subject="Upload", message="It fails")
+    outcome = Outcome.objects.create(source=Outcome.Source.LOCAL, site=site, code="LO1", text="Soils")
+    outcome_link = OutcomeLink.objects.create(site=site, outcome=outcome, assignment=assignment)
+    alert = Alert.objects.create(
+        site=site, student=student, kind=next(iter(DEFAULTS)), summary="Nothing handed in", raised_at=now
+    )
+    for kind, (threshold, window) in DEFAULTS.items():
+        AlertRule.objects.get_or_create(kind=kind, defaults={"threshold": threshold, "window_days": window})
+    tool = Tool.objects.create(
+        name="Soil quiz tool",
+        oidc_login_url="https://tool.example/login",
+        launch_url="https://tool.example/launch",
+        deep_linking_url="https://tool.example/choose",
+        jwks_url="https://tool.example/jwks",
+        class_list=True,
+    )
+    placement = lti_services.place(module, tool, "Soil texture practice", user=lecturer.user)
+    ContentItem.objects.filter(pk=placement.item_id).update(is_published=True)  # students may open it
+    line_item = LineItem.objects.create(
+        site=site, tool=tool, placement=placement, label="Soil texture practice", score_maximum=20
+    )
+    exchange = Exchange.objects.create(
+        site=site, user=lecturer.user, kind=Exchange.Kind.QUESTIONS, source=item, output={"questions": []}
+    )
+
+    # A lecture video, ready, with a low copy, a poster and English captions (item 4.06).
+    from video.models import CaptionTrack, Rendition, Video
+
+    video_item = ContentItem.objects.create(module=module, title="Lecture 1", kind="video", is_published=True)
+    video = Video.objects.create(
+        item=video_item,
+        status=Video.Status.READY,
+        poster=ContentFile(b"\xff\xd8\xff\xe0poster", name="poster.jpg"),
+    )
+    Rendition.objects.create(
+        video=video, quality=Rendition.Quality.LOW, file=ContentFile(b"\x00\x00\x00 ftyp", name="low.mp4")
+    )
+    CaptionTrack.objects.create(video=video, language="en", text="WEBVTT\n\n00:00.000 --> 00:01.000\nSoil\n")
 
     world = {
+        "video_item": video_item.id,
+        "language": "en",
+        "quality": "low",
+        "help_request": help_request.id,
+        "outcome": outcome.id,
+        "outcome_link": outcome_link.id,
+        "alert": alert.id,
+        "alert_rule": AlertRule.objects.order_by("id").first().id,
+        "tool": tool.id,
+        "placement": placement.id,
+        "placed_item": placement.item_id,
+        "line_item": line_item.id,
+        "exchange": exchange.id,
         "site": site.id,
         "module": module.id,
         "item": item.id,
@@ -1189,6 +1369,14 @@ def _media_root(settings, media_dir, monkeypatch):
     monkeypatch.setattr(FileSystemStorage, "delete", lambda storage, name: None)
 
 
+@pytest.fixture(autouse=True)
+def _ai_on(settings):
+    """AI help switched on (it is off by default), so that switching it for a site reaches the permission
+    check. The model's address answers nothing at once: a request that gets that far is answered 503."""
+    settings.AI_ENABLED, settings.AI_MODEL, settings.AI_TIMEOUT_SECONDS = True, "permission-table", 1
+    settings.AI_OLLAMA_URL = "http://127.0.0.1:9"
+
+
 @pytest.fixture(scope="module")
 def world(django_db_setup, django_db_blocker, media_dir):
     from core import crypto
@@ -1233,12 +1421,13 @@ def body_for(key: str, world: dict) -> dict:
     return {field: resolve(value) for field, value in BODY.get(key, {}).items()}
 
 
-def call(world: dict, role: str, method: str, path: str, body: dict):
+def call(world: dict, role: str, method: str, path: str, body: dict, form: bool = False):
     client = APIClient(raise_request_exception=False)
     if role != "anonymous":
         client.cookies[settings.SESSION_COOKIE_NAME] = world["sessions"][role]
     with transaction.atomic():
-        response = getattr(client, method.lower())(path, body if method != "GET" else None, format="json")
+        sent = "multipart" if form else "json"
+        response = getattr(client, method.lower())(path, body if method != "GET" else None, format=sent)
         if response.streaming:
             # Read a download to its end, which closes it the test client's way. Closing it directly would
             # signal the end of the request and close the database connection, and the world with it.
@@ -1308,7 +1497,7 @@ def test_permission(world, key):
     body = body_for(key, world)
     segment = route.rstrip("/").rsplit("/", 1)[-1]
     record_id = world.get(SEGMENT_OBJECTS.get(segment, "")) if "{" not in route else None
-    results = {role: call(world, role, method, path, body) for role in ROLES}
+    results = {role: call(world, role, method, path, body, key in FORM) for role in ROLES}
     if RECORD:
         seen = {}
         for role, response in results.items():

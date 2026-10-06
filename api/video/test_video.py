@@ -122,6 +122,20 @@ def test_only_teaching_staff_put_videos_up_and_only_real_videos(teacher, learner
     assert not Video.objects.exists() and deferred == []
 
 
+@pytest.mark.django_db
+def test_putting_a_video_up_settles_the_course_before_the_file(
+    learner, module, make_person, client_for, deferred
+):
+    """Found by the permission table (item 1.16): a student who sent no file, or the wrong one, was told what
+    was wrong with the file rather than refused (item 1.15); a lecturer of another course learns nothing."""
+    refused = learner.post("/api/v1/videos/", {"module": module.id, "title": "x"}, format="multipart")
+    assert refused.status_code == 403 and refused.json()["code"] == "permission_denied"
+    outsider = client_for(make_person("staff", "E0905", "Kofi", "Adams", "lecturer").user)
+    unknown = put_up(outsider, module)
+    assert unknown.status_code == 400 and "does not exist" in str(unknown.json()["module"])
+    assert not Video.objects.exists() and deferred == []
+
+
 # Preparing it (FFmpeg)
 
 
