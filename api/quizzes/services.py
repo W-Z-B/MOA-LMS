@@ -514,6 +514,21 @@ def next_page(attempt: Attempt, user=None, now=None) -> Attempt:
     return attempt
 
 
+def mark_answers(attempt: Attempt) -> None:
+    """Mark every answer of the attempt by its question type's rules (quizzes.marking): the one way answers
+    are marked, online or keyed in from a paper sitting (item 3.24)."""
+    for answer in attempt.answers.select_related("version__question"):
+        result = marking.mark(answer.qtype, answer.version.data, answer.response)
+        answer.needs_manual = result.needs_manual
+        answer.auto_feedback = result.feedback
+        if result.fraction is None:
+            answer.fraction = answer.awarded = None
+        else:
+            answer.fraction = Decimal(str(result.fraction)).quantize(Decimal("0.0000001"))
+            answer.awarded = (answer.fraction * answer.max_mark).quantize(FOUR_PLACES, rounding=ROUND_HALF_UP)
+        answer.save(update_fields=["needs_manual", "auto_feedback", "fraction", "awarded", "updated_at"])
+
+
 def submit_attempt(attempt: Attempt, *, user=None, auto=False, now=None) -> Attempt:
     """Finish the attempt and mark everything that can be marked automatically."""
     now = now or timezone.now()
@@ -521,18 +536,7 @@ def submit_attempt(attempt: Attempt, *, user=None, auto=False, now=None) -> Atte
         attempt = Attempt.objects.select_for_update().get(pk=attempt.pk)
         if attempt.state != Attempt.State.IN_PROGRESS:
             return attempt
-        for answer in attempt.answers.select_related("version__question"):
-            result = marking.mark(answer.qtype, answer.version.data, answer.response)
-            answer.needs_manual = result.needs_manual
-            answer.auto_feedback = result.feedback
-            if result.fraction is None:
-                answer.fraction = answer.awarded = None
-            else:
-                answer.fraction = Decimal(str(result.fraction)).quantize(Decimal("0.0000001"))
-                answer.awarded = (answer.fraction * answer.max_mark).quantize(
-                    FOUR_PLACES, rounding=ROUND_HALF_UP
-                )
-            answer.save(update_fields=["needs_manual", "auto_feedback", "fraction", "awarded", "updated_at"])
+        mark_answers(attempt)
         attempt.state = Attempt.State.FINISHED
         attempt.submitted_at = min(now, attempt.deadline) if (auto and attempt.deadline) else now
         attempt.auto_submitted = auto

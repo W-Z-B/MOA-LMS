@@ -25,6 +25,7 @@ urlpatterns = [
     path("api/v1/", include("rubrics.api")),
     path("api/v1/", include("similarity.api")),
     path("api/v1/", include("peerreview.api")),
+    path("api/v1/", include("paperquizzes.api")),
     path("api/v1/", include("courses.api")),
     path("api/v1/", include("forums.api")),
     path("api/v1/", include("messaging.api")),

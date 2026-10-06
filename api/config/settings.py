@@ -61,6 +61,7 @@ INSTALLED_APPS = [
     "rubrics",
     "similarity",
     "peerreview",
+    "paperquizzes",
 ]
 
 MIDDLEWARE = [
