@@ -27,9 +27,20 @@ describe("the console shows each section only to the roles the server allows (it
       "Correction requests",
       "Retention and disposal",
       "Breach register",
+      "Reports",
+      "Early-alert rules",
     ]);
-    expect(sections(courseAdmin)).toEqual(["Integration runs", "Access review", "Correction requests"]);
-    expect(sections(auditor)).toEqual(["Integration runs", "Audit log", "Access review", "Privacy notice", "Correction requests", "Retention and disposal", "Breach register"]);
+    expect(sections(courseAdmin)).toEqual(["Integration runs", "Access review", "Correction requests", "Reports", "Early-alert rules"]);
+    expect(sections(auditor)).toEqual([
+      "Integration runs",
+      "Audit log",
+      "Access review",
+      "Privacy notice",
+      "Correction requests",
+      "Retention and disposal",
+      "Breach register",
+      "Reports",
+    ]);
     expect(sections(dpo)).toEqual(["Privacy notice", "Correction requests", "Retention and disposal", "Breach register"]);
     expect(sections(staff)).toEqual([]);
   });

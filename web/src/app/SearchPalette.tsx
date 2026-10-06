@@ -36,6 +36,7 @@ const EMPTY: SearchHits = { sites: [], content: [], assignments: [], quizzes: []
 export function SearchPalette({ me, phone, onGo, onClose }: Props) {
   const [query, setQuery] = useState("");
   const [hits, setHits] = useState<SearchHits>(EMPTY);
+  const [help, setHelp] = useState<Result[]>([]);
   const [active, setActive] = useState(0);
   const input = useRef<HTMLInputElement>(null);
   const dialog = useRef<HTMLDivElement>(null);
@@ -58,6 +59,18 @@ export function SearchPalette({ me, phone, onGo, onClose }: Props) {
     };
   }, [words, asks]);
 
+  // Help (item 7.17): the reader's own help pages, fetched with the first search so the frame stays light.
+  useEffect(() => {
+    if (!asks) return;
+    let current = true;
+    import("../features/help/topics")
+      .then((topics) => current && setHelp(topics.searchHelp(me, words)))
+      .catch(() => current && setHelp([]));
+    return () => {
+      current = false;
+    };
+  }, [words, asks, me]);
+
   const q = words.toLowerCase();
   const matches = (text: string) => !q || text.toLowerCase().includes(q);
   const found = (hit: SearchHit, group: string): Result => ({ key: `${group}-${hit.id}`, title: hit.title, sub: hit.sub, to: hit.link });
@@ -72,6 +85,7 @@ export function SearchPalette({ me, phone, onGo, onClose }: Props) {
         .filter((page) => page.path !== "/" && !page.later && matches(`${page.label} ${page.desc}`))
         .map((page) => ({ key: `page-${page.path}`, title: page.label, sub: page.desc, to: page.path })),
     },
+    { label: "Help", items: asks ? help : [] },
   ].filter((group) => group.items.length > 0);
   const flat = groups.flatMap((group) => group.items);
   const current = Math.min(active, Math.max(flat.length - 1, 0));

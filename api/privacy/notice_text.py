@@ -36,8 +36,15 @@ What the LMS records about your activity, and nothing more
 guessing passwords.
 - Each time you download a course file or a submission.
 - Each submission, mark and change made to a course, with who made it and when.
-The LMS does not record how long you spend on a page, which pages you read, or your location, and it uses \
+- The first time you open each item of a course, to show your progress to you and your lecturers.
+The LMS does not record how long you spend on a page, how often you read it, or your location, and it uses \
 no advertising or tracking cookies. The only cookies keep you signed in and protect forms.
+
+Early alerts: each night the LMS checks three rules that anyone can read: work missed, marks that have \
+fallen, and no activity on a course for some days. When one matches, your lecturers see it with the \
+evidence, such as the work that was not handed in, and a person decides whether to contact you. The LMS \
+does not predict or decide anything about you, and does not label you. You can ask for these records as \
+part of your data.
 
 Why: to run your courses, to mark your work and send your coursework marks to the Student Records system, \
 and to keep the system secure. The legal basis is GSA's public task of education and training.
@@ -49,9 +56,19 @@ Who sees it
 - Other students never see your work or your marks.
 - Coursework marks go to the Student Records system; staff training completions go to the Human Resources \
 system. Nothing is sold or shared for marketing.
+- Outside tools a course uses receive a code that stands for you in that tool alone, your \
+role on the course and the course's name. They receive your name or email only where GSA has allowed it \
+for that tool, and may send your score back to the gradebook.
 
 Students under 18: the same protections apply. A parent or guardian may ask on the student's behalf \
 through the Registry.
+
+AI help (only where GSA and your lecturer have switched it on): lecturers may ask a model run on GSA's \
+own server to draft questions, rubric wording or picture descriptions from their own material, and \
+always check and edit the draft. The study helper answers your questions only from your course's \
+material and shows where the answer came from. It is sent your question and the course's material, \
+nothing else about you; your question and its answer are not kept, only that a question was asked \
+(kept 1 year). It is switched off while you have a quiz or assignment open on that course.
 
 How long it is kept (proposed, to be confirmed by GSA)
 - Submissions, marks and feedback: 6 years after the end of the term of the course.

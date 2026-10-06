@@ -30,7 +30,8 @@ def test_seed_is_idempotent(seeded):
 
     before = (Role.objects.count(), CampusRef.objects.count())
     call_command("seed", "--country", "GY", verbosity=0)
-    assert (Role.objects.count(), CampusRef.objects.count()) == before == (6, 2)
+    # Eight roles: the first six, and Head of Department and Registrar (iam 0006, items 6.03, 6.04).
+    assert (Role.objects.count(), CampusRef.objects.count()) == before == (8, 2)
 
 
 @pytest.mark.django_db
@@ -225,3 +226,27 @@ def test_journey_data_has_packages_a_library_entry_and_a_course_to_import_into(m
     assert LibraryItem.objects.get().is_open_resource
     assert not CourseSite.objects.get(code="AGR190-2026-27-S1-MRP").modules.exists()
     assert (tmp_path / "journeys" / "seed-spacing.zip").read_bytes().startswith(b"PK")
+
+
+@pytest.mark.django_db
+def test_journey_data_for_insight_raises_one_alert_per_student_and_reads_the_reports(monkeypatch):
+    """The insight journeys' course (items 3.11, 6.01 to 6.06): an alert for each student, stable when the
+    data is loaded again, and a head of department scoped to Marlon's unit."""
+    from django.core.management import call_command
+
+    from courses.models import CourseSite
+    from iam.models import RoleScope
+    from insights.models import Alert, OutcomeLink
+
+    monkeypatch.setenv("DEMO_USER_PASSWORD", "e2e-Only-Fictional-Learner-2026")
+    monkeypatch.setenv("DEMO_TOTP_SECRET", JOURNEY_TOTP)
+    call_command("seed_journeys", "--fictional", verbosity=0)
+    call_command("seed_journeys", "--fictional", verbosity=0)  # idempotent
+
+    site = CourseSite.objects.get(code="AGR150-2026-27-S1-MRP")
+    raised = Alert.objects.filter(site=site)
+    assert sorted(a.student.external_id for a in raised) == ["S2026921", "S2026922"]
+    assert all(a.kind == "missed_work" and a.state == "open" and len(a.evidence) == 2 for a in raised)
+    assert OutcomeLink.objects.get(site=site).assignment.title == "Farm diary"
+    grant = RoleScope.objects.get(user__username="gail.henry")
+    assert (grant.role.code, grant.unit_code) == ("head_of_department", "CROPS")

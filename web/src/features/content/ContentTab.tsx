@@ -2,6 +2,7 @@ import { Suspense, lazy, useEffect, useRef, useState, type DragEvent, type FormE
 import { errorMessage, get, patch, post } from "../../api/client";
 import type { Paginated, SiteContents } from "../../api/types";
 import type { Contents, CourseModule, Item, SiteGroup } from "../../api/types-content";
+import { isToolLaunch } from "../../api/types-connect";
 import { DocumentView, PageBody } from "./PageBody";
 import { ItemForm } from "./ItemForm";
 import { ReleaseEditor } from "./ReleaseEditor";
@@ -388,7 +389,7 @@ export function ContentTab({ data, teaching, onChanged }: Props) {
                   {i.kind === "link" && (
                     <p className="link-line">
                       <a href={i.url} target="_blank" rel="noopener noreferrer">
-                        {i.url}
+                        {isToolLaunch(i.url) ? `Open ${i.title} (outside tool, new window)` : i.url}
                       </a>
                     </p>
                   )}

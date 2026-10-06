@@ -463,6 +463,9 @@ class GradebookRowSerializer(serializers.Serializer):
     packages = serializers.DictField(
         child=GradebookItemCellSerializer(), help_text="Keyed by package id (SCORM and H5P, item 5.12)"
     )
+    tools = serializers.DictField(
+        child=GradebookItemCellSerializer(), help_text="Keyed by line item id: outside tools (item 6.07)"
+    )
     categories = serializers.DictField(
         child=serializers.CharField(allow_null=True), help_text="Percent per category id"
     )
@@ -480,6 +483,9 @@ class GradebookSerializer(serializers.Serializer):
     practicals = GradebookColumnSerializer(many=True, help_text="Practical tasks that count")
     forums = GradebookColumnSerializer(many=True, help_text="Graded forums that count")
     packages = GradebookColumnSerializer(many=True, help_text="SCORM and H5P packages that count")
+    tools = GradebookColumnSerializer(
+        many=True, help_text="Columns outside tools post scores to; weight 0 shows but does not count"
+    )
     rows = GradebookRowSerializer(many=True)
 
 

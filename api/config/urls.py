@@ -34,6 +34,8 @@ urlpatterns = [
     path("api/v1/", include("messaging.api")),
     path("api/v1/", include("attendance.api")),
     path("api/v1/", include("calendars.api")),
+    path("api/v1/", include("helpdesk.api")),
+    path("api/v1/", include("insights.api")),
     path("api/v1/", include("audit.urls")),
     path("api/v1/", include("core.urls")),
     path("api/v1/privacy/", include("privacy.urls")),
@@ -41,6 +43,11 @@ urlpatterns = [
     path("api/v1/approvals/", include("approvals.urls")),
     path("api/v1/staff-development/", include("staffdev.api")),
     path("api/v1/", include("certificates.api")),
+    # Outside tools (item 6.07): registering and placing them, and the LTI 1.3 addresses tools use.
+    path("api/v1/", include("lti.api")),
+    path("api/lti/", include("lti.views")),
+    # AI assistance within decision D5 (items 6.11, 6.12): off unless GSA switches it on.
+    path("api/v1/", include("assist.api")),
     # The public certificate check as a page of its own, without sign-in or script (item 5.09).
     path("api/check-certificate/", check_page, name="certificate-check-page"),
     # A package's files, for its sandboxed player, by a signed address (packages/play.py).

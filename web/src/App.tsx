@@ -4,7 +4,7 @@ import { SIGNED_OUT_EVENT, get } from "./api/client";
 import { ADMIN_ROLES, hasAnyRole, type Me } from "./api/types";
 import { usesCampusSwitch } from "./app/people";
 import { Shell } from "./app/Shell";
-import { adminAddress, contentAddress, forumAddress, messageAddress, packageAddress, siteAddress, useHashRoute } from "./app/router";
+import { adminAddress, contentAddress, forumAddress, helpAddress, isToolsAdmin, messageAddress, packageAddress, siteAddress, useHashRoute } from "./app/router";
 import { AccountScreen } from "./features/account/AccountScreen";
 import { CalendarScreen } from "./features/calendar/CalendarScreen";
 import { ForumScreen } from "./features/forums/ForumScreen";
@@ -42,6 +42,12 @@ const PackageScreen = lazy(() => import("./features/packages/PackageScreen"));
 const TransferScreen = lazy(() => import("./features/packages/TransferScreen"));
 const LibraryScreen = lazy(() => import("./features/packages/LibraryScreen"));
 // --- end packaged content ---
+// --- help (item 7.17): the help pages and their text load only when Help is opened ---
+const HelpScreen = lazy(() => import("./features/help/HelpScreen"));
+// --- end help ---
+// --- tools and AI help --- (item 6.07): outside tools, registered by course administrators.
+const ToolsAdminScreen = lazy(() => import("./features/tools/ToolsAdminScreen"));
+// --- end tools and AI help ---
 
 const later = (screen: ReactNode) => <Suspense fallback={<p className="loading">Opening…</p>}>{screen}</Suspense>;
 
@@ -168,6 +174,9 @@ export default function App() {
     screen = <MessagesScreen conversationId={messages.conversation} query={path.split("?")[1] ?? ""} onNavigate={navigate} />;
   else if (path === "/calendar") screen = <CalendarScreen onNavigate={navigate} />;
   // --- end talk ---
+  // --- help (item 7.17) ---
+  else if (helpAddress(path)) screen = later(<HelpScreen me={me} view={helpAddress(path)!} onNavigate={navigate} />);
+  // --- end help ---
   else if (site)
     screen = (
       <SiteScreen
@@ -190,6 +199,16 @@ export default function App() {
   else if (admin === "templates") screen = later(<TemplatesScreen />);
   else if (admin === "takedowns") screen = later(<TakedownsScreen />);
   else if (admin === "storage") screen = later(<StorageAllowancesScreen />);
+  // --- tools and AI help ---
+  else if (isToolsAdmin(path))
+    screen = hasAnyRole(me, ADMIN_ROLES) ? (
+      later(<ToolsAdminScreen />)
+    ) : (
+      <p role="alert" className="error">
+        Outside tools are registered by course administrators.
+      </p>
+    );
+  // --- end tools and AI help ---
   // --- staff development and the console (items 1.17 to 1.23, 5.02 to 5.11) ---
   else if (learningAddress(path)) screen = <LearningScreen me={me} path={path} onNavigate={navigate} />;
   else if (path === "/admin" || path.startsWith("/admin/")) screen = <AdminScreen me={me} path={path} onNavigate={navigate} />;

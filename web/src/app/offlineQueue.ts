@@ -6,7 +6,8 @@
  * - a student's typed answer to an assignment (handing in again replaces the work until it is marked);
  * - a quiz answer (each answer is saved with PUT, and the server keeps the newest by the device's clock);
  * - practical observations and logbook entries (each carries an Idempotency-Key the server remembers);
- * - messages, and a register taken on a phone (item 4.11, 4.15: also with an Idempotency-Key).
+ * - messages, and a register taken on a phone (item 4.11, 4.15: also with an Idempotency-Key);
+ * - a request for help (item 7.17, also with an Idempotency-Key).
  *
  * Items live in localStorage (per device, per browser) and are replayed in order when the connection
  * returns. A file cannot be kept here: work with a file attached needs a connection. The page shows each
@@ -20,10 +21,10 @@
 import { useEffect, useState } from "react";
 import { ApiError, api } from "../api/client";
 
-export type WriteKind = "assignment" | "quiz-answer" | "practical" | "message" | "register";
+export type WriteKind = "assignment" | "quiz-answer" | "practical" | "message" | "register" | "help";
 
 /** Writes the server de-duplicates by their Idempotency-Key: one key is made for every try of the write. */
-const KEYED: readonly WriteKind[] = ["practical", "message", "register"];
+const KEYED: readonly WriteKind[] = ["practical", "message", "register", "help"];
 
 export interface QueuedWrite {
   id: string;

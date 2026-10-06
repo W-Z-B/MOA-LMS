@@ -34,6 +34,9 @@ completed, with its certificate and a fictional check code), and two new student
 but who have not chosen a password yet. Their invitation links, and the certificate's reference and code,
 are written as JSON to the file JOURNEY_LINKS_FILE names, where the journeys read them: a link to choose a
 password is signed afresh each time and is never printed.
+
+For the outside-tool journeys (item 6.07) it registers a fictional tool, with names and emails off, and places
+it in a module of its own on AGR101 with a gradebook column.
 """
 
 import hashlib
@@ -166,6 +169,21 @@ RUBRIC = [
 ]
 
 
+# --- insight --- (items 3.11, 6.01 to 6.06): the insight journeys' course, its two students, and a head of
+# department (username, first name, last name) for the crops unit that Marlon is in.
+INSIGHT_SITE = {
+    "code": "AGR150-2026-27-S1-MRP",
+    "title": "Farm Records and Planning",
+    "term_code": "2026-27-S1",
+    "campus_code": "MRP",
+    "description": "Keeping farm records, and planning from them.",
+}
+INSIGHT_STUDENTS = [("S2026921", "Shania", "Khan"), ("S2026922", "Darren", "Ally")]
+INSIGHT_UNIT = "CROPS"
+HEAD_OF_DEPARTMENT = ("gail.henry", "Gail", "Henry")
+# --- end insight ---
+
+
 class Command(BaseCommand):
     help = "Load the fictional cast and course of the browser journeys. Requires --fictional."
 
@@ -210,6 +228,8 @@ class Command(BaseCommand):
             self._question_bank(site)
             lecturer = Membership.objects.get(site=site, role="lecturer").person
             self._packages(site, lecturer, os.environ.get("JOURNEY_LINKS_FILE", ""))
+            self._insight(password, secret)
+            self._tools(site)
             PrivacyNotice.objects.filter(published_at__isnull=True).update(published_at=timezone.now())
             self._administrator(password, secret)
             certificate = self._staff_development()
@@ -578,6 +598,35 @@ class Command(BaseCommand):
             PracticalCriterion.objects.create(task=task, position=3, text="Tools cleaned and stored")
 
     @staticmethod
+    def _tools(site: CourseSite) -> None:
+        """A fictional outside tool (item 6.07), registered with names and emails off, placed in a module
+        of its own with a gradebook column. Its addresses do not exist: journeys stop at the launch link."""
+        from lti.models import LineItem, Tool
+        from lti.services import place
+
+        tool, _ = Tool.objects.get_or_create(
+            name="Crop growth simulator",
+            defaults={
+                "description": "Grow a crop through a season and see how water and feeding change it.",
+                "oidc_login_url": "https://tools.gsa.example/login",
+                "launch_url": "https://tools.gsa.example/launch",
+                "deep_linking_url": "https://tools.gsa.example/choose",
+                "jwks_url": "https://tools.gsa.example/jwks",
+            },
+        )
+        if tool.placements.exists():
+            return
+        last = site.modules.order_by("-position").first()
+        module = Module.objects.create(
+            site=site, title="Outside tools", position=(last.position + 1) if last else 1
+        )
+        placement = place(module, tool, "Maize growth simulation")
+        ContentItem.objects.filter(pk=placement.item_id).update(is_published=True)
+        LineItem.objects.create(
+            site=site, tool=tool, placement=placement, label="Maize growth simulation", score_maximum=10
+        )
+
+    @staticmethod
     def _question_bank(site: CourseSite) -> None:
         """An empty bank for the course, with one category: the quiz journeys (feature 10) write a question
         in it, build a quiz and publish it. No quiz is seeded, so nothing new is due on the Homes."""
@@ -648,6 +697,90 @@ class Command(BaseCommand):
                 out.write(samples.scorm_package())
 
     # --- end packaged content ---
+
+    # --- insight --- (items 3.11, 6.01 to 6.06)
+    @staticmethod
+    def _insight(password: str, secret: str) -> None:
+        """The insight journeys' course, AGR150, which only they use: two students who both missed two pieces
+        of work, so the night's rules raise an early alert for each (the desktop run dismisses one, the
+        phone run records what was done about the other); a marked farm diary linked to the course's own
+        outcome. And a head of department for the crops unit, which Marlon is in, to read the reports."""
+        from assessments.models import Mark
+        from insights import alerts
+        from insights.models import AlertRule, Outcome, OutcomeLink
+
+        site, _ = CourseSite.objects.get_or_create(
+            code=INSIGHT_SITE["code"],
+            defaults={**{k: v for k, v in INSIGHT_SITE.items() if k != "code"}, "source": "local"},
+        )
+        if not site.is_published:
+            site.is_published = True
+            site.save(update_fields=["is_published", "updated_at"])
+        marlon = PersonRef.objects.get(kind=PersonRef.Kind.STAFF, external_id="E0901")
+        if marlon.unit_code != INSIGHT_UNIT:
+            marlon.unit_code = INSIGHT_UNIT
+            marlon.save(update_fields=["unit_code", "updated_at"])
+        Membership.objects.get_or_create(site=site, person=marlon, defaults={"role": "lecturer"})
+        students = []
+        for external_id, first, last in INSIGHT_STUDENTS:
+            person, _ = PersonRef.objects.get_or_create(
+                kind=PersonRef.Kind.STUDENT,
+                external_id=external_id,
+                defaults={"first_name": first, "last_name": last, "campus_code": "MRP"},
+            )
+            Membership.objects.get_or_create(site=site, person=person, defaults={"role": "student"})
+            students.append(person)
+        now = timezone.now()
+        module, _ = Module.objects.get_or_create(site=site, title="Week 1: Why records matter")
+        ContentItem.objects.get_or_create(
+            module=module,
+            title="What a farm record holds",
+            defaults={"body": "<p>Dates, inputs, yields and costs, written on the day.</p>", "position": 1},
+        )
+        for title, days in (("Input log", -10), ("Yield sheet", -5)):
+            Assignment.objects.get_or_create(
+                site=site,
+                title=title,
+                defaults={"due_at": now + timedelta(days=days), "max_mark": 10, "is_published": True},
+            )
+        diary, _ = Assignment.objects.get_or_create(
+            site=site,
+            title="Farm diary",
+            defaults={"due_at": now - timedelta(days=12), "max_mark": 20, "is_published": True},
+        )
+        for person, mark in zip(students, (15, 9), strict=True):
+            Command._handed_in(diary, person, now - timedelta(days=13), is_late=False, pdf=False)
+            Mark.objects.get_or_create(
+                submission=Submission.objects.get(assignment=diary, student=person),
+                defaults={"mark": mark, "is_released": True, "marked_by": marlon},
+            )
+        outcome, _ = Outcome.objects.get_or_create(
+            source=Outcome.Source.LOCAL,
+            site=site,
+            code="FR1",
+            defaults={"text": "Keep accurate, dated records of farm work"},
+        )
+        OutcomeLink.objects.get_or_create(site=site, outcome=outcome, assignment=diary)
+        alerts.check_site(site, list(AlertRule.objects.filter(kind=AlertRule.Kind.MISSED_WORK)), now=now)
+        username, first, last = HEAD_OF_DEPARTMENT
+        user, created = get_user_model().objects.get_or_create(
+            username=username,
+            defaults={"first_name": first, "last_name": last, "email": f"{username}@gsa.example"},
+        )
+        if created:
+            user.set_password(password)
+            user.save(update_fields=["password"])
+        RoleScope.objects.get_or_create(
+            user=user,
+            role=Role.objects.get(code=Role.HEAD_OF_DEPARTMENT),
+            campus_code="",
+            unit_code=INSIGHT_UNIT,
+        )
+        TotpDevice.objects.get_or_create(
+            user=user, defaults={"secret": secret, "confirmed_at": timezone.now()}
+        )
+
+    # --- end insight ---
 
     @staticmethod
     def _person(username, kind, external_id, first, last, role, password) -> PersonRef:

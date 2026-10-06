@@ -109,6 +109,11 @@ export function GradebookTab({ site, teaching }: Props) {
                     {f.title} (forum %)
                   </th>
                 ))}
+                {(book.tools ?? []).map((t) => (
+                  <th key={`t${t.id}`} className="num">
+                    {t.title} ({t.tool} %)
+                  </th>
+                ))}
                 {book.categories.map((c) => (
                   <th key={`c${c.id}`} className="num">
                     {c.name} (%)
@@ -148,6 +153,11 @@ export function GradebookTab({ site, teaching }: Props) {
                   {book.forums.map((f) => (
                     <td key={`f${f.id}`} className="num">
                       <ItemCell cell={row.forums[String(f.id)]} />
+                    </td>
+                  ))}
+                  {(book.tools ?? []).map((t) => (
+                    <td key={`t${t.id}`} className="num">
+                      <ItemCell cell={row.tools?.[String(t.id)]} />
                     </td>
                   ))}
                   {book.categories.map((c) => (

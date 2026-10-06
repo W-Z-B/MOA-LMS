@@ -121,6 +121,13 @@ export default defineConfig({
         "src/features/quizzes/**",
         // --- packaged content, the library and interchange (items 5.10, 5.12 to 5.14, 6.08) ---
         "src/features/packages/**",
+        // --- help (item 7.17): the help pages, asking for help and help requests ---
+        "src/features/help/**",
+        // Insight (items 3.11, 6.01 to 6.06): analytics, progress, outcomes, early alerts and the reports.
+        "src/features/insights/**",
+        // Outside tools and AI help (items 6.07, 6.11, 6.12).
+        "src/features/tools/**",
+        "src/features/ai/**",
       ],
       exclude: ["src/**/*.test.*", "src/test/**"],
       reporter: ["text"],

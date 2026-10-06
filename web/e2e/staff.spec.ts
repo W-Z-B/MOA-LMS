@@ -107,7 +107,7 @@ test("an administrator opens the audit log and checks the chain", async ({ page 
   await dialog.getByRole("group", { name: "Pages" }).getByRole("option", { name: /^Admin/ }).click();
   await expect(page.getByRole("heading", { name: "Admin", level: 1 })).toBeVisible();
   const sections = page.getByRole("navigation", { name: "Admin sections" });
-  await expect(sections.getByRole("link")).toHaveCount(8);
+  await expect(sections.getByRole("link")).toHaveCount(10); // with Reports and Early-alert rules (items 6.03 to 6.05)
   await expectAccessible(page, testInfo, "admin");
 
   await sections.getByRole("link", { name: /Audit log/ }).click();
