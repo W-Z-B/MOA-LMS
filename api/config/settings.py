@@ -63,6 +63,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    "config.observability.RequestObservabilityMiddleware",  # request id, request log and metrics (7.10)
     "django.middleware.security.SecurityMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -214,12 +215,24 @@ LOGIN_LOCKOUT_MINUTES = int(env("LOGIN_LOCKOUT_MINUTES", "15"))
 # Failed sign-ins from one network address, across all accounts, before that address waits out the window.
 LOGIN_MAX_FAILURES_PER_ADDRESS = int(env("LOGIN_MAX_FAILURES_PER_ADDRESS", "20"))
 
+# Logs (item 7.10): one JSON object per line on standard output wherever DEBUG is off (LOG_FORMAT=json), for
+# the host's log collector; plain lines for people in development. Errors carry a group (observability).
+LOG_FORMAT = env("LOG_FORMAT", "text" if DEBUG else "json")
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
-    "handlers": {"console": {"class": "logging.StreamHandler"}},
-    "root": {"handlers": ["console"], "level": "INFO"},
+    "formatters": {
+        "json": {"()": "config.observability.JsonFormatter"},
+        "text": {"format": "%(asctime)s %(levelname)s %(name)s %(message)s"},
+    },
+    "handlers": {"console": {"class": "logging.StreamHandler", "formatter": LOG_FORMAT}},
+    "root": {"handlers": ["console"], "level": env("LOG_LEVEL", "INFO")},
 }
+
+# Metrics (item 7.10): /api/metrics answers only a scraper sending this token ("Authorization: Bearer ...");
+# without one it is not found. A worker is counted alive while its heartbeat is this recent.
+METRICS_TOKEN = env("METRICS_TOKEN", "")
+QUEUE_HEARTBEAT_SECONDS = int(env("QUEUE_HEARTBEAT_SECONDS", "120"))
 
 # Browser origins that include a port (development) or an extra host name.
 PUBLIC_ORIGINS = [o for o in (env("PUBLIC_ORIGINS", "") or "").split(",") if o]

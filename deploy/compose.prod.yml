@@ -6,7 +6,14 @@ services:
       context: ./api
       args:
         INSTALL_DEV: "0" # runtime packages only
-    command: gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 4 --timeout 60
+    # Worker processes and threads in each (item 7.08, docs/performance.md): threads overlap the waits on the
+    # database; processes use the cores. About two processes a core suits the host.
+    command: >-
+      gunicorn -c config/gunicorn.py config.wsgi:application --bind 0.0.0.0:8000 --timeout 60
+      --workers ${WEB_CONCURRENCY:-4} --threads ${GUNICORN_THREADS:-4}
+    environment:
+      # Each gunicorn worker counts its requests here; /api/metrics adds them up (item 7.10).
+      PROMETHEUS_MULTIPROC_DIR: /tmp/lms-metrics
     volumes:
       - files:/srv/files
     restart: unless-stopped

@@ -3,6 +3,7 @@ from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 from certificates.api import check_page
+from config.observability import metrics
 from config.views import health
 from iam.permissions import DocsPermission
 from integration.api import integration_urls, reference_urls, run_urls
@@ -12,6 +13,7 @@ from terms.api import router as terms_router
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/health/", health, name="health"),
+    path("api/metrics", metrics, name="metrics"),
     path("api/schema/", SpectacularAPIView.as_view(permission_classes=[DocsPermission]), name="schema"),
     path(
         "api/docs/",

@@ -1,0 +1,99 @@
+# Alert rules for the GSA LMS (item 7.10), for Prometheus and Alertmanager (both Apache 2.0). Each alert says
+# what to do in docs/runbook.md under the heading named in its runbook annotation.
+groups:
+  - name: lms
+    rules:
+      - alert: LmsDown
+        expr: up{job="lms-api"} == 0
+        for: 5m
+        labels: {severity: critical}
+        annotations:
+          summary: The LMS API has not answered for 5 minutes
+          runbook: "Runbook: The service is down"
+
+      - alert: LmsSlowPages
+        # Item 7.08: 95% of pages under 2 seconds on campus.
+        expr: |
+          histogram_quantile(0.95, sum by (le) (rate(lms_http_request_duration_seconds_bucket[10m]))) > 2
+        for: 15m
+        labels: {severity: warning}
+        annotations:
+          summary: "The slowest 5% of requests take more than 2 seconds"
+          runbook: "Runbook: Slow pages"
+
+      - alert: LmsServerErrors
+        expr: |
+          sum(rate(lms_http_server_errors_total[10m])) / sum(rate(lms_http_requests_total[10m])) > 0.01
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: More than 1% of requests are failing with a server error
+          runbook: "Runbook: Errors"
+
+      - alert: LmsNewErrorGroup
+        # A fault not seen in the last day: look it up by its group in the logs.
+        expr: increase(lms_unhandled_errors_total[30m]) > 0 unless increase(lms_unhandled_errors_total[1d] offset 30m) > 0
+        labels: {severity: info}
+        annotations:
+          summary: "A new kind of error, group {{ $labels.group }}"
+          runbook: "Runbook: Errors"
+
+      - alert: LmsNoJobWorker
+        expr: lms_job_workers_alive == 0
+        for: 10m
+        labels: {severity: critical}
+        annotations:
+          summary: No job worker is running; email, reminders and the nightly jobs are waiting
+          runbook: "Runbook: The job queue"
+
+      - alert: LmsJobBacklog
+        expr: lms_job_queue_oldest_waiting_seconds > 900
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: A job has waited more than 15 minutes to run
+          runbook: "Runbook: The job queue"
+
+      - alert: LmsFailedJobs
+        expr: sum(lms_job_queue_jobs{status="failed"}) > 0
+        labels: {severity: warning}
+        annotations:
+          summary: "{{ $value }} jobs have failed"
+          runbook: "Runbook: The job queue"
+
+      - alert: LmsSiblingSyncFailing
+        expr: lms_integration_last_run_ok == 0
+        for: 1h
+        labels: {severity: warning}
+        annotations:
+          summary: "The latest {{ $labels.kind }} run did not finish cleanly"
+          runbook: "Runbook: HRMS and SRMS runs"
+
+      - alert: LmsSiblingSyncStale
+        expr: time() - lms_integration_last_run_timestamp_seconds > 2 * 86400
+        labels: {severity: warning}
+        annotations:
+          summary: "No {{ $labels.kind }} run for two days"
+          runbook: "Runbook: HRMS and SRMS runs"
+
+      - alert: LmsAuditChainBroken
+        expr: lms_audit_chain_intact == 0
+        labels: {severity: critical}
+        annotations:
+          summary: The audit log no longer matches its chain of fingerprints; treat it as a security incident
+          runbook: "Runbook: Incident response"
+
+      - alert: LmsAuditChainNotChecked
+        expr: time() - lms_audit_chain_checked_timestamp_seconds > 2 * 86400
+        labels: {severity: warning}
+        annotations:
+          summary: The nightly check of the audit chain has not run for two days
+          runbook: "Runbook: The job queue"
+
+      - alert: LmsBackupMissing
+        # Item 7.09: a daily backup; the backup script writes this metric for node_exporter.
+        expr: time() - lms_backup_last_success_timestamp_seconds > 26 * 3600
+        labels: {severity: critical}
+        annotations:
+          summary: No successful backup for more than 26 hours
+          runbook: "Runbook: Backup"

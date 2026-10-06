@@ -1,0 +1,28 @@
+# Monitoring beside the production stack (item 7.10). Usage, from the repository root:
+#   docker compose -f compose.yml -f deploy/compose.prod.yml -f deploy/monitoring/compose.monitoring.yml up -d
+# Needs deploy/monitoring/metrics_token (the API's METRICS_TOKEN) and deploy/monitoring/smtp_password, both
+# mode 600 and ignored by git. Prometheus and Alertmanager are Apache 2.0 and run as separate programs.
+services:
+  prometheus:
+    image: prom/prometheus:v3.6.0
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=30d
+    volumes:
+      - ./deploy/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./deploy/monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - ./deploy/monitoring/metrics_token:/etc/prometheus/metrics_token:ro
+      - prometheus_data:/prometheus
+    extra_hosts: ["host.docker.internal:host-gateway"]
+    restart: unless-stopped
+    # Not published: reach it through an SSH tunnel to the host (docs/runbook.md, "Monitoring").
+
+  alertmanager:
+    image: prom/alertmanager:v0.28.1
+    volumes:
+      - ./deploy/monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - ./deploy/monitoring/smtp_password:/etc/alertmanager/smtp_password:ro
+    restart: unless-stopped
+
+volumes:
+  prometheus_data:
