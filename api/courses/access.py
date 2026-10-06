@@ -60,9 +60,10 @@ def visible_sites(user):
     mine = Q(memberships__person=person, memberships__is_active=True)
     teaching = mine & Q(memberships__role__in=[Membership.SiteRole.LECTURER, Membership.SiteRole.ASSISTANT])
     learning = mine & Q(memberships__role=Membership.SiteRole.STUDENT, is_published=True)
+    # An archived site (item 7.12) leaves members' lists; course administrators and the auditor keep it.
     if is_learner(user):
-        return qs.filter(learning, kind=CourseSite.Kind.OPEN).distinct()
-    return qs.filter(teaching | learning).distinct()
+        return qs.filter(learning, kind=CourseSite.Kind.OPEN).filter(archive__isnull=True).distinct()
+    return qs.filter(teaching | learning).filter(archive__isnull=True).distinct()
 
 
 def taught_sites(user):

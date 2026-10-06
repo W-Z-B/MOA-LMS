@@ -300,3 +300,21 @@ def test_strangers_and_unpublished_assignments(site, assignment, student, make_p
     assert client_for(stranger.user).get(url).status_code == 404
     auditor = make_person("staff", "E0043", "Read", "Only", "auditor")
     assert client_for(auditor.user).get(url).status_code == 403
+
+
+@pytest.mark.django_db
+def test_a_rubric_taken_off_later_leaves_nothing_to_score(
+    site, assignment, lecturer, student, other_student, rubric, client_for
+):
+    _hand_in(client_for, assignment, [student])
+    submission = Submission.objects.get(student=student)
+    setup = PeerReviewSetup.objects.create(
+        assignment=assignment, reviews_due_at=timezone.now() + timedelta(days=9), allocated_at=timezone.now()
+    )
+    review = PeerReview.objects.create(setup=setup, reviewer=other_student, submission=submission, position=1)
+    reviewer = client_for(other_student.user)
+    assert reviewer.get(f"/api/v1/peer-reviews/{review.id}/").json()["rubric"] is None
+    refused = reviewer.post(
+        f"/api/v1/peer-reviews/{review.id}/", {"scores": [], "comment": "x"}, format="json"
+    )
+    assert refused.status_code == 409 and refused.json()["code"] == "no_rubric"

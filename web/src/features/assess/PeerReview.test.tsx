@@ -158,12 +158,13 @@ describe("peer review for students (item 4.13)", () => {
   it("shows a closed review as it was sent", async () => {
     fakeServer({
       "GET /peer-reviews/70/": {
-        body: { id: 70, label: "Your own work", is_self: true, assignment: "Report", max_mark: "20.00", reviews_due_at: "2026-10-01T14:00:00Z", open: false, text: "", files: [], rubric, scores: [], mark: null, comment: "", submitted_at: null },
+        body: { id: 70, label: "Your own work", is_self: true, assignment: "Report", max_mark: "20.00", reviews_due_at: "2026-10-01T14:00:00Z", open: false, text: "", files: [], rubric: null, scores: [], mark: null, comment: "", submitted_at: null },
       },
     });
     render(frame(<ReviewWorkScreen siteId={9} reviewId={70} />));
     expect(await screen.findByText(/this one can no longer change/)).toBeInTheDocument();
     expect(screen.getByText("Nothing was handed in.")).toBeInTheDocument();
+    expect(screen.getByText("The assignment has no rubric to review against. Ask your lecturer.")).toBeInTheDocument();
   });
 
   it("says when the work cannot be opened", async () => {

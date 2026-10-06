@@ -674,7 +674,26 @@ def class_list(request, tool: Tool, site: CourseSite) -> dict:
 
 
 def line_items(site: CourseSite):
+    from assessments import preload
+
+    loaded = preload.current(site)
+    if loaded is not None and loaded.line_items is not None:  # the class read at once (item 7.08)
+        return loaded.line_items
     return LineItem.objects.filter(site=site).select_related("tool").order_by("id")
+
+
+def _scores(site, person, query):
+    """The person's scores by line item: from the class read at once when there is one, else queried."""
+    from assessments import preload
+
+    loaded = preload.current(site)
+    if loaded is not None and loaded.line_items is not None:
+        return {
+            li.id: loaded.scores[(li.id, person.pk)]
+            for li in loaded.line_items
+            if (li.id, person.pk) in loaded.scores
+        }
+    return query()
 
 
 def score_state(line_item: LineItem, score: Score | None) -> tuple[Decimal | None, str]:
@@ -690,12 +709,20 @@ def score_state(line_item: LineItem, score: Score | None) -> tuple[Decimal | Non
 def coursework_line_items(site: CourseSite, person) -> list[tuple[LineItem, Decimal | None, str]]:
     """The weighted line items of the site, each with the student's fraction and state."""
     counted = [li for li in line_items(site) if li.weight > 0]
-    scores = {s.line_item_id: s for s in Score.objects.filter(line_item__in=counted, person=person)}
+    scores = _scores(
+        site,
+        person,
+        lambda: {s.line_item_id: s for s in Score.objects.filter(line_item__in=counted, person=person)},
+    )
     return [(li, *score_state(li, scores.get(li.id))) for li in counted]
 
 
 def gradebook_cells(site: CourseSite, person) -> dict:
-    scores = {s.line_item_id: s for s in Score.objects.filter(line_item__site=site, person=person)}
+    scores = _scores(
+        site,
+        person,
+        lambda: {s.line_item_id: s for s in Score.objects.filter(line_item__site=site, person=person)},
+    )
     cells = {}
     for li in line_items(site):
         fraction, state = score_state(li, scores.get(li.id))

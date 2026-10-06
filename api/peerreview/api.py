@@ -112,7 +112,7 @@ class PeerReviewWorkSerializer(serializers.Serializer):
     open = serializers.BooleanField(help_text="Reviews are still taken")
     text = serializers.CharField(help_text="The typed part of the work")
     files = serializers.ListField(child=serializers.DictField(), help_text="{id, filename, download_url}")
-    rubric = serializers.JSONField()
+    rubric = serializers.JSONField(allow_null=True, help_text="null when the assignment has no rubric")
     scores = serializers.JSONField()
     mark = serializers.CharField(allow_null=True)
     comment = serializers.CharField()
@@ -423,7 +423,8 @@ def _work(review: PeerReview, now=None) -> dict:
         "open": (now or timezone.now()) <= setup.reviews_due_at,
         "text": attempt.text if attempt else "",
         "files": files,
-        "rubric": rubric_for_students(assignment.rubric),
+        # A rubric taken off the assignment after peer review was set up leaves nothing to score by.
+        "rubric": rubric_for_students(assignment.rubric) if assignment.rubric_id else None,
         "scores": review.scores,
         "mark": _s(review.mark),
         "comment": review.comment,

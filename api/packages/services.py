@@ -352,10 +352,10 @@ def commit(request, attempt: PackageAttempt, sco_id: str, data) -> PackageAttemp
 # Coursework
 
 
-def best_result(package: ContentPackage, person) -> tuple[Decimal | None, str]:
+def best_result(package: ContentPackage, person, attempts=None) -> tuple[Decimal | None, str]:
     """(fraction, state) for coursework: the best scored attempt; a completed one with no score is 1."""
     best, finished = None, False
-    for attempt in attempts_of(package, person):
+    for attempt in attempts_of(package, person) if attempts is None else attempts:
         if attempt.score is not None:
             best = attempt.score if best is None else max(best, attempt.score)
         if attempt.completion == PackageAttempt.Completion.COMPLETED:
@@ -369,6 +369,14 @@ def best_result(package: ContentPackage, person) -> tuple[Decimal | None, str]:
 
 def coursework_packages(site, person) -> list[tuple]:
     """(package, fraction, state) for each package that counts: published and weighted."""
+    from assessments import preload
+
+    loaded = preload.current(site)
+    if loaded is not None and loaded.packages is not None:  # the class read at once (item 7.08)
+        return [
+            (package, *best_result(package, person, loaded.package_attempts.get((package.id, person.pk), [])))
+            for package in loaded.packages
+        ]
     packages = ContentPackage.objects.filter(
         item__module__site=site, item__is_published=True, weight__gt=0
     ).select_related("item")

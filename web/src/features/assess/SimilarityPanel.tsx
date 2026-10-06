@@ -13,7 +13,7 @@ const STATUS: Record<SimilarityReport["status"], string> = {
 };
 
 /**
- * The similarity report beside the mark (item 3.20; ADR 0006 and 0031), for teaching staff only: the overall
+ * The similarity report beside the mark (item 3.20; ADR 0006 and 0045), for teaching staff only: the overall
  * overlap with other GSA work and each matching passage side by side. Fetched only when opened. The other
  * work is named only to staff who teach its course too. It always says that overlap is evidence for a
  * person to judge, never a verdict.

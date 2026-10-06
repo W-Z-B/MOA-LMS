@@ -31,7 +31,7 @@ def test_seed_is_idempotent(seeded):
     before = (Role.objects.count(), CampusRef.objects.count())
     call_command("seed", "--country", "GY", verbosity=0)
     # Nine roles: the first six, Head of Department and Registrar (iam 0006, items 6.03, 6.04), and the
-    # open-course learner (iam 0007, item 5.07).
+    # open-course learner (iam 0008, item 5.07).
     assert (Role.objects.count(), CampusRef.objects.count()) == before == (9, 2)
 
 
@@ -190,7 +190,7 @@ def test_journey_data_for_staff_development_invitations_and_the_console(monkeypa
     assert len(again["open_courses"]) == 2 and again["open_courses"][0].startswith("/#/open-courses/confirm/")
     essay = Assignment.objects.get(title="Grazing plan essay")
     assert PeerReview.objects.filter(setup__assignment=essay).count() == 6
-    copied = SimilarityDocument.objects.get(submission__student__external_id="S2026923")
+    copied = SimilarityDocument.objects.get(submission__student__external_id="S2026933")
     assert copied.matches.count() == 1 and copied.overall_percent > 50
 
     # The invitation opens a new student's account, once: after the password is chosen it is not offered.

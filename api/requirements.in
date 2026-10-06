@@ -17,6 +17,8 @@ django-cors-headers>=4.4,<5
 nh3>=0.2.18,<1
 # Reads the text of PDFs handed in, for the similarity check (item 3.20). BSD-3-Clause, pure Python.
 pypdf>=5,<7
+# Metrics for monitoring (item 7.10): /api/metrics in the Prometheus text format. Apache 2.0.
+prometheus-client>=0.21,<1
 # Web Push to the installed app (item 4.04): signs each notice (VAPID) and encrypts it for the browser.
 # pywebpush and py-vapid are MPL-2.0, as is certifi (through requests): named exceptions under ADR 0002.
 pywebpush>=2.0,<3

@@ -1,5 +1,5 @@
 {
-  "$comment": "Licence policy for components shipped in the product (docs/adr/0002-licence-policy.md). Read by scripts/check_licences.py (Python) and scripts/check_npm_licences.mjs (web). Development and test tools that never ship are reported, not gated.",
+  "$comment": "Licence policy for components shipped in the product (docs/adr/0002-licence-policy.md). Each exception names where its source is obtained, for THIRD-PARTY-NOTICES (scripts/third_party_notices.py, item 7.20). Tools that run beside the product and are not shipped in its images: age (BSD-3-Clause) and rclone (MIT) for backups, Prometheus and Alertmanager (Apache-2.0) for monitoring, Locust (MIT) for load tests; gpg (GPL) may replace age as an external program, never linked. Read by scripts/check_licences.py (Python) and scripts/check_npm_licences.mjs (web). Development and test tools that never ship are reported, not gated.",
   "permissive": [
     "0BSD",
     "Apache-2.0",
@@ -23,31 +23,38 @@
     "python": {
       "certifi": {
         "licence": "MPL-2.0",
-        "reason": "The certificate authorities requests trusts, pulled in by pywebpush to reach the browsers' push services (item 4.04). Used unmodified."
+        "reason": "The certificate authorities requests trusts, pulled in by pywebpush to reach the browsers' push services (item 4.04). Used unmodified.",
+        "source": "https://github.com/certifi/python-certifi (sdist on https://pypi.org/project/certifi/)"
       },
       "psycopg": {
         "licence": "LGPL-3.0-only",
-        "reason": "The PostgreSQL driver Django supports. Used unmodified as a separately installed library."
+        "reason": "The PostgreSQL driver Django supports. Used unmodified as a separately installed library.",
+        "source": "https://github.com/psycopg/psycopg (the sdist of the same version on https://pypi.org/project/psycopg/)"
       },
       "psycopg-binary": {
         "licence": "LGPL-3.0-only",
-        "reason": "Binary build of psycopg, same terms. Used unmodified."
+        "reason": "Binary build of psycopg, same terms. Used unmodified.",
+        "source": "https://github.com/psycopg/psycopg (built from the psycopg sources of the same version)"
       },
       "psycopg-pool": {
         "licence": "LGPL-3.0-only",
-        "reason": "Connection pool from the psycopg project, pulled in by procrastinate. Used unmodified."
+        "reason": "Connection pool from the psycopg project, pulled in by procrastinate. Used unmodified.",
+        "source": "https://github.com/psycopg/psycopg (directory psycopg_pool; sdist on https://pypi.org/project/psycopg-pool/)"
       },
       "py-vapid": {
         "licence": "MPL-2.0",
-        "reason": "Signs push notices with GSA's VAPID key; part of pywebpush (item 4.04, ADR 0011). Used unmodified."
+        "reason": "Signs push notices with GSA's VAPID key; part of pywebpush (item 4.04, ADR 0011). Used unmodified.",
+        "source": "https://github.com/web-push-libs/vapid (directory python; sdist on https://pypi.org/project/py-vapid/)"
       },
       "pyphen": {
         "licence": "MPL-1.1",
-        "reason": "Hyphenation used by WeasyPrint. Offered under GPL, LGPL or MPL 1.1; GSA takes it under MPL 1.1, unmodified."
+        "reason": "Hyphenation used by WeasyPrint. Offered under GPL, LGPL or MPL 1.1; GSA takes it under MPL 1.1, unmodified.",
+        "source": "https://github.com/Kozea/Pyphen (sdist on https://pypi.org/project/pyphen/)"
       },
       "pywebpush": {
         "licence": "MPL-2.0",
-        "reason": "Web Push: encrypts each notice for the one browser that subscribed (item 4.04, ADR 0011, decision D10). Used unmodified, as a separately installed library."
+        "reason": "Web Push: encrypts each notice for the one browser that subscribed (item 4.04, ADR 0011, decision D10). Used unmodified, as a separately installed library.",
+        "source": "https://github.com/web-push-libs/pywebpush (sdist on https://pypi.org/project/pywebpush/)"
       }
     },
     "npm": {},
@@ -73,7 +80,13 @@
             "--enable-nonfree",
             "--enable-version3"
           ]
-        }
+        },
+        "source": "The Debian source package ffmpeg of the version in the image (https://sources.debian.org/src/ffmpeg/, apt-get source ffmpeg), built as api/Dockerfile records"
+      },
+      "openh264": {
+        "licence": "BSD-2-Clause",
+        "reason": "The H.264 encoder the FFmpeg build uses (libopenh264 from Debian), a shared library loaded by FFmpeg, never by the product. Listed so every program the product runs is named.",
+        "source": "https://github.com/cisco/openh264 (Debian source package openh264)"
       },
       "whisper.cpp": {
         "licence": "MIT",

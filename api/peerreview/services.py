@@ -124,6 +124,8 @@ def submit_review(review: PeerReview, *, scores: list, comment: str, request, no
             + ".",
         )
     assignment = setup.assignment
+    if assignment.rubric_id is None:
+        raise Refusal("no_rubric", "The assignment has no rubric to review against. Ask your lecturer.")
     mark, kept = score(assignment.rubric, scores, assignment.max_mark)
     before = {
         "mark": str(review.mark) if review.mark is not None else None,

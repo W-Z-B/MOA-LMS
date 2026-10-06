@@ -117,7 +117,8 @@ export interface PeerWork {
   open: boolean;
   text: string;
   files: { id: number; filename: string; download_url: string }[];
-  rubric: Rubric;
+  /** Null when the rubric was taken off the assignment after peer review was set up. */
+  rubric: Rubric | null;
   scores: RubricScore[];
   mark: string | null;
   comment: string;

@@ -189,9 +189,9 @@ FORAGE_SITE = {
     "description": "Grasses, legumes and grazing for cattle, sheep and goats.",
 }
 FORAGE_CAST = [
-    ("lisa.thomas", PersonRef.Kind.STUDENT, "S2026921", "Lisa", "Thomas", Role.STUDENT, "student"),
-    ("omar.khan", PersonRef.Kind.STUDENT, "S2026922", "Omar", "Khan", Role.STUDENT, "student"),
-    ("nadia.ali", PersonRef.Kind.STUDENT, "S2026923", "Nadia", "Ali", Role.STUDENT, "student"),
+    ("lisa.thomas", PersonRef.Kind.STUDENT, "S2026931", "Lisa", "Thomas", Role.STUDENT, "student"),
+    ("omar.khan", PersonRef.Kind.STUDENT, "S2026932", "Omar", "Khan", Role.STUDENT, "student"),
+    ("nadia.ali", PersonRef.Kind.STUDENT, "S2026933", "Nadia", "Ali", Role.STUDENT, "student"),
 ]
 _GRAZING = (
     "The pasture is divided into six paddocks with electric fencing, and the herd moves to a fresh paddock "

@@ -1,4 +1,4 @@
-# ADR 0032: Open short courses for farmers and extension officers
+# ADR 0046: Open short courses for farmers and extension officers
 
 **Status:** proposed, open (decision D0: whether GSA offers open short courses). Built switched off.
 **Date:** 6 October 2026.

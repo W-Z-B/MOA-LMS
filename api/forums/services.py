@@ -168,10 +168,20 @@ def coursework_items(
 def coursework_forums(site, student, *, released_only: bool = False) -> list[tuple]:
     """coursework_items with the forum and its state, for the working of the total (items 2.28, 2.30):
     (forum, fraction, state), state being "graded", or "pending" while no mark is given or released."""
+    from assessments import preload
     from forums.models import ParticipationMark
 
-    forums = site.forums.filter(is_published=True, forum_type=Forum.Type.GRADED, weight__gt=0)
-    marks = {m.forum_id: m for m in ParticipationMark.objects.filter(forum__in=forums, student=student)}
+    loaded = preload.current(site)
+    if loaded is not None:  # the whole class read at once
+        forums = loaded.graded_forums
+        marks = {
+            f.id: loaded.forum_marks[(f.id, student.pk)]
+            for f in forums
+            if (f.id, student.pk) in loaded.forum_marks
+        }
+    else:
+        forums = site.forums.filter(is_published=True, forum_type=Forum.Type.GRADED, weight__gt=0)
+        marks = {m.forum_id: m for m in ParticipationMark.objects.filter(forum__in=forums, student=student)}
     items: list[tuple] = []
     for forum in forums:
         mark = marks.get(forum.id)

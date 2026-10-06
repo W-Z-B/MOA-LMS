@@ -121,6 +121,8 @@ export default defineConfig({
         "src/features/quizzes/**",
         // Similarity, peer review, paper quizzes, open short courses and the guidance (3.20, 3.24, 4.13, 5.07, 6.13).
         "src/features/assess/**",
+        // The term calendar (item 7.12).
+        "src/features/terms/**",
         // --- packaged content, the library and interchange (items 5.10, 5.12 to 5.14, 6.08) ---
         "src/features/packages/**",
         // Lecture video, captions, offline reading, data-light mode and push notices (items 4.03 to 4.07).

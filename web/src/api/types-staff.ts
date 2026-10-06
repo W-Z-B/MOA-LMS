@@ -268,7 +268,7 @@ export interface RetentionRule {
   name: string;
   keep_months: number | null;
   counted_from: string;
-  action: "delete" | "review";
+  action: "delete" | "review" | "archive";
   action_name: string;
   automatic: boolean;
   confirmed: boolean;

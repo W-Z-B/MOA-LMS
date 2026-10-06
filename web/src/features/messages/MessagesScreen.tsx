@@ -272,7 +272,8 @@ function ConversationView({ id, onNavigate }: { id: number; onNavigate: (to: str
             <p className="bubble-meta">
               <strong>You</strong>
             </p>
-            <div className="page-body" dangerouslySetInnerHTML={{ __html: String((q.body as { body?: string }).body ?? "") }} />
+            {/* Not yet cleaned by the server: shown as plain text, never as HTML (ASVS 5.3.3). */}
+            <div className="page-body">{String((q.body as { body?: string }).body ?? "").replace(/<[^>]*>/g, " ")}</div>
             <SendState id={q.id} />
           </li>
         ))}

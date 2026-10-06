@@ -64,6 +64,7 @@ INSTALLED_APPS = [
     "peerreview",
     "paperquizzes",
     "opencourses",
+    "terms",
     # Packaged content (SCORM, H5P), statements, the content library, course interchange (5.12 to 5.14, 6.08)
     "packages",
     "library",
@@ -75,6 +76,8 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    "config.observability.RequestObservabilityMiddleware",  # request id, request log and metrics (7.10)
+    "config.observability.NoStoreMiddleware",  # API answers are never cached (ASVS 8.2.1)
     "django.middleware.security.SecurityMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -82,6 +85,7 @@ MIDDLEWARE = [
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "iam.middleware.SessionActivityMiddleware",  # idle and absolute time-outs; the session list
+    "terms.guard.ClosedSiteMiddleware",  # closed course sites refuse changes (item 7.12)
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -226,12 +230,24 @@ LOGIN_LOCKOUT_MINUTES = int(env("LOGIN_LOCKOUT_MINUTES", "15"))
 # Failed sign-ins from one network address, across all accounts, before that address waits out the window.
 LOGIN_MAX_FAILURES_PER_ADDRESS = int(env("LOGIN_MAX_FAILURES_PER_ADDRESS", "20"))
 
+# Logs (item 7.10): one JSON object per line on standard output wherever DEBUG is off (LOG_FORMAT=json), for
+# the host's log collector; plain lines for people in development. Errors carry a group (observability).
+LOG_FORMAT = env("LOG_FORMAT", "text" if DEBUG else "json")
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
-    "handlers": {"console": {"class": "logging.StreamHandler"}},
-    "root": {"handlers": ["console"], "level": "INFO"},
+    "formatters": {
+        "json": {"()": "config.observability.JsonFormatter"},
+        "text": {"format": "%(asctime)s %(levelname)s %(name)s %(message)s"},
+    },
+    "handlers": {"console": {"class": "logging.StreamHandler", "formatter": LOG_FORMAT}},
+    "root": {"handlers": ["console"], "level": env("LOG_LEVEL", "INFO")},
 }
+
+# Metrics (item 7.10): /api/metrics answers only a scraper sending this token ("Authorization: Bearer ...");
+# without one it is not found. A worker is counted alive while its heartbeat is this recent.
+METRICS_TOKEN = env("METRICS_TOKEN", "")
+QUEUE_HEARTBEAT_SECONDS = int(env("QUEUE_HEARTBEAT_SECONDS", "120"))
 
 # Browser origins that include a port (development) or an extra host name.
 PUBLIC_ORIGINS = [o for o in (env("PUBLIC_ORIGINS", "") or "").split(",") if o]
@@ -294,17 +310,27 @@ ATTENDANCE_LATE_AFTER_MINUTES = int(env("ATTENDANCE_LATE_AFTER_MINUTES", "10"))
 MARKING_DAYS = int(env("MARKING_DAYS", "14"))
 DECISION_DAYS = int(env("DECISION_DAYS", "7"))
 
-# Similarity check (item 3.20, decision D4, ADR 0031): each hand-in is compared with other GSA submissions on
+# Similarity check (item 3.20, decision D4, ADR 0045): each hand-in is compared with other GSA submissions on
 # GSA's own server, in the background. On by default, as decided; off stops new checks and the report's
 # "check again".
 SIMILARITY_CHECKS = env_bool("SIMILARITY_CHECKS", True)
 
 # Open short courses for farmers and extension officers (item 5.07). Off until GSA decides to offer them
-# (decision D0, ADR 0032). On: a public catalogue of open sites, registration by email, and learner accounts
+# (decision D0, ADR 0046). On: a public catalogue of open sites, registration by email, and learner accounts
 # that see open sites only. Registrations: this many an hour from one network address; a link lasts this long.
 OPEN_COURSES_ENABLED = env_bool("OPEN_COURSES_ENABLED", False)
 OPEN_REGISTRATIONS_PER_ADDRESS = int(env("OPEN_REGISTRATIONS_PER_ADDRESS", "5"))
 OPEN_CONFIRM_HOURS = int(env("OPEN_CONFIRM_HOURS", "48"))
+# Term life-cycle (item 7.12). Sites take work until the end of their term's close date and this many days
+# after it, unless the term sets its own grace; then they are read-only for appeals. They are archived when
+# the retention schedule's period for course sites has passed (privacy rule "course-sites"; this is the
+# default until that rule exists). TERMS_FROM_SRMS takes the calendar from the SRMS's integration API, which
+# the SRMS does not offer yet: off until GSA and the SRMS agree it; course administrators enter terms.
+# TERM_CLOSE_AFTER_DAYS: for a term from the SRMS, the close date this many days after teaching ends.
+TERM_GRACE_DAYS = int(env("TERM_GRACE_DAYS", "2"))
+TERM_ARCHIVE_MONTHS = int(env("TERM_ARCHIVE_MONTHS", "12"))
+TERMS_FROM_SRMS = env_bool("TERMS_FROM_SRMS", False)
+TERM_CLOSE_AFTER_DAYS = int(env("TERM_CLOSE_AFTER_DAYS", "28"))
 # Packaged content (items 5.12, 5.13; ADR 0014): SCORM and H5P files put up as course items. A package is
 # checked before it is kept (packages/archive.py) and is never unpacked onto the disk. Its size counts against
 # the course's storage allowance. Caddy refuses request bodies over 60 MB: a larger UPLOAD_LIMIT_PACKAGE_MB
@@ -392,3 +418,8 @@ AI_TIMEOUT_SECONDS = int(env("AI_TIMEOUT_SECONDS", "60"))
 # The study helper is switched off while a student has an assignment open (not yet handed in, before its due
 # date) on the site, as for quizzes. GSA may decide assignments should not switch it off.
 AI_HELPER_OFF_DURING_ASSIGNMENTS = env_bool("AI_HELPER_OFF_DURING_ASSIGNMENTS", True)
+
+# Authenticator codes (ASVS 2.2.1, 2.8.4): a wrong code counts as a failed sign-in towards the lockout
+# (LOGIN_MAX_FAILURES in LOGIN_LOCKOUT_MINUTES), which then ends the session; and each code is accepted once.
+# MFA_REFUSE_REUSED_CODES may be turned off only on a test stack where two runs share one fictional account.
+MFA_REFUSE_REUSED_CODES = env_bool("MFA_REFUSE_REUSED_CODES", True)

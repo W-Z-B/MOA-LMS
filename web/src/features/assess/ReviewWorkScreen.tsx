@@ -60,7 +60,8 @@ export default function ReviewWorkScreen({ siteId, reviewId }: Props) {
     ) : (
       <p className="loading">Opening the work…</p>
     );
-  const scored = work.rubric.criteria.every((c) => scores.some((s) => s.criterion === c.id && (s.level !== null || s.points !== null)));
+  const rubric = work.rubric;
+  const scored = rubric !== null && rubric.criteria.every((c) => scores.some((s) => s.criterion === c.id && (s.level !== null || s.points !== null)));
   return (
     <div className="stack">
       <div className="page-head">
@@ -89,7 +90,11 @@ export default function ReviewWorkScreen({ siteId, reviewId }: Props) {
       </section>
       <form className="module stack" onSubmit={send} aria-label="Your review">
         <h2>Your review</h2>
-        <RubricMarker rubric={work.rubric} scores={scores} onChange={setScores} disabled={!work.open} />
+        {rubric ? (
+          <RubricMarker rubric={rubric} scores={scores} onChange={setScores} disabled={!work.open} />
+        ) : (
+          <p className="notice">The assignment has no rubric to review against. Ask your lecturer.</p>
+        )}
         <label>
           Comment for the student
           <textarea value={comment} rows={5} disabled={!work.open} onChange={(e) => setComment(e.target.value)} />

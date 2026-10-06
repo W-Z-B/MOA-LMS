@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('iam', '0006_report_roles'),
+        ('iam', '0007_totp_last_used_step'),
     ]
 
     operations = [

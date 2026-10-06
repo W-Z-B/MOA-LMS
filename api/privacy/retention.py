@@ -5,8 +5,9 @@ no one needs to review (sign-in attempts, old notifications), which go every nig
 to the audit log with the rule that required it, so the record of what was destroyed outlives it; the entry
 names the work and the student, never its content or the mark.
 
-The LMS holds no term dates (the SRMS owns the calendar), so the end of a course's term is taken as the last
-due date of its assignments. The audit log is chained (audit.chain) and is never purged by the system.
+The end of a course's term is when its site closed (the term calendar, terms.lifecycle, item 7.12); for a
+site whose term is not in the calendar it is taken as the last due date of its assignments. The audit log
+is chained (audit.chain) and is never purged by the system.
 """
 
 import calendar
@@ -23,7 +24,7 @@ from audit.services import record
 
 log = logging.getLogger(__name__)
 
-TERM_END = "the end of the term of the course (the last due date of its assignments)"
+TERM_END = "the close of the course's term (else the last due date of its assignments)"
 TO_CONFIRM = "Proposal in the impact assessment; to be confirmed by GSA"
 # code, name, months kept, counted from, action, automatic, note.
 RULES = [
@@ -65,6 +66,15 @@ RULES = [
     ),
     ("login-attempts", "Sign-in attempts", 12, "the attempt", "delete", True, TO_CONFIRM),
     ("notifications", "Notifications, read or not", 24, "when they were sent", "delete", True, TO_CONFIRM),
+    (
+        "course-sites",
+        "Course sites: closed at the end of term, kept read-only for appeals, then archived",
+        12,
+        "the close of the term (its close date and grace)",
+        "archive",
+        True,
+        TO_CONFIRM + "; archiving keeps a read-only export and destroys nothing (item 7.12)",
+    ),
     (
         "ai-exchanges",
         "AI help: when it was asked, by whom, and lecturers' drafts (never a student's question)",
@@ -117,20 +127,34 @@ def seed_rules() -> None:
         )
 
 
+def term_ends() -> dict[int, datetime]:
+    """When each course site's term ended: its close in the term calendar, else its last due date."""
+    from courses.models import CourseSite
+    from terms.lifecycle import locks_at
+    from terms.models import Term
+
+    closes = {term.code: locks_at(term) for term in Term.objects.all()}
+    ends = {}
+    for site_id, code, last_due in CourseSite.objects.annotate(
+        last_due=Max("assignments__due_at")
+    ).values_list("id", "term_code", "last_due"):
+        end = closes.get(code) if code else None
+        if end is None:
+            end = last_due
+        if end is not None:
+            ends[site_id] = end
+    return ends
+
+
 def due(rule, today: date | None = None) -> list[Due]:
     """The records that the rule says should go, as of today."""
     from assessments.models import Submission
-    from courses.models import CourseSite
 
     today = today or timezone.localdate()
     if rule.code not in SUBMISSION_RULES or rule.keep_months is None:
         return []  # forum posts: none yet; the audit log: reviewed by GSA, never removed by the system
     cut = timezone.make_aware(datetime.combine(months_before(today, rule.keep_months), time.min))
-    ended = dict(
-        CourseSite.objects.annotate(term_end=Max("assignments__due_at"))
-        .filter(term_end__lt=cut)
-        .values_list("id", "term_end")
-    )
+    ended = {site_id: end for site_id, end in term_ends().items() if end < cut}
     submissions = Submission.objects.filter(assignment__site_id__in=ended).select_related(
         "assignment", "assignment__site", "student"
     )
@@ -219,6 +243,8 @@ def purge(today: date | None = None) -> dict[str, int]:
                 count += EmailChange.objects.filter(asked_at__lt=cut).delete()[0]  # sign-in email changes
             elif rule.code == "notifications":
                 count = Notification.objects.filter(created_at__lt=cut).delete()[0]
+            elif rule.code == "course-sites":
+                continue  # archived, not deleted, by the term life-cycle (terms.lifecycle)
             elif rule.code == "ai-exchanges":
                 from assist.models import Exchange
 

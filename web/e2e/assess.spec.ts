@@ -34,14 +34,14 @@ test("the lecturer reads the similarity report beside the mark, and the guidance
   await openForage(page, "Assignments");
   await page.getByRole("region", { name: "Grazing plan essay" }).getByRole("link", { name: "Mark" }).click();
   await expect(page.getByRole("heading", { name: "Grazing plan essay", level: 1 })).toBeVisible();
-  await page.getByRole("combobox", { name: "Student" }).selectOption({ label: "S2026923 Nadia Ali · not marked" });
-  await expect(page.getByRole("heading", { name: "Nadia Ali (S2026923)" })).toBeVisible();
+  await page.getByRole("combobox", { name: "Student" }).selectOption({ label: "S2026933 Nadia Ali · not marked" });
+  await expect(page.getByRole("heading", { name: "Nadia Ali (S2026933)" })).toBeVisible();
 
   await page.getByText("Similarity with other GSA work").click();
   await expect(page.getByText("Overlap is evidence for a person to judge, not a verdict.", { exact: false })).toBeVisible();
   await expect(page.getByText(/% found in other GSA work/)).toBeVisible();
   // Both essays are on a course the lecturer teaches, so the other work is named.
-  const match = page.getByRole("heading", { name: /shared with Lisa Thomas \(S2026921\), Grazing plan essay/ });
+  const match = page.getByRole("heading", { name: /shared with Lisa Thomas \(S2026931\), Grazing plan essay/ });
   await expect(match).toBeVisible();
   const passages = page.getByRole("list", { name: /Matching passages with Lisa Thomas/ });
   await expect(passages.getByText(/six paddocks with electric fencing/).first()).toBeVisible();
@@ -86,7 +86,7 @@ test("the lecturer reads the reviews, and prints a quiz and keys an answer sheet
   await page.getByRole("region", { name: "Grazing plan essay" }).getByRole("link", { name: "Peer review" }).click();
   await expect(page.getByRole("heading", { name: "The work and its reviews" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Show students their reviews" })).toBeVisible();
-  await page.getByText(/^S2026921: peer mark/).click();
+  await page.getByText(/^S2026931: peer mark/).click();
   await expect(page.getByText(/^Reviewer S20269/).first()).toBeVisible();
   await expectAccessible(page, testInfo, "peer review for the lecturer");
 

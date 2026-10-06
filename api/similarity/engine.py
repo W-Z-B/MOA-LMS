@@ -1,4 +1,4 @@
-"""How work is compared (item 3.20; ADR 0031 says why this method).
+"""How work is compared (item 3.20; ADR 0045 says why this method).
 
 1. The text is normalised: quotations are taken out (a passage in quotation marks is the student saying it
    is someone else's), then it is split into words, compared without case or punctuation.

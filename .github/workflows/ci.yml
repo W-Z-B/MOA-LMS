@@ -5,6 +5,7 @@ name: ci
 on:
   push:
     branches: [main]
+    tags: ["v*"] # a release: the sbom job attaches its files to it
   pull_request:
 
 permissions:
@@ -52,7 +53,8 @@ jobs:
         run: |
           ruff check api
           ruff format --check api
-          ruff check --config api/pyproject.toml scripts
+          ruff check --config api/pyproject.toml scripts loadtest
+          ruff format --check --config api/pyproject.toml scripts loadtest
       - name: Django checks, including the production security settings
         working-directory: api
         run: |
@@ -149,3 +151,50 @@ jobs:
           done
           # The web image holds the built files only: no Node, npm or source.
           docker run --rm gsa-lms-web sh -c '! command -v node && ! command -v npm && test -f /dist/index.html && test ! -e /dist/src'
+
+  sbom:
+    name: sbom (software bills of materials and third-party notices, item 7.20)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # only used on a release tag, to attach the files to the release
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Python - what ships (api/requirements.txt alone, in an environment of its own)
+        run: |
+          python -m venv /tmp/shipped
+          /tmp/shipped/bin/pip install --require-hashes --no-deps -r api/requirements.txt
+          python -m venv /tmp/sbom-tool
+          /tmp/sbom-tool/bin/pip install --require-hashes -r api/requirements-sbom.txt
+          /tmp/sbom-tool/bin/cyclonedx-py environment --of JSON \
+            --output-reproducible -o sbom-python.cdx.json /tmp/shipped/bin/python
+      - name: Web - production dependencies only
+        working-directory: web
+        run: |
+          npm ci --no-audit --no-fund
+          npx --yes @cyclonedx/cyclonedx-npm@6.0.1 --omit dev --output-reproducible \
+            --output-format JSON --output-file ../sbom-web.cdx.json
+      - name: Third-party notices, naming where each LGPL or MPL source is obtained
+        run: python scripts/third_party_notices.py sbom-python.cdx.json sbom-web.cdx.json -o THIRD-PARTY-NOTICES.md
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: sbom-and-notices
+          path: |
+            sbom-python.cdx.json
+            sbom-web.cdx.json
+            THIRD-PARTY-NOTICES.md
+          retention-days: 90
+      - name: Attach to the release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --draft --title "$GITHUB_REF_NAME" --notes "Release $GITHUB_REF_NAME"
+          gh release upload "$GITHUB_REF_NAME" sbom-python.cdx.json sbom-web.cdx.json THIRD-PARTY-NOTICES.md --clobber
