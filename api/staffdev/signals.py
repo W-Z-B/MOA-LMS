@@ -1,9 +1,12 @@
 """Completion is checked as soon as anything that counts towards it happens (item 5.03): an item completed, a
 quiz attempt finished or marked, a mark given or released. The check runs once the change is saved, and
-only for sites with a catalogue entry; the nightly sweep catches anything missed."""
+only for sites with a catalogue entry; the nightly sweep catches anything missed.
+
+A new student is also put on the orientation course at their first sign-in (staffdev.orientation)."""
 
 import logging
 
+from django.contrib.auth.signals import user_logged_in
 from django.db import transaction
 from django.db.models.signals import post_save
 from django.dispatch import receiver
@@ -50,3 +53,15 @@ def mark_saved(sender, instance: Mark, **kwargs):
     if instance.is_released:
         submission = instance.submission
         _check_later(submission.assignment.site_id, submission.student_id)
+
+
+@receiver(user_logged_in)
+def orientation_at_first_sign_in(sender, request, user, **kwargs):
+    """A new student is put on the orientation course when they first sign in (item 7.16)."""
+    from staffdev.orientation import enrol_new_student
+
+    try:
+        with transaction.atomic():
+            enrol_new_student(getattr(user, "person", None), request=request)
+    except Exception:  # noqa: BLE001 - signing in must never fail because of the orientation course
+        log.exception("orientation enrolment failed for user %s", user.pk)
