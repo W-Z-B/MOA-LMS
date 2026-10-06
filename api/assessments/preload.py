@@ -32,6 +32,8 @@ class Preload:
     observations: dict = field(default_factory=lambda: defaultdict(list))  # (task, person) -> observations
     forum_marks: dict = field(default_factory=dict)  # (forum, person) -> participation mark
     transfers: dict = field(default_factory=lambda: defaultdict(list))  # person -> SRMS transfers by time
+    line_items: list | None = None  # outside tools' gradebook columns (lti), None when not loaded
+    scores: dict = field(default_factory=dict)  # (line item, person) -> score
 
 
 def current(site) -> Preload | None:
@@ -108,6 +110,11 @@ def preloaded(site, people=None):
         loaded.forum_marks[(m.forum_id, m.student_id)] = m
     for t in SrmsTransfer.objects.filter(site=site, student_id__in=people).order_by("sent_at", "id"):
         loaded.transfers[t.student_id].append(t)
+    from lti.models import LineItem, Score
+
+    loaded.line_items = list(LineItem.objects.filter(site=site).select_related("tool").order_by("id"))
+    for s in Score.objects.filter(line_item__site=site, person_id__in=people):
+        loaded.scores[(s.line_item_id, s.person_id)] = s
     token = _current.set(loaded)
     try:
         yield loaded
