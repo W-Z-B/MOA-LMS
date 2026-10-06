@@ -51,14 +51,14 @@ def export_cartridge(request, pk: int):
     return FileResponse(stream, as_attachment=True, filename=filename, content_type="application/zip")
 
 
-class ImportSerializer(serializers.Serializer):
+class ContentImportSerializer(serializers.Serializer):
     file = serializers.FileField(
         help_text="A Common Cartridge (.imscc or .zip) or a Moodle course backup (.mbz); at most "
         "UPLOAD_LIMIT_PACKAGE_MB"
     )
 
 
-class ImportReportSerializer(serializers.Serializer):
+class ContentImportReportSerializer(serializers.Serializer):
     format = serializers.ChoiceField(choices=["common_cartridge", "moodle_backup"])
     modules = serializers.IntegerField()
     items = serializers.IntegerField()
@@ -69,8 +69,8 @@ class ImportReportSerializer(serializers.Serializer):
 
 
 @extend_schema(
-    request={"multipart/form-data": ImportSerializer},
-    responses={200: ImportReportSerializer, 400: ErrorSerializer, 403: ErrorSerializer, 404: ErrorSerializer},
+    request={"multipart/form-data": ContentImportSerializer},
+    responses={200: ContentImportReportSerializer, 400: ErrorSerializer, 403: ErrorSerializer, 404: ErrorSerializer},
     summary="Import a Common Cartridge or a Moodle backup's content into the course, as drafts",
     description="Modules are added after the course's present ones; everything comes in unpublished, with "
     "its "
@@ -81,7 +81,7 @@ class ImportReportSerializer(serializers.Serializer):
 @parser_classes([MultiPartParser])
 def import_content(request, pk: int):
     site = _taught(request, pk)
-    data = ImportSerializer(data=request.data)
+    data = ContentImportSerializer(data=request.data)
     data.is_valid(raise_exception=True)
     upload = data.validated_data["file"]
     limit = settings.UPLOAD_LIMIT_PACKAGE_MB
