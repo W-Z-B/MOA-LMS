@@ -164,6 +164,8 @@ export interface Certificate {
   status: "valid" | "expired" | "withdrawn";
   withdrawn_at: string | null;
   withdrawal_reason: string;
+  /** The Open Badges 3.0 credential to download (item 5.10); null while badges are off or when withdrawn. */
+  badge_url?: string | null;
 }
 
 export interface CertificateTemplate {

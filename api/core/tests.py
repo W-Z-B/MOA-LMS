@@ -230,6 +230,27 @@ def test_journey_data_for_staff_development_invitations_and_the_console(monkeypa
 
 
 @pytest.mark.django_db
+def test_journey_data_has_packages_a_library_entry_and_a_course_to_import_into(monkeypatch, tmp_path):
+    from django.core.management import call_command
+
+    from courses.models import CourseSite
+    from library.models import LibraryItem
+    from packages.models import ContentPackage
+
+    monkeypatch.setenv("DEMO_USER_PASSWORD", "e2e-Only-Fictional-Learner-2026")
+    monkeypatch.setenv("DEMO_TOTP_SECRET", JOURNEY_TOTP)
+    monkeypatch.setenv("JOURNEY_LINKS_FILE", str(tmp_path / "journeys" / "links.json"))
+    call_command("seed_journeys", "--fictional", verbosity=0)
+    call_command("seed_journeys", "--fictional", verbosity=0)  # idempotent
+    packages = ContentPackage.objects.filter(item__module__site__code="AGR101-2026-27-S1-MRP")
+    assert sorted(p.standard for p in packages) == ["h5p", "scorm12"]
+    assert all(p.weight == 0 for p in packages)  # no coursework figure the other journeys read moves
+    assert LibraryItem.objects.get().is_open_resource
+    assert not CourseSite.objects.get(code="AGR190-2026-27-S1-MRP").modules.exists()
+    assert (tmp_path / "journeys" / "seed-spacing.zip").read_bytes().startswith(b"PK")
+
+
+@pytest.mark.django_db
 def test_journey_data_for_insight_raises_one_alert_per_student_and_reads_the_reports(monkeypatch):
     """The insight journeys' course (items 3.11, 6.01 to 6.06): an alert for each student, stable when the
     data is loaded again, and a head of department scoped to Marlon's unit."""

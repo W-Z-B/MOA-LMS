@@ -67,6 +67,25 @@ Accounts created from the synced records, with a link to choose a password, wait
 ([ADR 0016](adr/0016-accounts-and-sign-on.md)). Administrators and course administrators enrol an
 authenticator app at their first sign-in.
 
+### Packaged content, the library and digital badges (items 5.10, 5.12 to 5.14, 6.08)
+
+| Setting | Default | What it does |
+|---|---|---|
+| `UPLOAD_LIMIT_PACKAGE_MB` | 50 | Largest SCORM package, H5P file, cartridge or Moodle backup. Caddy refuses bodies over 60 MB: raise `request_body` in `deploy/*Caddyfile*` with it |
+| `PACKAGE_MAX_ENTRIES` | 10000 | Most files a package or imported archive may hold |
+| `PACKAGE_MAX_UNPACKED_MB` | 500 | Most it may unpack to (zip bombs are refused) |
+| `PACKAGE_PLAY_HOURS` | 8 | How long the signed address of a package's player lasts |
+| `OPEN_BADGES_ENABLED` | off | Issue each certificate also as an Open Badges 3.0 credential. Turn on only once GSA's permanent address (`PUBLIC_URL`) is settled: it is written into every credential |
+
+The badge signing key is made by the first credential, kept encrypted with `FIELD_ENCRYPTION_KEY`, and
+published at `/api/badges/issuer.json` and `/api/badges/jwks.json`. To rotate it (if it may have been exposed,
+or on GSA's schedule): `python manage.py rotate_badge_key`. The old key is retired, not removed, so the
+credentials it signed still verify. Rotating `FIELD_ENCRYPTION_KEY` itself means re-encrypting the stored key
+as for every encrypted field; keep the old key with the backups.
+
+The package players are files of the web build (`/players/`), copied from `scorm-again` and `h5p-standalone`
+at the versions in `web/package.json` ([ADR 0012](adr/0012-new-components.md), [ADR 0030](adr/0030-packaged-content-as-built.md)).
+
 ## 5. Branching and CI
 
 - Short branches named after the checklist item (for example `feature/2.07-navigation`).

@@ -23,15 +23,16 @@ the recommended answer"; GSA may revise any of them by a new record.
 | [0011](0011-phone-delivery.md) | Phones use the installable web app, with push and offline work | | Accepted on the recommended answer (as HRMS ADR 0005) |
 | [0012](0012-new-components.md) | New components approved under the licence policy | D10 | Accepted on the recommended answer |
 | [0013](0013-lecturer-authenticator-code.md) | Lecturers use an authenticator code | D14 | Accepted on the recommended answer |
-| [0014](0014-packaged-content.md) | Packaged content: SCORM and H5P players | D2 | Proposed, open |
+| [0014](0014-packaged-content.md) | Packaged content: SCORM and H5P players | D2 | Accepted on the recommended answer; built as 0030 records |
 | [0015](0015-video-and-captions.md) | Where video is kept, and how it is made light and captioned | D3 | Accepted on the recommended answer |
 | [0016](0016-accounts-and-sign-on.md) | Accounts for students and lecturers, and when one sign-on comes | D7 | Proposed, open |
 | [0017](0017-competency-records.md) | Competency records beside marks | D8 | Proposed, open |
 | [0018](0018-text-and-whatsapp-notices.md) | Text messages and WhatsApp for urgent notices only | D12 | Proposed, open |
 | [0019](0019-required-training.md) | The HRMS says which staff must take which training | D13 | Proposed, open |
 | [0020](0020-reports-by-role-grant.md) | Who reads the reports that leave a course: heads of department by unit, the Registrar by campus | | Proposed; built this way, GSA to confirm |
-| [0021](0021-similarity-check-method.md) | How the similarity check compares work: winnowed fingerprints on GSA's server | D4 | Accepted, carrying out 0006 |
-| [0022](0022-open-short-courses.md) | Open short courses for farmers and extension officers: built, switched off | D0 | Proposed, open |
+| [0030](0030-packaged-content-as-built.md) | Packaged content, the statement store, the content library, course interchange and digital badges, as built | D2 | Proposed; built this way, GSA to confirm |
+| [0031](0031-similarity-check-method.md) | How the similarity check compares work: winnowed fingerprints on GSA's server | D4 | Accepted, carrying out 0006 |
+| [0032](0032-open-short-courses.md) | Open short courses for farmers and extension officers: built, switched off | D0 | Proposed, open |
 
 ## Open decisions with no record yet
 

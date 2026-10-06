@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('courses', '0007_contentitem_video_kind'),
+        ('courses', '0008_package_kind'),
     ]
 
     operations = [

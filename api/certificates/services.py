@@ -137,6 +137,10 @@ def issue(request, completion, *, template_code: str = "completion") -> Certific
         )
         completion.certificate = reference
         completion.save(update_fields=["certificate", "updated_at"])
+        if settings.OPEN_BADGES_ENABLED:  # item 5.10: the same certificate as an Open Badges credential
+            from certificates import badges
+
+            badges.issue(certificate)
         record(
             request,
             "certificate_issued",

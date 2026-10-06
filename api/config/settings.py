@@ -64,6 +64,10 @@ INSTALLED_APPS = [
     "peerreview",
     "paperquizzes",
     "opencourses",
+    # Packaged content (SCORM, H5P), statements, the content library, course interchange (5.12 to 5.14, 6.08)
+    "packages",
+    "library",
+    "interchange",
     "video",
     "insights",
     "lti",
@@ -290,17 +294,30 @@ ATTENDANCE_LATE_AFTER_MINUTES = int(env("ATTENDANCE_LATE_AFTER_MINUTES", "10"))
 MARKING_DAYS = int(env("MARKING_DAYS", "14"))
 DECISION_DAYS = int(env("DECISION_DAYS", "7"))
 
-# Similarity check (item 3.20, decision D4, ADR 0021): each hand-in is compared with other GSA submissions on
+# Similarity check (item 3.20, decision D4, ADR 0031): each hand-in is compared with other GSA submissions on
 # GSA's own server, in the background. On by default, as decided; off stops new checks and the report's
 # "check again".
 SIMILARITY_CHECKS = env_bool("SIMILARITY_CHECKS", True)
 
 # Open short courses for farmers and extension officers (item 5.07). Off until GSA decides to offer them
-# (decision D0, ADR 0022). On: a public catalogue of open sites, registration by email, and learner accounts
+# (decision D0, ADR 0032). On: a public catalogue of open sites, registration by email, and learner accounts
 # that see open sites only. Registrations: this many an hour from one network address; a link lasts this long.
 OPEN_COURSES_ENABLED = env_bool("OPEN_COURSES_ENABLED", False)
 OPEN_REGISTRATIONS_PER_ADDRESS = int(env("OPEN_REGISTRATIONS_PER_ADDRESS", "5"))
 OPEN_CONFIRM_HOURS = int(env("OPEN_CONFIRM_HOURS", "48"))
+# Packaged content (items 5.12, 5.13; ADR 0014): SCORM and H5P files put up as course items. A package is
+# checked before it is kept (packages/archive.py) and is never unpacked onto the disk. Its size counts against
+# the course's storage allowance. Caddy refuses request bodies over 60 MB: a larger UPLOAD_LIMIT_PACKAGE_MB
+# needs request_body raised in deploy/*Caddyfile* too.
+UPLOAD_LIMIT_PACKAGE_MB = int(env("UPLOAD_LIMIT_PACKAGE_MB", "50"))
+PACKAGE_MAX_ENTRIES = int(env("PACKAGE_MAX_ENTRIES", "10000"))
+PACKAGE_MAX_UNPACKED_MB = int(env("PACKAGE_MAX_UNPACKED_MB", "500"))
+# How long the signed address of a package's player lasts; opening the package again gives a new one.
+PACKAGE_PLAY_HOURS = int(env("PACKAGE_PLAY_HOURS", "8"))
+# Open Badges 3.0 (item 5.10): each certificate also as a signed credential for the holder's wallet. Off until
+# GSA's permanent web address is settled (decision D9, hosting): the issuer's address, built from PUBLIC_URL,
+# is written into every credential, and changing it later would leave issued credentials unverifiable.
+OPEN_BADGES_ENABLED = env_bool("OPEN_BADGES_ENABLED", False)
 # --- lecture video, offline reading and push notices (items 4.03 to 4.07; ADR 0011, ADR 0015) ---
 # A lecture video is put up once (Caddy allows this one address a larger body) and prepared by the job worker
 # with FFmpeg, an LGPL build in api/Dockerfile, run as a separate program (video.convert).

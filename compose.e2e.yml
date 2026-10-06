@@ -43,6 +43,8 @@ services:
       JOURNEY_LINKS_FILE: /srv/files/journeys/links.json
       # Open short courses (item 5.07) are off unless GSA decides; on here so their journeys run.
       OPEN_COURSES_ENABLED: "1"
+      # Digital badges (item 5.10) are off until GSA's address is settled; the journeys check them.
+      OPEN_BADGES_ENABLED: "1"
     volumes:
       - e2e_files:/srv/files
     depends_on:

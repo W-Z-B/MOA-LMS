@@ -74,3 +74,23 @@ demand against a budget of 400 KB of its own.
 A student opening a page with maths loads about 175 KB of code, inside the 500 KB the gold standard allows
 a common page. The PDF viewer with its worker is over 500 KB on its own, once: that is why it is never
 loaded unasked. "Download" is always beside it, and the service worker keeps the viewer after its first use.
+
+## As added: the package players (items 5.12, 5.13, 6 October 2026)
+
+| Package | Version | Licence | What for |
+|---|---|---|---|
+| `scorm-again` | 3.4.5 | MIT | The SCORM 1.2 and 2004 run-time in the web app (loaded only when a package is opened), and its cross-frame client inside the sandboxed player |
+| `h5p-standalone` | 3.8.2 | MIT | Playing H5P files inside the sandboxed player |
+
+Neither brings any dependency. h5p-standalone's distribution includes the Open Sans and Inter fonts (SIL Open
+Font Licence 1.1, a permissive font licence) for H5P's own styles. Both are copied at build time from their
+npm packages into `/players/` (`web/vite.config.ts`), beside the LMS's two small frame scripts in
+`web/public/players/`; the sandboxed pages load them from there, so nothing comes from a CDN. Caddy lets
+sandboxed frames read `/players/*` (they are public code). `node scripts/check_npm_licences.mjs` passes with no
+new exception. How they are used is in [ADR 0030](0030-packaged-content-as-built.md).
+
+| Measured with `npm run check:bundle` | |
+|---|---|
+| Shell, every page | 131.4 KB (unchanged) |
+| scorm-again run-time, SCORM 2004 / 1.2 | 77.1 KB / 19.2 KB, when a package of that version is opened |
+| h5p-standalone (frame bundle and main) | 46.0 KB and 7.4 KB, inside the H5P player only |
