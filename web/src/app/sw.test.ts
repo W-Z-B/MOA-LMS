@@ -4,10 +4,9 @@
  * seeks, and push notices (item 4.04).
  */
 
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { fakeCaches } from "../test/caches";
+import source from "../../public/sw.js?raw";
 
 type Listener = (event: Record<string, unknown>) => void;
 
@@ -24,7 +23,6 @@ function worker() {
   const network = vi.fn(async (): Promise<Response> => {
     throw new TypeError("Failed to fetch");
   });
-  const source = readFileSync(resolve(__dirname, "../../public/sw.js"), "utf8");
   new Function("self", "caches", "fetch", source)(self, stores, network);
 
   /** What the worker answers for a request, or the error it gives. */
