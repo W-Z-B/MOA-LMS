@@ -62,6 +62,7 @@ INSTALLED_APPS = [
     # Packaged content (SCORM, H5P), statements, the content library, course interchange (5.12 to 5.14, 6.08)
     "packages",
     "library",
+    "interchange",
 ]
 
 MIDDLEWARE = [

@@ -28,6 +28,7 @@ urlpatterns = [
     # --- packaged content, statements, the library and interchange (5.10, 5.12 to 5.14, 6.08, 6.09) ---
     path("api/v1/", include("packages.api")),
     path("api/v1/", include("library.api")),
+    path("api/v1/", include("interchange.api")),
     # --- end packaged content ---
     path("api/v1/", include("forums.api")),
     path("api/v1/", include("messaging.api")),
