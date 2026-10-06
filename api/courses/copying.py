@@ -196,6 +196,10 @@ def copy_content(source: CourseSite, target: CourseSite, offset: timedelta, requ
             except FileNotFoundError:
                 missing.append(item.title)
         copy.save()
+        if item.kind == ContentItem.Kind.PACKAGE:
+            from packages.services import copy_package  # items 5.12, 5.13: the package's settings too
+
+            copy_package(item, copy)
         copies[item.id] = copy
     mapping = {old: new.id for old, new in copies.items()}
     for item in items:

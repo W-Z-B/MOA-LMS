@@ -59,6 +59,8 @@ INSTALLED_APPS = [
     "attendance",
     "calendars",
     "rubrics",
+    # Packaged content (SCORM, H5P), statements, the content library, course interchange (5.12 to 5.14, 6.08)
+    "packages",
 ]
 
 MIDDLEWARE = [
@@ -279,3 +281,13 @@ ATTENDANCE_LATE_AFTER_MINUTES = int(env("ATTENDANCE_LATE_AFTER_MINUTES", "10"))
 # To do (items 2.07 to 2.09): days after which work to mark, and a decision, are marked overdue.
 MARKING_DAYS = int(env("MARKING_DAYS", "14"))
 DECISION_DAYS = int(env("DECISION_DAYS", "7"))
+
+# Packaged content (items 5.12, 5.13; ADR 0014): SCORM and H5P files put up as course items. A package is
+# checked before it is kept (packages/archive.py) and is never unpacked onto the disk. Its size counts against
+# the course's storage allowance. Caddy refuses request bodies over 60 MB: a larger UPLOAD_LIMIT_PACKAGE_MB
+# needs request_body raised in deploy/*Caddyfile* too.
+UPLOAD_LIMIT_PACKAGE_MB = int(env("UPLOAD_LIMIT_PACKAGE_MB", "50"))
+PACKAGE_MAX_ENTRIES = int(env("PACKAGE_MAX_ENTRIES", "10000"))
+PACKAGE_MAX_UNPACKED_MB = int(env("PACKAGE_MAX_UNPACKED_MB", "500"))
+# How long the signed address of a package's player lasts; opening the package again gives a new one.
+PACKAGE_PLAY_HOURS = int(env("PACKAGE_PLAY_HOURS", "8"))
