@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { Suspense, lazy, useCallback, useEffect, useState, type FormEvent } from "react";
 import { errorMessage, get, patch, post } from "../../api/client";
 import { canTeach, type Assignment, type Gradebook, type Licence, type Paginated, type SiteContents, type Submission } from "../../api/types";
 import { dmyTime } from "../../app/format";
@@ -6,8 +6,10 @@ import { useCrumb } from "../../app/frame";
 import { submitAssignmentText } from "../../app/offlineQueue";
 import { SITE_TABS, type SiteTab } from "../../app/router";
 import { SendState } from "../../app/SendState";
-import { LogbookTab } from "../practicals/LogbookTab";
-import { PracticalsTab } from "../practicals/PracticalsTab";
+
+// Practicals and the logbook are loaded only when their tab is opened, so they add nothing to the shell.
+const PracticalsTab = lazy(() => import("../practicals/PracticalsTab").then((m) => ({ default: m.PracticalsTab })));
+const LogbookTab = lazy(() => import("../practicals/LogbookTab").then((m) => ({ default: m.LogbookTab })));
 
 interface Props {
   siteId: number;
@@ -90,8 +92,10 @@ export function SiteScreen({ siteId, tab, onTab }: Props) {
       {tab === "assignments" && <AssignmentsTab siteId={siteId} teaching={teaching} />}
       {tab === "gradebook" && <GradebookTab siteId={siteId} />}
       {tab === "announcements" && <AnnouncementsTab data={data} teaching={teaching} onChanged={load} />}
-      {tab === "practicals" && <PracticalsTab siteId={siteId} teaching={teaching} />}
-      {tab === "logbook" && <LogbookTab siteId={siteId} teaching={teaching} />}
+      <Suspense fallback={<p className="loading">Loading…</p>}>
+        {tab === "practicals" && <PracticalsTab siteId={siteId} teaching={teaching} />}
+        {tab === "logbook" && <LogbookTab siteId={siteId} teaching={teaching} />}
+      </Suspense>
     </>
   );
 }
