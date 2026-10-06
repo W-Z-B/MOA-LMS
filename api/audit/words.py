@@ -41,6 +41,10 @@ RECORDS = {
     "staffdev.trainingassignment": "Required training assignment",
     "certificates.certificate": "Certificate",
     "certificates.certificatetemplate": "Certificate template",
+    "insights.outcome": "Learning outcome",
+    "insights.outcomelink": "Evidence for a learning outcome",
+    "insights.alert": "Early alert",
+    "insights.alertrule": "Early-alert rule",
 }
 ACTIONS = {
     "create": "Added",
@@ -96,6 +100,10 @@ ACTIONS = {
     "training_assigned": "Required training assigned",
     "training_renewal_due": "Required training due for renewal",
     "report_viewed": "Report viewed",
+    "report_exported": "Report exported",
+    "alert_acknowledged": "Early alert seen",
+    "alert_acted": "Early alert acted on",
+    "alert_dismissed": "Early alert dismissed",
     "certificate_issued": "Certificate issued",
     "certificate_withdrawn": "Certificate withdrawn",
     "certificate_checked": "Certificate checked",
