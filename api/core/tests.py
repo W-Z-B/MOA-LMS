@@ -88,6 +88,24 @@ def test_journey_data_signs_in_and_teaches_one_course(monkeypatch):
     assert [(s["title"], s["my_role"]) for s in sites] == [("Introduction to Crop Production", "student")]
     due = [w["title"] for w in client.get("/api/v1/home/").json()["student"]["due"]]
     assert due == ["Field notebook check"]  # due this week, not handed in
+    # Items 4.08 to 4.15: a question-and-answer forum where Kezia sees Tevin's answer only once she answers,
+    # two classes open for the register and check-in now, and a group she may join herself.
+    forums = {f["title"]: f for f in client.get("/api/v1/forums/").json()}
+    assert set(forums) == {"Questions on germination", "Class discussion"}
+    threads = client.get(f"/api/v1/forums/{forums['Questions on germination']['id']}/threads/").json()
+    shown = client.get(f"/api/v1/threads/{threads[0]['id']}/").json()
+    assert shown["replies_hidden"] is True and len(shown["posts"]) == 1
+    classes = client.get("/api/v1/class-sessions/", {"site": site.id}).json()["results"]
+    assert [c["title"] for c in classes] == [
+        "Field practical: seed sowing",
+        "Soil science lecture",
+        "Irrigation (online)",
+    ]
+    groups = client.get(f"/api/v1/sites/{site.id}/my-groups/").json()
+    assert [(g["name"], g["member"], g["open"]) for g in groups] == [
+        ("Lab group A", True, False),
+        ("Lab group B", False, True),
+    ]
 
     # The lecturer must give a code, computed from the fictional secret the journeys hold.
     lecturer = APIClient()

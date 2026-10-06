@@ -3,8 +3,13 @@ import { SIGNED_OUT_EVENT, get } from "./api/client";
 import { ADMIN_ROLES, hasAnyRole, type Me } from "./api/types";
 import { usesCampusSwitch } from "./app/people";
 import { Shell } from "./app/Shell";
-import { adminAddress, contentAddress, siteAddress, useHashRoute } from "./app/router";
+import { adminAddress, contentAddress, forumAddress, messageAddress, siteAddress, useHashRoute } from "./app/router";
 import { AccountScreen } from "./features/account/AccountScreen";
+import { CalendarScreen } from "./features/calendar/CalendarScreen";
+import { ForumScreen } from "./features/forums/ForumScreen";
+import { ForumsScreen } from "./features/forums/ForumsScreen";
+import { ThreadScreen } from "./features/forums/ThreadScreen";
+import { MessagesScreen } from "./features/messages/MessagesScreen";
 import { LoginScreen } from "./features/auth/LoginScreen";
 import { MyCoursesScreen } from "./features/courses/MyCoursesScreen";
 import { SiteScreen } from "./features/courses/SiteScreen";
@@ -86,6 +91,8 @@ export default function App() {
   const site = siteAddress(path);
   const content = contentAddress(path);
   const admin = adminAddress(path);
+  const forum = forumAddress(path);
+  const messages = messageAddress(path);
   const campus = usesCampusSwitch(me) ? campusCode : null;
   let screen;
   // Everyone opens on their own Home (item 2.07): what waits for them, and the pages their role uses.
@@ -103,6 +110,14 @@ export default function App() {
         onNavigate={navigate}
       />,
     );
+  // --- talk: forums, messages and the calendar (items 4.08 to 4.11, 2.32) ---
+  else if (forum?.thread) screen = <ThreadScreen key={forum.thread} forumId={forum.forum ?? 0} threadId={forum.thread} />;
+  else if (forum?.forum) screen = <ForumScreen key={forum.forum} forumId={forum.forum} onNavigate={navigate} />;
+  else if (forum) screen = <ForumsScreen />;
+  else if (messages)
+    screen = <MessagesScreen conversationId={messages.conversation} query={path.split("?")[1] ?? ""} onNavigate={navigate} />;
+  else if (path === "/calendar") screen = <CalendarScreen onNavigate={navigate} />;
+  // --- end talk ---
   else if (site)
     screen = (
       <SiteScreen

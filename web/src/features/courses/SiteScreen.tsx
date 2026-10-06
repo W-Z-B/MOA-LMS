@@ -6,6 +6,9 @@ import { useCrumb } from "../../app/frame";
 import { submitAssignmentText } from "../../app/offlineQueue";
 import { SITE_TABS, type SiteTab } from "../../app/router";
 import { SendState } from "../../app/SendState";
+import { ClassesTab } from "../attendance/ClassesTab";
+import { DiscussionTab } from "../forums/DiscussionTab";
+import { GroupsTab } from "../groups/GroupsTab";
 import { ContentTab } from "../content/ContentTab";
 
 interface Props {
@@ -20,6 +23,9 @@ const TAB_LABEL: Record<SiteTab, string> = {
   assignments: "Assignments",
   gradebook: "Gradebook",
   announcements: "Announcements",
+  discussion: "Discussion",
+  classes: "Classes",
+  groups: "Groups",
 };
 
 /**
@@ -87,6 +93,9 @@ export function SiteScreen({ siteId, tab, onTab }: Props) {
       {tab === "assignments" && <AssignmentsTab siteId={siteId} teaching={teaching} />}
       {tab === "gradebook" && <GradebookTab siteId={siteId} />}
       {tab === "announcements" && <AnnouncementsTab data={data} teaching={teaching} onChanged={load} />}
+      {tab === "discussion" && <DiscussionTab siteId={siteId} teaching={teaching} />}
+      {tab === "classes" && <ClassesTab siteId={siteId} teaching={teaching} />}
+      {tab === "groups" && <GroupsTab siteId={siteId} teaching={teaching} />}
     </>
   );
 }
