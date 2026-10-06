@@ -30,7 +30,8 @@ def test_seed_is_idempotent(seeded):
 
     before = (Role.objects.count(), CampusRef.objects.count())
     call_command("seed", "--country", "GY", verbosity=0)
-    assert (Role.objects.count(), CampusRef.objects.count()) == before == (6, 2)
+    # Eight roles: the first six, and Head of Department and Registrar (iam 0006, items 6.03, 6.04).
+    assert (Role.objects.count(), CampusRef.objects.count()) == before == (8, 2)
 
 
 @pytest.mark.django_db
