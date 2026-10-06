@@ -1,0 +1,112 @@
+/* The similarity report, peer review, paper quizzes, open short courses and the assessment guidance (items
+   3.20, 3.24, 4.13, 5.07, 6.13). Built on the tokens of index.css; nothing here may make a page wider than a
+   360px phone. */
+
+details.similarity {
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-control);
+  padding: 0 12px;
+  background: var(--card);
+}
+details.similarity > summary {
+  cursor: pointer;
+  font-weight: 600;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+.statement {
+  border-left: 3px solid var(--amber);
+  background: var(--warn-bg);
+  padding: 8px 12px;
+  border-radius: 0 var(--radius-control) var(--radius-control) 0;
+  font-size: 14px;
+}
+.overlap-figure {
+  font-size: 22px;
+  font-weight: 700;
+  margin: 4px 0;
+}
+.passages {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0;
+  display: grid;
+  gap: 10px;
+}
+.passage {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+  border-top: 1px solid var(--rule-soft);
+  padding-top: 8px;
+}
+.passage blockquote {
+  margin: 0;
+  padding: 6px 10px;
+  background: var(--stripe);
+  border-radius: var(--radius-control);
+  overflow-wrap: anywhere;
+  font-size: 14px;
+}
+.passage .side {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  margin: 0 0 2px;
+}
+@media (min-width: 700px) {
+  .passage {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* Keying a paper quiz: the grid scrolls inside its own box, never the page. */
+.key-grid {
+  overflow-x: auto;
+  max-width: 100%;
+}
+.key-grid table {
+  border-collapse: collapse;
+  min-width: 100%;
+}
+.key-grid th,
+.key-grid td {
+  border: 1px solid var(--rule);
+  padding: 4px 6px;
+  text-align: left;
+  vertical-align: top;
+}
+.key-grid input,
+.key-grid select {
+  min-width: 3.5em;
+  min-height: 44px;
+}
+.key-grid th[scope="row"] {
+  white-space: nowrap;
+}
+.key-card {
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-control);
+  padding: 10px 12px;
+  background: var(--card);
+}
+
+.course-card h3 {
+  margin: 0 0 4px;
+}
+.guide h2 {
+  margin-top: 24px;
+}
+.guide li {
+  margin: 4px 0;
+}
+.notice-text {
+  max-height: 16rem;
+  overflow-y: auto;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-control);
+  padding: 8px 12px;
+  background: var(--card);
+  white-space: pre-wrap;
+}

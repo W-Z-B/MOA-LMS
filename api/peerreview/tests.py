@@ -87,6 +87,8 @@ def test_setting_up_needs_a_rubric_individual_work_and_a_later_review_date(
     saved = teacher.put(url, {**body, "peer_weight": 20, "self_assessment": True}, format="json")
     assert saved.status_code == 200 and saved.json()["setup"]["peer_weight"] == "20.00"
     assert AuditLog.objects.filter(entity="peerreview.peerreviewsetup", action="create").exists()
+    shown = teacher.get(f"/api/v1/assignments/{assignment.id}/").json()["peer_review"]
+    assert shown["allocated"] is False and shown["released"] is False
     # Students may not set it up; they see their (empty) list of reviews.
     learner = client_for(student.user)
     assert learner.put(url, body, format="json").status_code == 403

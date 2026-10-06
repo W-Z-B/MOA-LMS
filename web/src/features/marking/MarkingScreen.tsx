@@ -9,6 +9,7 @@ import { Moderation } from "./Moderation";
 import { RubricMarker } from "./RubricMarker";
 import { filledMark, penaltyPercent } from "./score";
 import { SpreadsheetMarks } from "./SpreadsheetMarks";
+import { SimilarityPanel } from "../assess/SimilarityPanel";
 import "./marking.css";
 
 interface Props {
@@ -322,6 +323,7 @@ function OneSubmission({ assignment, rows, submission, open, onSaved, onGroupSav
           </form>
 
           <FeedbackFiles submission={submission} locked={locked} onChanged={(s) => onSaved(s, "Feedback file returned.")} />
+          <SimilarityPanel key={submission.id} submissionId={submission.id} />
           {assignment.is_group && submission.group && <GroupMark assignment={assignment} rows={rows} submission={submission} onSaved={onGroupSaved} />}
           {assignment.moderation !== "none" && (
             <Moderation submission={submission} assignment={assignment} moderation={history?.moderation ?? null} onChanged={(s) => {

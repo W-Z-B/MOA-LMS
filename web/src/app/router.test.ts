@@ -21,7 +21,7 @@ describe("pages by role", () => {
     const own = ["Home", "To do", "My courses", "Messages", "Calendar", "Discussion", "My data", "My account", "Notification settings"];
     expect(pagesFor(person(["student"], false, "student")).map((p) => p.label)).toEqual(own);
     expect(pagesFor(person([], false, null)).map((p) => p.label)).toEqual(own);
-    expect(pagesFor(person(["lecturer"])).map((p) => p.label)).toEqual([...own, "Staff development"]);
+    expect(pagesFor(person(["lecturer"])).map((p) => p.label)).toEqual([...own, "Staff development", "Assessment and AI"]);
     expect(pagesFor(person([])).map((p) => p.label)).toEqual([...own, "Staff development"]);
   });
 

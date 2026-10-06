@@ -4,7 +4,7 @@ import { SIGNED_OUT_EVENT, get } from "./api/client";
 import { ADMIN_ROLES, hasAnyRole, type Me } from "./api/types";
 import { usesCampusSwitch } from "./app/people";
 import { Shell } from "./app/Shell";
-import { adminAddress, contentAddress, forumAddress, messageAddress, siteAddress, useHashRoute } from "./app/router";
+import { adminAddress, assessAddress, contentAddress, forumAddress, messageAddress, siteAddress, useHashRoute } from "./app/router";
 import { AccountScreen } from "./features/account/AccountScreen";
 import { CalendarScreen } from "./features/calendar/CalendarScreen";
 import { ForumScreen } from "./features/forums/ForumScreen";
@@ -37,6 +37,14 @@ const CourseSetupScreen = lazy(() => import("./features/content/CourseSetupScree
 const TemplatesScreen = lazy(() => import("./features/course-admin/TemplatesScreen"));
 const TakedownsScreen = lazy(() => import("./features/course-admin/TakedownsScreen"));
 const StorageAllowancesScreen = lazy(() => import("./features/course-admin/StorageAllowancesScreen"));
+// --- assessment extras: peer review, open short courses and the guidance (items 4.13, 5.07, 6.13), on first use ---
+const PeerReviewScreen = lazy(() => import("./features/assess/PeerReviewScreen"));
+const ReviewWorkScreen = lazy(() => import("./features/assess/ReviewWorkScreen"));
+const AssessmentAndAi = lazy(() => import("./features/assess/AssessmentAndAi"));
+const OpenCoursesPage = lazy(() => import("./features/assess/OpenCourses"));
+const PublicOpenCourses = lazy(() => import("./features/assess/OpenCourses").then((m) => ({ default: m.PublicOpenCourses })));
+const OpenConfirmScreen = lazy(() => import("./features/assess/OpenCourses").then((m) => ({ default: m.OpenConfirmScreen })));
+// --- end assessment extras ---
 
 const later = (screen: ReactNode) => <Suspense fallback={<p className="loading">Opening…</p>}>{screen}</Suspense>;
 
@@ -104,9 +112,25 @@ export default function App() {
   const confirmEmail = path.match(/^\/confirm-email\/([^/]+)$/);
   if (confirmEmail) return <ConfirmEmailScreen token={confirmEmail[1]} onDone={() => navigate("/")} />;
   // --- end of accounts ---
+  // --- assessment extras: the emailed link to finish registering for open short courses (item 5.07) ---
+  const assess = assessAddress(path);
+  if (assess?.view === "open-confirm")
+    return later(
+      <OpenConfirmScreen
+        token={assess.token}
+        onDone={(username) => {
+          setKnownUsername(username);
+          setSignedOutReason("Your account is ready. Sign in with your email address and the password you chose.");
+          setMe(null);
+          navigate("/");
+        }}
+      />,
+    );
+  // --- end assessment extras ---
   if (me === undefined) return <p className="loading">Loading GSA LMS…</p>;
   if (me === null || (me.mfa_required && !me.mfa_verified)) {
     if (path === "/forgot-password") return <ForgotPasswordScreen onBack={() => navigate("/")} />;
+    if (assess?.view === "open-courses") return later(<PublicOpenCourses />); // the public short-course page (item 5.07)
     return (
       <LoginScreen
         key={knownUsername}
@@ -136,6 +160,13 @@ export default function App() {
   if (path === "/") screen = <HomeScreen me={me} onNavigate={navigate} />;
   else if (path === "/to-do") screen = <ToDoScreen onNavigate={navigate} />;
   else if (marking) screen = marking;
+  // --- assessment extras ---
+  else if (assess?.view === "peer-review")
+    screen = later(<PeerReviewScreen key={assess.assignmentId} siteId={assess.siteId} assignmentId={assess.assignmentId} />);
+  else if (assess?.view === "peer-work") screen = later(<ReviewWorkScreen key={assess.reviewId} siteId={assess.siteId} reviewId={assess.reviewId} />);
+  else if (assess?.view === "open-courses") screen = later(<OpenCoursesPage />);
+  else if (assess?.view === "help-ai") screen = later(<AssessmentAndAi />);
+  // --- end assessment extras ---
   else if (content?.view === "setup") screen = later(<CourseSetupScreen siteId={content.siteId} />);
   else if (content?.view === "page") screen = later(<PageScreen key={content.itemId} siteId={content.siteId} itemId={content.itemId} />);
   else if (content?.view === "edit")
