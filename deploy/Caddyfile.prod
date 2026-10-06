@@ -44,6 +44,9 @@
 	handle {
 		root * /srv/web
 		try_files {path} /index.html
+		# The package players (items 5.12, 5.13) are loaded by sandboxed frames, whose origin is their own:
+		# their fonts and files must be readable across origins. They are public code, never data.
+		header /players/* Access-Control-Allow-Origin "*"
 		# The web app loads only its own scripts, styles and data. Keep in step with
 		# deploy/railway/Caddyfile.
 		header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; manifest-src 'self'; worker-src 'self'; media-src 'self' blob:; object-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"

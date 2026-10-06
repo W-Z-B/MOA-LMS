@@ -90,6 +90,11 @@ export function Certificates({ me }: { me: Me }) {
                     Download (PDF)
                   </a>
                 )}
+                {c.badge_url && (
+                  <a className="button secondary" href={c.badge_url} aria-label={`Download the digital badge: ${c.reference}`}>
+                    Digital badge (for a wallet)
+                  </a>
+                )}
                 {withdraws && c.status !== "withdrawn" && (
                   <Withdraw
                     certificate={c}

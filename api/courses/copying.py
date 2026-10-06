@@ -201,6 +201,10 @@ def copy_content(source: CourseSite, target: CourseSite, offset: timedelta, requ
         if item.kind == ContentItem.Kind.VIDEO:
             copy.file_size = item.file_size  # the video's copies, poster and captions (item 4.06)
         copy.save()
+        if item.kind == ContentItem.Kind.PACKAGE:
+            from packages.services import copy_package  # items 5.12, 5.13: the package's settings too
+
+            copy_package(item, copy)
         if item.kind == ContentItem.Kind.VIDEO:
             try:
                 copy_video(item, copy, user)

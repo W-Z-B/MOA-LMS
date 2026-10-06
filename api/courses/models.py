@@ -115,6 +115,7 @@ class ContentItem(ReleaseConditions, TimeStampedModel):
         PAGE = "page", "Page"
         FILE = "file", "File"
         LINK = "link", "Link"
+        PACKAGE = "package", "SCORM or H5P package"
         # Lecture video (item 4.06): its copies and captions are a video.Video; file_size counts them all.
         VIDEO = "video", "Video"
 
@@ -171,6 +172,7 @@ class ItemCompletion(models.Model):
         VIEWED = "viewed", "Viewed"
         DOWNLOADED = "downloaded", "Downloaded"
         MARKED = "marked", "Marked as complete"
+        PACKAGE = "package", "Completed in the package"
 
     person = models.ForeignKey("people.PersonRef", on_delete=models.CASCADE, related_name="item_completions")
     item = models.ForeignKey(ContentItem, on_delete=models.CASCADE, related_name="completions")

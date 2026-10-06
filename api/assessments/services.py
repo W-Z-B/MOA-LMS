@@ -163,6 +163,23 @@ def _forum_items(site, person, released_only) -> list[Item]:
     ]
 
 
+def _package_items(site, person) -> list[Item]:
+    from packages.services import coursework_packages
+
+    return [
+        Item(
+            "package",
+            package.id,
+            package.item.title,
+            package.grade_category_id,
+            package.weight,
+            fraction,
+            state,
+        )
+        for package, fraction, state in coursework_packages(site, person)
+    ]
+
+
 def _tool_items(site, person) -> list[Item]:
     """Gradebook columns that outside tools post scores to (item 6.07), where they carry a weight."""
     from lti.services import coursework_line_items
@@ -181,6 +198,7 @@ def coursework_working(site, person, *, released_only: bool = False, now=None) -
         + _quiz_items(site, person, released_only, now)
         + _practical_items(site, person, released_only, now)
         + _forum_items(site, person, released_only)
+        + _package_items(site, person)
         + _tool_items(site, person)
     )
     loaded = preload.current(site)
@@ -242,6 +260,7 @@ def coursework_percent(site, person, *, released_only: bool = False, now=None) -
     as zero; a task not yet observed (or not released, for the student's own view) is pending.
     A graded forum with a weight counts by the participation mark; with none given (or released) it is
     pending.
+    A SCORM or H5P package with a weight counts by the learner's best scored attempt (packages.services).
     Categories, when the site has them, weight the parts (module docstring).
     """
     return coursework_working(site, person, released_only=released_only, now=now)["_total"]
@@ -310,7 +329,7 @@ def gradebook(site, *, only_person=None, released_only: bool = False) -> dict:
                     for i in working["items"]
                     if i["kind"] == kind
                 }
-                for kind in ("practical", "forum")
+                for kind in ("practical", "forum", "package")
             }
             rows.append(
                 {
@@ -321,6 +340,7 @@ def gradebook(site, *, only_person=None, released_only: bool = False) -> dict:
                     "quizzes": quiz_marks,
                     "practicals": others["practical"],
                     "forums": others["forum"],
+                    "packages": others["package"],
                     "tools": tool_cells(site, person),
                     "categories": {str(c["id"]): c["percent"] for c in working["categories"] if c["id"]},
                     "coursework_percent": working["coursework_percent"],
@@ -362,6 +382,7 @@ def gradebook(site, *, only_person=None, released_only: bool = False) -> dict:
             {"id": f.id, "title": f.title, "weight": str(f.weight), "category": f.grade_category_id}
             for f in site.forums.filter(is_published=True, forum_type="graded", weight__gt=0)
         ],
+        "packages": _package_columns(site),
         "tools": [
             {
                 "id": li.id,
@@ -374,6 +395,16 @@ def gradebook(site, *, only_person=None, released_only: bool = False) -> dict:
         ],
         "rows": rows,
     }
+
+
+def _package_columns(site) -> list[dict]:
+    from packages.models import ContentPackage
+
+    packages = ContentPackage.objects.filter(item__module__site=site, item__is_published=True, weight__gt=0)
+    return [
+        {"id": p.id, "title": p.item.title, "weight": str(p.weight), "category": p.grade_category_id}
+        for p in packages.select_related("item").order_by("item__module__position", "item__position", "id")
+    ]
 
 
 def _srms_state(site, person) -> dict | None:

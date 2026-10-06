@@ -274,3 +274,28 @@ describe("the Content tab for students (item 2.16)", () => {
     expect(screen.getByText("No content yet.")).toBeInTheDocument();
   });
 });
+
+// --- packaged content (items 5.12 to 5.14, 6.08) ---
+describe("packages and the library in the Content tab", () => {
+  const withPackage = module(1, "Week 1: Soils", [item(14, 1, "Soil testing", { kind: "package", download_url: "/api/v1/content/14/download/" })]);
+
+  it("links a package to its player, and teaching staff to its settings, the library and the import screen", async () => {
+    fakeServer({ "GET /groups/": { body: { count: 0, next: null, previous: null, results: [] } } });
+    render(<ContentTab data={asSite(contents([withPackage]))} teaching onChanged={vi.fn()} />);
+    expect(screen.getByRole("link", { name: "Soil testing" })).toHaveAttribute("href", "#/sites/9/packages/14");
+    expect(screen.getByRole("link", { name: "Import or export content" })).toHaveAttribute("href", "#/sites/9/transfer");
+    expect(screen.getByRole("link", { name: "From the library" })).toHaveAttribute("href", "#/library");
+    await userEvent.click(screen.getByRole("button", { name: "Change “Soil testing”" }));
+    expect(screen.getByRole("link", { name: "Package settings and results" })).toHaveAttribute("href", "#/sites/9/packages/14");
+    expect(screen.getByRole("link", { name: "Share to the library" })).toHaveAttribute("href", "#/library/share?item=14");
+    await userEvent.click(screen.getByRole("button", { name: "Add a SCORM or H5P package" }));
+    expect(await screen.findByRole("form", { name: "Add a SCORM or H5P package" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+  });
+
+  it("does not let a student mark a package complete: finishing it does", () => {
+    render(<ContentTab data={asSite(contents([withPackage], "student"))} teaching={false} onChanged={vi.fn()} />);
+    expect(screen.queryByRole("button", { name: "Mark “Soil testing” complete" })).not.toBeInTheDocument();
+  });
+});
+// --- end packaged content ---
