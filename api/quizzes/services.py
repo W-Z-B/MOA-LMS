@@ -229,6 +229,14 @@ def effective(quiz: Quiz, person) -> Effective:
     if override and override.closes_at:
         closes_at = override.closes_at
     limit = quiz.time_limit_minutes
+    if limit and person:
+        # A student's accommodation adds its percentage to every time limit (item 3.23), before any
+        # extra minutes the teaching staff give for this quiz alone.
+        from assessments.rules import extra_time_percent
+
+        percent = extra_time_percent(person)
+        if percent:
+            limit = math.ceil(limit * (100 + percent) / 100)
     if limit and override:
         limit += override.extra_minutes
     allowed = 0 if quiz.is_practice else quiz.attempts_allowed

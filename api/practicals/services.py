@@ -30,19 +30,29 @@ def coursework_items(
     A failed critical criterion does not by itself make the fraction 0: the mark reports the checklist, and
     the competency record (CompetencyResult) reports whether the unit was met.
     """
+    return [
+        (task.weight, fraction)
+        for task, fraction, _ in coursework_tasks(site, student, released_only=released_only, now=now)
+    ]
+
+
+def coursework_tasks(site, student, *, released_only: bool = False, now=None) -> list[tuple]:
+    """coursework_items with the task and its state, for the working of the total (items 2.28, 2.30):
+    (task, fraction, state), state being "graded", "zero" (closed, never observed), "pending" (observed,
+    not released for the student's own view) or "not_due" (not yet observed and still open)."""
     now = now or timezone.now()
-    items: list[tuple[Decimal, Decimal | None]] = []
+    items: list[tuple] = []
     tasks = site.practical_tasks.filter(is_published=True, weight__gt=0)
     for task in tasks:
         observations = task.observations.filter(student=student)
         counted = observations.filter(is_released=True) if released_only else observations
         latest = counted.order_by("-attempt").prefetch_related("results__criterion").first()
         if latest is not None:
-            items.append((task.weight, latest.fraction()))
+            items.append((task, latest.fraction(), "graded"))
         elif not observations.exists() and task.closes_at is not None and task.closes_at < now:
-            items.append((task.weight, Decimal(0)))
+            items.append((task, Decimal(0), "zero"))
         else:
-            items.append((task.weight, None))
+            items.append((task, None, "pending" if observations.exists() else "not_due"))
     return items
 
 

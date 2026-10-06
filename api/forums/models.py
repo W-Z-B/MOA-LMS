@@ -38,9 +38,23 @@ class Forum(TimeStampedModel):
         "count",
     )
     max_mark = models.DecimalField(max_digits=6, decimal_places=2, default=10)
-    # The rubric a participation mark is given against (item 4.10). Rubrics are not built yet (item 2.2x),
-    # so this is a plain id with no foreign key; it becomes one when the rubric model exists.
-    rubric_id = models.PositiveIntegerField(null=True, blank=True, help_text="Rubric to mark against, if any")
+    # The rubric a participation mark is given against (item 4.10): one of the site's rubrics (3.09).
+    rubric = models.ForeignKey(
+        "rubrics.Rubric",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        help_text="Rubric to mark against, if any",
+    )
+    grade_category = models.ForeignKey(
+        "assessments.GradeCategory",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="forums",
+        help_text="The gradebook category it counts in (item 2.28)",
+    )
 
     class Meta:
         ordering = ["site", "title", "id"]
@@ -188,8 +202,13 @@ class ParticipationMark(TimeStampedModel):
     student = models.ForeignKey("people.PersonRef", on_delete=models.CASCADE, related_name="forum_marks")
     mark = models.DecimalField(max_digits=6, decimal_places=2)
     feedback = models.TextField(blank=True)
-    rubric_id = models.PositiveIntegerField(
-        null=True, blank=True, help_text="Rubric used, if any (no link yet)"
+    rubric = models.ForeignKey(
+        "rubrics.Rubric",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        help_text="Rubric used",
     )
     is_released = models.BooleanField(default=False)
 

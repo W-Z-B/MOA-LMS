@@ -10,7 +10,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from core.serializers import ErrorSerializer
-from notifications.models import Notification
+from notifications.models import Notification, NotificationPreference
 
 
 class NotificationSerializer(serializers.ModelSerializer):
@@ -73,8 +73,62 @@ def mark_all_read(request):
     return Response({"marked": count})
 
 
+class PreferenceSerializer(serializers.Serializer):
+    kind = serializers.ChoiceField(choices=Notification.Kind.choices)
+    label = serializers.CharField(read_only=True)
+    in_app = serializers.BooleanField(
+        read_only=True, help_text="Always true: every notification is in the app"
+    )
+    email = serializers.ChoiceField(
+        choices=NotificationPreference.Email.choices, help_text="instant, daily (in the summary) or off"
+    )
+    push = serializers.BooleanField(help_text="Phone push; kept now, sent once push notices arrive")
+
+
+def _preferences(user) -> list[dict]:
+    held = {p.kind: p for p in NotificationPreference.objects.filter(user=user)}
+    rows = []
+    for kind, label in Notification.Kind.choices:
+        pref = held.get(kind)
+        rows.append(
+            {
+                "kind": kind,
+                "label": label,
+                "in_app": True,
+                "email": pref.email if pref else NotificationPreference.Email.INSTANT,
+                "push": pref.push if pref else False,
+            }
+        )
+    return rows
+
+
+@extend_schema(
+    methods=["GET"],
+    responses=PreferenceSerializer(many=True),
+    summary="My notification settings, one row per kind of notification (item 2.33)",
+)
+@extend_schema(
+    methods=["PUT"],
+    request=PreferenceSerializer(many=True),
+    responses={200: PreferenceSerializer(many=True), 400: ErrorSerializer},
+    summary="Change my notification settings; kinds not sent keep their setting",
+)
+@api_view(["GET", "PUT"])
+@permission_classes([IsAuthenticated])
+def preferences(request):
+    if request.method == "PUT":
+        data = PreferenceSerializer(data=request.data, many=True)
+        data.is_valid(raise_exception=True)
+        for row in data.validated_data:
+            NotificationPreference.objects.update_or_create(
+                user=request.user, kind=row["kind"], defaults={"email": row["email"], "push": row["push"]}
+            )
+    return Response(_preferences(request.user))
+
+
 urlpatterns = [
     path("", list_notifications, name="notification-list"),
+    path("preferences/", preferences, name="notification-preferences"),
     path("read-all/", mark_all_read, name="notification-read-all"),
     path("<int:pk>/read/", mark_read, name="notification-read"),
 ]

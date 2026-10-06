@@ -98,7 +98,8 @@ def sync_sites(*, current_only: bool = True) -> dict:
 
 
 def push_marks(site: CourseSite) -> dict:
-    """Send each student's coursework percentage to the SRMS. The SRMS reports which it accepted."""
+    """Send each student's coursework percentage to the SRMS. The SRMS reports which it accepted; "sent"
+    lists what was sent, so the LMS can keep it and lock those marks (items 2.31, 3.18)."""
     if site.source != CourseSite.Source.SRMS:
         return {"offering_code": site.code, "skipped": "not an SRMS offering"}
     marks = []
@@ -110,8 +111,9 @@ def push_marks(site: CourseSite) -> dict:
         if percent is not None:
             marks.append({"student_no": membership.person.external_id, "mark": str(percent)})
     if not marks:
-        return {"offering_code": site.code, "accepted": [], "locked": [], "unknown": []}
-    return _srms("/api/v1/integration/coursework-marks/", data={"offering_code": site.code, "marks": marks})
+        return {"offering_code": site.code, "accepted": [], "locked": [], "unknown": [], "sent": []}
+    result = _srms("/api/v1/integration/coursework-marks/", data={"offering_code": site.code, "marks": marks})
+    return {**result, "sent": marks}
 
 
 def push_attendance(site: CourseSite) -> dict:

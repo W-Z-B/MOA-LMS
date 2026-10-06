@@ -6,8 +6,8 @@ from decimal import Decimal
 import pytest
 from django.utils import timezone
 
-from assessments.models import Mark, Submission
-from assessments.services import coursework_percent
+from assessments.models import GradeCategory, Mark, Submission
+from assessments.services import coursework_percent, coursework_working
 from quizzes import services
 from quizzes.models import Attempt, Quiz
 
@@ -100,3 +100,17 @@ def test_gradebook_has_quiz_columns_and_submits_timed_out_attempts(
     assert row["coursework_percent"] == "100.00"
     own = client_for(student.user).get(f"/api/v1/sites/{site.id}/gradebook/").json()
     assert len(own["rows"]) == 1 and own["rows"][0]["quizzes"][str(quiz.id)]["percent"] == "100.00"
+
+
+@pytest.mark.django_db
+def test_a_quiz_can_be_placed_in_a_gradebook_category(site, student, make_question, make_quiz):
+    category = GradeCategory.objects.create(site=site, name="Quizzes", weight=1)
+    quiz = make_quiz([make_question()], attempts_allowed=0)
+    quiz.grade_category = category
+    quiz.save()
+    attempt, _ = services.start_attempt(quiz, student, student.user)
+    services.save_answer(attempt, 1, {"choice": "a"})
+    services.submit_attempt(attempt)
+    working = coursework_working(site, student)
+    item = next(i for i in working["items"] if i["kind"] == "quiz")
+    assert item["category"] == category.id and working["categories"][0]["percent"] == "100.00"

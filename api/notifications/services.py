@@ -1,4 +1,8 @@
-"""Create notifications and deliver them by email. Synchronous for now; a worker task can take over later."""
+"""Create notifications and deliver them by email. Synchronous for now; a worker task can take over later.
+
+Each person chooses, kind by kind, whether a notification also comes by email at once, in a daily summary,
+or not by email at all (item 2.33). The notification itself always appears in the app.
+"""
 
 import logging
 from collections.abc import Iterable
@@ -8,10 +12,12 @@ from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
 from django.db import IntegrityError, transaction
 from django.db.models import Q
+from django.utils import timezone
 
-from notifications.models import Notification
+from notifications.models import Notification, NotificationPreference
 
 log = logging.getLogger(__name__)
+SUMMARY_LISTED = 50  # notifications listed in one summary email; the rest are counted
 
 
 def users_with_role(role_code: str, *, campus_code: str | None = None):
@@ -20,6 +26,14 @@ def users_with_role(role_code: str, *, campus_code: str | None = None):
     if campus_code:
         qs = qs.filter(Q(role_scopes__campus_code=campus_code) | Q(role_scopes__campus_code=""))
     return qs.distinct()
+
+
+def email_choice(user, kind: str) -> str:
+    """How the person wants this kind by email: instant (the default), daily or off."""
+    choice = (
+        NotificationPreference.objects.filter(user=user, kind=kind).values_list("email", flat=True).first()
+    )
+    return choice or NotificationPreference.Email.INSTANT
 
 
 def notify(
@@ -32,24 +46,53 @@ def notify(
     dedupe_key: str = "",
     email: bool = True,
 ) -> list[Notification]:
-    """Create one notification per recipient (once per dedupe_key) and email those with an address."""
+    """Create one notification per recipient (once per dedupe_key) and email those with an address, as
+    each person has chosen for this kind."""
     created: list[Notification] = []
     for user in recipients:
         if user is None:
             continue
+        choice = email_choice(user, kind) if email and user.email else NotificationPreference.Email.OFF
         try:
             with transaction.atomic():
                 note = Notification.objects.create(
-                    recipient=user, kind=kind, title=title, body=body, link=link, dedupe_key=dedupe_key
+                    recipient=user,
+                    kind=kind,
+                    title=title,
+                    body=body,
+                    link=link,
+                    dedupe_key=dedupe_key,
+                    in_summary=choice == NotificationPreference.Email.DAILY,
                 )
         except IntegrityError:
             continue  # already sent for this key
-        if email and user.email:
+        if choice == NotificationPreference.Email.INSTANT:
             note.emailed = _send_email(user.email, title, body, link)
             if note.emailed:
                 note.save(update_fields=["emailed"])
         created.append(note)
     return created
+
+
+def send_daily_summaries(now=None) -> int:
+    """One email to each person with notifications held for their summary; returns how many were sent."""
+    now = now or timezone.now()
+    held = Notification.objects.filter(in_summary=True, summarised_at__isnull=True).select_related(
+        "recipient"
+    )
+    by_user: dict = {}
+    for note in held.order_by("recipient_id", "created_at"):
+        by_user.setdefault(note.recipient, []).append(note)
+    sent = 0
+    for user, notes in by_user.items():
+        lines = [f"- {n.title}" + (f": {n.body}" if n.body else "") for n in notes[:SUMMARY_LISTED]]
+        if len(notes) > SUMMARY_LISTED:
+            lines.append(f"... and {len(notes) - SUMMARY_LISTED} more in the app.")
+        title = f"Your daily summary: {len(notes)} notification{'s' if len(notes) != 1 else ''}"
+        emailed = bool(user.email) and _send_email(user.email, title, "\n".join(lines), "/notifications")
+        Notification.objects.filter(id__in=[n.id for n in notes]).update(summarised_at=now, emailed=emailed)
+        sent += int(emailed)
+    return sent
 
 
 def _send_email(address: str, title: str, body: str, link: str) -> bool:
