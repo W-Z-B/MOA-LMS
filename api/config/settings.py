@@ -60,6 +60,7 @@ INSTALLED_APPS = [
     "calendars",
     "rubrics",
     "similarity",
+    "peerreview",
 ]
 
 MIDDLEWARE = [
