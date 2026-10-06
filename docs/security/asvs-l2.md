@@ -1,9 +1,10 @@
 # Review against OWASP ASVS Level 2
 
-**Version 1.1, 6 October 2026,** checklist item 7.01. Prepared by the development team; reviewed at every
-release gate and when the code changes in a way this review covers. Version 1.0 was the first pass; this
-version checks again every row the fixes, the operations work and the merge of `main` touched (see
-[What changed since version 1.0](#what-changed-since-version-10)).
+**Version 1.2, 6 October 2026,** checklist item 7.01. Prepared by the development team; reviewed at every
+release gate and when the code changes in a way this review covers. Version 1.0 was the first pass; version
+1.1 checked again every row the fixes, the operations work and the merge of `main` touched (see
+[What changed since version 1.0](#what-changed-since-version-10)); this version records the hardening on
+branch `feature/finish-hardening` (see [What changed in version 1.2](#what-changed-in-version-12)).
 
 ## What this is
 
@@ -36,27 +37,26 @@ out, which leaves the 257 requirements counted below. Where several requirements
 
 ## Summary
 
-| Status | Version 1.0 | Now |
-|---|---|---|
-| Met | 163 | 182 |
-| Partly met | 54 | 41 |
-| Not met | 15 | 11 |
-| Not applicable | 25 | 23 |
-| **Total (Level 1 and Level 2)** | **257** | **257** |
+| Status | Version 1.0 | Version 1.1 | Now (1.2) |
+|---|---|---|---|
+| Met | 163 | 182 | 190 |
+| Partly met | 54 | 41 | 33 |
+| Not met | 15 | 11 | 11 |
+| Not applicable | 25 | 23 | 23 |
+| **Total (Level 1 and Level 2)** | **257** | **257** | **257** |
 
-No finding is judged critical. The ones that matter most now are: records other than roles and
-authenticators (marks among them) can be changed in the Django admin site without an entry in the chained
-audit log (7.1.3, 4.3.3); the application still connects to PostgreSQL as the superuser that could switch
-off the audit log's protection (1.2.1); a small Word or PowerPoint file read for AI drafting can exhaust the
-API's memory (12.1.2); the API documentation page runs a script from a public CDN at "latest" (10.3.2);
-and `FIELD_ENCRYPTION_KEY` cannot be changed at all (1.6.3, 6.2.4).
+No finding is judged critical. The ones that matter most now are: the application still connects to
+PostgreSQL as the superuser that could switch off the audit log's protection (1.2.1); and the API
+documentation page runs a script from a public CDN at "latest" (10.3.2). The admin site's unaudited changes,
+the Word and PowerPoint zip bomb, the fixed encryption key, server-side request forgery through key-set
+addresses and redirects, an extension's reason in the audit log and the production stack's development
+settings are fixed in version 1.2.
 
 **Still not done, checked again on 6 October 2026:** the least-privilege database role (1.2.1), `__Host-`
-cookie names (3.4.4), a virus scan of uploads (12.4.2), a list of encryption keys (`MultiFernet`) so the key
-can be changed (1.6.3, 6.2.4), base images pinned by digest (1.14.2), passkeys (2.3.2), a password strength
-indicator and a show-password control (2.1.8, 2.1.12), a list of leaked passwords (2.1.7), `includeSubDomains`
-on HSTS (14.4.5), `Content-Disposition` on API answers (14.4.2), a pepper (2.4.5), a quota per student
-(12.1.3), a check on humanly possible times (11.1.2), the missing retention rules (8.3.8), audit of staff
+cookie names (3.4.4), a virus scan of uploads (12.4.2), base images pinned by digest (1.14.2), passkeys
+(2.3.2), a password strength indicator and a show-password control (2.1.8, 2.1.12), a list of leaked
+passwords (2.1.7), `includeSubDomains` on HSTS (14.4.5), `Content-Disposition` on API answers (14.4.2), a
+pepper (2.4.5), a quota per student (12.1.3), a check on humanly possible times (11.1.2), the missing retention rules (8.3.8), audit of staff
 viewing students' work (8.3.5), and the definition of done (1.1.2, 1.1.7). Each is in the table below.
 
 ### What changed since version 1.0
@@ -93,6 +93,68 @@ Newly found in this pass, not in version 1.0: the Django admin site's other mode
 Office files read whole for AI drafting (3), the documentation page's script from a CDN (4), and the
 production override's ports and source mount (8).
 
+### What changed in version 1.2
+
+Built and tested on branch `feature/finish-hardening` (from `main` at `1ae246f`, with `main` merged in at
+`cfdbb58`). Each item below closes a row of the list that follows, which keeps its numbers.
+
+- **The Django admin site is audited (to fix 1; 7.1.3, 4.3.3).** `iam/admin_site.py` `LmsAdminSite.register`
+  mixes `AuditedAdmin` (`iam/admin_audit.py`) into every model admin, whichever app registers it, Django's
+  own User and Group included: every add, change and removal, rows edited inline, many-to-many choices (an
+  account's groups and permissions) and the admin's own password form write a chained audit entry, with
+  "Django admin" as the reason. The snapshot masks encrypted fields, and now also password hashes and
+  service key hashes (`audit/services.py` `SECRET_FIELDS`). Marks and handed-in work are read-only in the
+  admin (`assessments/admin.py`). Tests `iam/test_admin_audit.py`.
+- **Zip bombs (to fix 3; 12.1.2).** `core/archives.py` checks every uploaded zip before anything is
+  unpacked, and is used by AI drafting, the similarity check, question packages and the package and course
+  importers. Tests with a crafted zip bomb, 60 KB unpacking to 64 MB (`core/test_archives.py`).
+- **An extension's reason (to fix 5; 7.1.2)** is masked in the audit entry, as an accommodation's is
+  (`assessments/arrangements_api.py` `ExtensionViewSet.kept`).
+- **Outbound requests (to fix 6; 5.2.6, 12.6.1).** One guarded way out, `core/outbound.py`, for the
+  sibling client, tools' key sets, the AI model and push notices: no redirects, no proxies, no private
+  address from data, checked on the address connected to. **The HRMS, SRMS and AI model addresses are set by
+  the operator and may be on GSA's private network:** their hosts are allowed by the setting
+  `OUTBOUND_PRIVATE_HOSTS` (by default the hosts of `HRMS_API_URL`, `SRMS_API_URL` and `AI_OLLAMA_URL`), and
+  only for those calls; nothing a person types can reach a private address. Tests `core/test_outbound.py`.
+- **The encryption key can be changed (to fix 7; 1.6.3, 6.2.4).** `FIELD_ENCRYPTION_KEYS` (newest first),
+  `manage.py rotate_field_key`, and a chain check that accepts the key of any period: an old key moves to
+  `AUDIT_CHAIN_RETIRED_KEYS` once nothing is encrypted with it, where it verifies the entries it sealed and
+  nothing else (as the HRMS's `core/crypto.py` says: keep the old key for the chain). Keys only get newer
+  along the chain, so the holder of a retired key cannot seal later entries. Tests
+  `core/test_key_rotation.py`; procedure in `docs/runbook.md`.
+- **The production stack (to fix 8; 1.14.1, 14.1.3).** `deploy/compose.prod.yml`: gunicorn
+  (`api/config/gunicorn.py`), the job worker, health checks and restart policies, read-only containers,
+  unprivileged users, no new privileges, ports 80 and 443, no source mounted, secrets only from `.env`, the
+  admin's style sheets served by Caddy, rotated logs; Caddy waits 60 seconds for an API answer and 15
+  minutes only after a lecture video upload. Checked with `docker compose ... config` and a real `up`
+  (health answered through Caddy), then `down -v`.
+- **Scheduled jobs at Guyana time.** Procrastinate (3.10) reads cron lines in UTC, so the 17:00 daily summary
+  went at 13:00. Every periodic job goes through `core/schedule.py`, which shifts local hours to UTC (Guyana
+  keeps UTC−4 all year); `core/test_schedule.py` checks each job's local time.
+- **The auditor and the Data Protection Officer verify an authenticator code** (threat model, "A password
+  alone opening everyone's records"): both roles are in `Role.MFA_REQUIRED`. The self-registered learner of
+  an open course is not.
+
+### The auditor's reading
+
+Item 1.02 says the auditor reads everything. Version 1.1's permission table left the auditor out of several
+teaching-only reads "for GSA to decide". The safe default taken in version 1.2, checked against
+`docs/privacy/dpia.md` (section 3.3 lists the auditor among the recipients, read-only) and the privacy
+notice:
+
+- **The auditor now reads, and cannot change:** the content library (items, files, department question
+  banks); a course's analytics, every student's progress and one student's progress, the outcomes, their
+  standings and the evidence that can be linked; and the early-alert rules. Each change is still refused
+  (`library/api.py` `may_open`, `insights/api.py` `_reading_site`; tests `library/tests.py`,
+  `insights/tests/test_analytics.py`; `config/test_permission_table.py`).
+- **Still not the auditor:** the early alerts themselves. An alert is a label about one student, for the
+  people who teach them, and the impact assessment says the student never sees one (section 5): keeping it
+  among those who act on it is data minimisation. The auditor sees that alerts were raised, acknowledged or
+  dismissed in the audit log, and how many are open in the class progress.
+- **Left as they are, for GSA to confirm:** other reads written for teaching staff only, such as question
+  banks, rubrics, quiz statistics and attempt events, observations and the marking lists, which the auditor
+  reads through the gradebook and the audit log instead.
+
 ## Not met: to fix
 
 In order of importance. The list holds every requirement not met, and every one partly met, whose gap can be
@@ -100,14 +162,14 @@ closed in this repository's code or configuration; the file to change is named.
 
 | # | Requirement | What is missing | Where | Suggested fix |
 |---|---|---|---|---|
-| 1 | 7.1.3, 4.3.3 | Only roles and authenticators are audited in the Django admin site. Marks, submissions, assignments, course sites, memberships, content, people, service clients, notifications and accounts (the Active, Staff and Superuser flags) are registered there with Django's plain admin, so a change made there leaves no entry in the chained audit log | `api/assessments/admin.py`, `api/courses/admin.py`, `api/people/admin.py`, `api/integration/admin.py`, `api/notifications/admin.py`; Django's own `User` admin | Register each with `AuditedAdmin` (`iam/admin.py`), make marks and submissions read-only there, and remove from the admin what the web app already does; audit changes to an account's flags |
+| 1 | 7.1.3, 4.3.3 | **Fixed in version 1.2.** Every model admin is audited, Django's own included; marks and submissions are read-only there | `api/iam/admin_audit.py`, `api/iam/admin_site.py`, `api/assessments/admin.py` | Done |
 | 2 | 1.2.1 | The API connects to PostgreSQL as the user the image creates, which owns the tables and is a superuser: it could switch off the audit log's trigger | `compose.yml`, `deploy/compose.prod.yml`; an init script for `db` | Run migrations as the owner and the application as a role with only SELECT, INSERT, UPDATE, DELETE, and no right to alter the audit table |
-| 3 | 12.1.2 | AI drafting reads each part of a Word or PowerPoint file whole (`package.read`) before cutting it to 2 MB, so a small file that unpacks to gigabytes exhausts the memory of the API process | `api/assist/services.py` `_office_text` | Read through `package.open(name).read(2_000_000)`, and refuse a part whose declared size (`ZipInfo.file_size`) is over a limit |
+| 3 | 12.1.2 | **Fixed in version 1.2.** Every uploaded zip is checked before it is unpacked, AI drafting and the similarity check included | `api/core/archives.py` | Done |
 | 4 | 10.3.2, 14.2.3 | The API documentation page loads Swagger UI from jsDelivr at "latest", with no integrity check, on the LMS's own origin, where a signed-in person's session works | `api/config/settings.py` `SPECTACULAR_SETTINGS`; `config/urls.py` | Serve Swagger UI from the image (`drf-spectacular-sidecar`, BSD, within the licence policy), or switch the documentation off in production |
-| 5 | 7.1.2 | An extension's reason, which may describe an illness, is copied in clear into the audit entry's reason and snapshot | `api/assessments/arrangements_api.py` (the extension's `perform_create`) | Record that a reason was given, as `_kept` does for accommodations |
-| 6 | 5.2.6, 12.6.1 | A tool's key-set address may be any https host a course administrator enters; the server fetches it and follows redirects, including to private addresses and plain http. The sibling client follows redirects too, and Python's `urllib` sends the `Authorization` header on to the new host | `api/lti/keys.py` `fetch_json`; `api/integration/client.py` `call` | Refuse redirects in both (a handler that raises on 3xx); refuse key-set addresses on private or loopback networks |
-| 7 | 1.6.3, 6.2.4 | `FIELD_ENCRYPTION_KEY` cannot be changed: one key only, and the audit chain's key derives from it, so a new key would make every encrypted value unreadable and every earlier entry fail the chain check | `api/core/crypto.py`; `api/audit/chain.py` | Accept a list of keys (`MultiFernet`): encrypt with the newest, read with any; a management command re-encrypts in the background; record which key sealed each run of the chain so the check uses the right one |
-| 8 | 1.14.1, 14.1.3 | The production override keeps the development ports (8082, 8445) and the host's `./api` mounted over the image's code in the API and the worker; nothing serves the admin site's static files | `deploy/compose.prod.yml`; `api/Dockerfile` | `ports: !override` with 80 and 443 for Caddy, `volumes: !override` for `api` and `worker`; `collectstatic` in the image and a server for `/static/` (the runbook gives the interim override) |
+| 5 | 7.1.2 | **Fixed in version 1.2.** An extension's reason is masked as an accommodation's is | `api/assessments/arrangements_api.py` | Done |
+| 6 | 5.2.6, 12.6.1 | **Fixed in version 1.2.** One guarded way out: no redirects, no private address from data; the sibling systems and the AI model allowed by `OUTBOUND_PRIVATE_HOSTS` | `api/core/outbound.py` | Done |
+| 7 | 1.6.3, 6.2.4 | **Fixed in version 1.2.** `FIELD_ENCRYPTION_KEYS`, `rotate_field_key`, and a chain check that knows retired keys (`AUDIT_CHAIN_RETIRED_KEYS`) | `api/core/crypto.py`, `api/audit/chain.py`, `api/core/management/commands/rotate_field_key.py` | Done |
+| 8 | 1.14.1, 14.1.3 | **Fixed in version 1.2.** Ports 80 and 443, no source mount, gunicorn, health checks, read-only containers, the admin's files served | `deploy/compose.prod.yml`, `deploy/Caddyfile.prod`, `api/Dockerfile`, `api/config/gunicorn.py` | Done |
 | 9 | 8.1.4, 11.1.7 | No alert on a rise in refusals (401, 403, 429) or failed sign-ins, on disk space, or on the backup metric going missing; the nightly copy of sites and class lists from the SRMS is not recorded as a run, so a failure raises nothing | `deploy/monitoring/alerts.yml`; `api/integration/tasks.py` `sync_srms` | Rules on `lms_http_requests_total{status="4xx"}` by route, on `node_filesystem_avail_bytes` and `absent(lms_backup_last_success_timestamp_seconds)`; record the SRMS copy with `integration.runs.Run` |
 | 10 | 2.8.5, 2.5.7, 8.2.3 | The person is not told when a used authenticator code is offered again; an authenticator reset does not end the person's sessions; modules kept for offline reading stay on the phone after a time-out | `api/iam/views.py` `mfa_verify`; `api/iam/admin.py` `TotpDeviceAdmin`; `web/src/App.tsx` | Call `_tell` on a reused code; end every session on a reset (`iam/sessions.py`); call `clearOffline()` in the time-out handler, as Sign out does |
 | 11 | 3.4.4 | Cookies are not named with the `__Host-` prefix | `api/config/settings.py`; `web/src/api/client.ts` `csrfToken` | When `DEBUG` is off set `SESSION_COOKIE_NAME = "__Host-sessionid"` and `CSRF_COOKIE_NAME = "__Host-csrftoken"`, and read that name in the web client |
@@ -174,7 +236,7 @@ These cannot be closed in the code alone.
 | 1.5.4 | 2 | Output encoding near the interpreter | Met | React escaping; `richtext.clean` on the server; `html.escape` in `certificates/api.py` and `certificates/pdf.py` |
 | 1.6.1 | 2 | Key management policy | Met | Written in the runbook, section "Keys" (`docs/runbook.md`): every secret, where it is, who holds it and how it is changed; a sealed copy opened by two people; two holders of the backup keys, kept off the server |
 | 1.6.2 | 2 | Key material protected | Met | Keys from the environment only; separate keys derived per purpose (`core/crypto.py` `chain_key`, `fingerprint`; `attendance/codes.py` `_key`); the LTI private key encrypted at rest (`lti/models.py` `PlatformKey`); the backup's private keys never on the server (`scripts/backup.sh`) |
-| 1.6.3 | 2 | Keys replaceable, re-encryption planned | Partly met | Service keys (`create_service_client`) and the LTI platform key (`lti/keys.py` `make_key`) can be replaced; `FIELD_ENCRYPTION_KEY` cannot: one key only (`core/crypto.py` `_fernet`), and the audit chain's key derives from it (to fix 7; `docs/runbook.md`, "Keys") |
+| 1.6.3 | 2 | Keys replaceable, re-encryption planned | Met | Service keys (`create_service_client`) and the LTI platform key (`lti/keys.py` `make_key`) can be replaced; `FIELD_ENCRYPTION_KEYS` takes a list, newest first: new values use the newest key, stored ones open with any (`core/crypto.py`, `MultiFernet`); `manage.py rotate_field_key` encrypts every value again with the newest key, audited as `field_key_rotated` without values; the audit chain verifies entries sealed under a retired key kept in `AUDIT_CHAIN_RETIRED_KEYS`, and keys only get newer along the chain (`audit/chain.py` `walk`); tests `core/test_key_rotation.py`; procedure in `docs/runbook.md`, "Changing the encryption key" |
 | 1.6.4 | 2 | No secrets on the client | Met | No key or secret reaches the web app; only the public VAPID key, as push requires |
 | 1.7.1 | 2 | Common logging format | Met | One JSON object a line with the request's id, for the API and the worker (`config/observability.py` `JsonFormatter`, `RequestObservabilityMiddleware`; `settings.LOGGING`); test `config/test_observability.py::test_logs_are_one_json_object_a_line_with_extra_fields_and_the_request_id`; the audit log is uniform (`audit/models.py`) |
 | 1.7.2 | 2 | Logs sent to a remote system | Not met | Remains open (hosting): logs go to standard output and Docker's files on the same server |
@@ -186,7 +248,7 @@ These cannot be closed in the code alone.
 | 1.11.1 | 2 | Components and their functions documented | Met | `docs/architecture.md` apps table |
 | 1.11.2 | 2 | High-value flows thread-safe | Met | `quizzes/services.py` `save_answer` (`select_for_update`); advisory locks in `audit/chain.py` and `certificates/services.py`; `practicals/offline.py`; LTI nonces and token ids used once by a unique constraint (`lti/models.py` `UsedValue`) |
 | 1.12.2 | 2 | Uploads served as attachments, not inline | Met | `FileResponse(..., as_attachment=True)` in every download; a lecture video plays inline only as the copies FFmpeg made, typed `video/mp4` (`video/api.py`); files never served from `MEDIA_URL` (`config/urls.py`) |
-| 1.14.1 | 2 | Components segregated by network | Partly met | Only Caddy publishes ports (`compose.yml`); Prometheus and Alertmanager publish none (`deploy/monitoring/compose.monitoring.yml`); Caddy refuses `/api/metrics`; the production override still publishes the development ports (to fix 8); host firewall remains open (hosting) |
+| 1.14.1 | 2 | Components segregated by network | Partly met | Only Caddy publishes ports, 80 and 443 in production (`deploy/compose.prod.yml`); Prometheus and Alertmanager publish none (`deploy/monitoring/compose.monitoring.yml`); Caddy refuses `/api/metrics`; host firewall remains open (hosting) |
 | 1.14.2 | 2 | Signed binaries, trusted deployment | Partly met | Packages locked with hashes; CI actions pinned to commits; FFmpeg built from Debian's source and checked to be LGPL (`api/Dockerfile`); images not signed, base and monitoring images by tag (to fix 23) |
 | 1.14.3 | 2 | Pipeline warns of vulnerable components | Met | `pip-audit` and `npm audit` in `ci.yml` |
 | 1.14.4 | 2 | Pipeline verifies a secure deployment | Met | `ci.yml` job `compose`; `check --deploy --fail-level WARNING` |
@@ -271,13 +333,13 @@ These cannot be closed in the code alone.
 |---|---|---|---|---|
 | 4.1.1 | 1 | Enforced on the server | Met | `RolePermission`; scoped querysets; every route and method tried for every role (`config/test_permission_table.py`) |
 | 4.1.2 | 1 | Access attributes cannot be changed by users | Met | Roles from `RoleScope`; membership from the SRMS sync; ids checked by `TaughtRecord` |
-| 4.1.3 | 1 | Least privilege | Met | Students see their own work and released marks (`site_gradebook`, `visible_submissions`); auditor read-only; a closed site read-only to all but course administrators (`terms/guard.py`; test `terms/tests.py::test_a_closed_site_is_read_only_to_its_lecturer_but_not_to_a_course_administrator`); tests `courses/test_scope.py` and the permission table (`config/test_permission_table.py`, every endpoint, method and role) |
+| 4.1.3 | 1 | Least privilege | Met | Students see their own work and released marks (`site_gradebook`, `visible_submissions`); auditor read-only (see [The auditor's reading](#the-auditors-reading)); a closed site read-only to all but course administrators (`terms/guard.py`; test `terms/tests.py::test_a_closed_site_is_read_only_to_its_lecturer_but_not_to_a_course_administrator`); tests `courses/test_scope.py` and the permission table (`config/test_permission_table.py`, every endpoint, method and role) |
 | 4.1.5 | 1 | Fails securely | Met | Unknown or forbidden ids read as not found (`TaughtRecord`); `visible_sites` returns nothing for an account with no person; a tool asking about a course it is not placed on reads not found (`lti/services.py` `placed_site`) |
 | 4.2.1 | 1 | Protection against direct object references | Met | `visible_submissions`, `visible_sites`, `taught_sites`; test `courses/test_scope.py::test_work_on_another_site_cannot_be_marked_or_opened`; the permission table checks that a list a role may use never shows a record it may not see (`config/test_permission_table.py`) |
 | 4.2.2 | 1 | Protection against cross-site request forgery | Met | DRF `SessionAuthentication` enforces CSRF; `web/src/api/client.ts` sends `X-CSRFToken`; the LTI addresses tools call take a signed token or a bearer token, not a cookie |
 | 4.3.1 | 1 | Administrative interfaces need a second factor | Met | `iam/admin_site.py` `has_permission`; tests `iam/tests.py::test_admin_needs_the_verified_web_sign_in`, `::test_admin_asks_staff_for_a_code_even_when_their_roles_do_not` |
 | 4.3.2 | 1 | No directory listing or metadata files | Met | Caddy `file_server` without browse; `.git` not in any image (`.dockerignore`) |
-| 4.3.3 | 2 | Extra checks for high-value actions | Partly met | Authenticator code for administrators, course administrators and teaching staff (`iam/services.py` `requires_mfa`); disposal needs a second person (`privacy/retention_views.py`); roles given in the admin site are audited (`iam/admin.py`) but need no second person; other records changed in the admin site are not audited (to fix 1) |
+| 4.3.3 | 2 | Extra checks for high-value actions | Met | Authenticator code for administrators, course administrators, teaching staff, the auditor and the DPO (`iam/models.py` `Role.MFA_REQUIRED`, `iam/services.py` `requires_mfa`); disposal needs a second person (`privacy/retention_views.py`); every add, change and removal in the Django admin site is audited (`iam/admin_audit.py`, mixed into every model admin by `iam/admin_site.py` `register`; tests `iam/test_admin_audit.py`), and marks and handed-in work are read-only there (`assessments/admin.py`) |
 
 ## V5 Validation, sanitisation and encoding
 
@@ -293,7 +355,7 @@ These cannot be closed in the code alone.
 | 5.2.3 | 1 | No email header injection | Met | Django mail refuses line breaks in headers; subjects are fixed text |
 | 5.2.4 | 1 | No dynamic code execution | Met | No `eval` in the API or the web app |
 | 5.2.5 | 1 | No template injection | Met | No user templates; certificates built from escaped text (`certificates/pdf.py`) |
-| 5.2.6 | 1 | Protection against server-side request forgery | Partly met | Sibling `next` pages followed only on the same host (`integration/client.py` `pages`; test `config/test_observability.py::test_a_sibling_systems_next_page_elsewhere_is_not_followed`); push only to known push services (`notifications/push.py` `allowed_endpoint`); the AI model only at `AI_OLLAMA_URL`; the PDF engine fetches nothing. A tool's key-set address may be any https host a course administrator enters, fetched by the server with redirects followed, and the sibling client follows redirects with its key (to fix 6) |
+| 5.2.6 | 1 | Protection against server-side request forgery | Met | Every request the server sends goes through `core/outbound.py`: no redirect followed, no proxy from the environment, and an address from data (a tool's key set, a push endpoint) may not reach a private, loopback, link-local (cloud metadata), multicast or reserved address, checked on the address actually connected to (DNS rebinding); the HRMS, SRMS and AI model, set by the operator in the environment, may be private, and only their hosts (`OUTBOUND_PRIVATE_HOSTS`) and only for those calls; a key-set address naming a private place is refused at registration (`lti/api.py`); push only to known push services (`notifications/push.py` `allowed_endpoint`); sibling `next` pages only on the same host; tests `core/test_outbound.py` |
 | 5.2.7 | 1 | Scriptable SVG refused | Met | SVG is not an accepted kind (`core/uploads.py`) |
 | 5.2.8 | 1 | Markdown and similar sanitised | Met | Forum markup converted then cleaned on the server; KaTeX with `trust: false` (`web/src/features/content/maths.ts`) |
 | 5.3.1 | 1 | Output encoded for its context | Met | React; `html.escape` |
@@ -324,7 +386,7 @@ These cannot be closed in the code alone.
 | 6.2.1 | 1 | Crypto fails securely | Met | Fernet (authenticated); `decrypt` raises on a wrong key (`core/crypto.py`) |
 | 6.2.2 | 2 | Proven crypto | Met | `cryptography` Fernet, HMAC-SHA256, PBKDF2; RSA 2048 (RS256) for LTI; ECDSA P-256 for push |
 | 6.2.3 | 2 | Safe modes and IVs | Met | Fernet chooses a random IV and authenticates |
-| 6.2.4 | 2 | Algorithms and keys replaceable | Partly met | One module (`core/crypto.py`); no `MultiFernet`, so the key cannot be changed (to fix 7) |
+| 6.2.4 | 2 | Algorithms and keys replaceable | Met | One module (`core/crypto.py`), a list of keys (`MultiFernet`) and a re-encryption command (`rotate_field_key`), as 1.6.3 |
 | 6.2.5 | 2 | No weak modes or hashes | Met | SHA-256; SHA-1 only inside TOTP as RFC 6238 requires |
 | 6.2.6 | 2 | Nonces not reused | Met | Fernet |
 | 6.3.1 | 2 | Secure random numbers | Met | `secrets`, `SystemRandom` (`quizzes/services.py`, `courses/groups.py`, `assessments/marking_api.py`); LTI hints and client ids (`lti/models.py`) |
@@ -337,8 +399,8 @@ These cannot be closed in the code alone.
 | Req | Lvl | Requirement (summary) | Status | Evidence |
 |---|---|---|---|---|
 | 7.1.1 | 1 | No credentials in logs | Met | Passwords never recorded; `PasswordResetRequest` keeps no typed text; `audit/services.py` `snapshot` masks encrypted fields; the request log never writes a query string, a body or the ids in an address (`config/observability.py`); the notice acknowledgement takes its address from `core.net` (`privacy/views.py`) |
-| 7.1.2 | 1 | No other sensitive data in logs | Partly met | Accommodation reasons encrypted and masked; AI questions never logged (`docs/ai.md`); an extension's reason is still copied into the audit entry (`assessments/arrangements_api.py`, reason and snapshot) (to fix 5) |
-| 7.1.3 | 2 | Security events logged | Partly met | Sign-ins, failures and lockouts, refused and reused codes, password changes, downloads, and roles and authenticator resets in the admin site audited; every request with its status in the request log (`config/observability.py`); other changes in the Django admin site not audited (to fix 1) |
+| 7.1.2 | 1 | No other sensitive data in logs | Met | Accommodation and extension reasons masked in the audit log, a fingerprint showing only that one was given or changed (`assessments/arrangements_api.py` `_kept`, `ExtensionViewSet.kept`; test `assessments/test_coursework_rules.py::test_extensions_for_a_student_or_a_group`); password and service key hashes masked in every snapshot (`audit/services.py` `SECRET_FIELDS`); AI questions never logged (`docs/ai.md`) |
+| 7.1.3 | 2 | Security events logged | Met | Sign-ins, failures and lockouts, refused and reused codes, password changes, downloads, and every change made in the Django admin site, Django's own accounts and groups included (`iam/admin_audit.py`; tests `iam/test_admin_audit.py`), audited; every request with its status in the request log (`config/observability.py`) |
 | 7.1.4 | 2 | Events carry what an investigation needs | Met | `AuditLog`: time, actor, address (`core/net.py`), action, entity, before and after, reason; the request log adds the request's id |
 | 7.2.1 | 2 | Authentication decisions logged | Met | Successful and failed sign-ins and lockouts in the chained audit log, against the account; a name that matches no account is never written (`iam/views.py` `login_view`; test `iam/test_asvs.py::test_failed_sign_ins_reach_the_chained_audit_log_without_unknown_names`) |
 | 7.2.2 | 2 | Access control decisions logged | Met | Every refusal is in the request log with its status, route and account (`config/observability.py` `RequestObservabilityMiddleware`); test `config/test_observability.py::test_every_answer_carries_a_request_id_and_is_counted` |
@@ -408,7 +470,7 @@ These cannot be closed in the code alone.
 | Req | Lvl | Requirement (summary) | Status | Evidence |
 |---|---|---|---|---|
 | 12.1.1 | 1 | No very large files | Met | Caddy refuses bodies over 60 MB, and over 1100 MB at the video address only; 50, 20 and 15 MB per kind (`settings.UPLOAD_LIMIT_*`) and 1024 MB a video (`UPLOAD_LIMIT_VIDEO_MB`); site allowance (`courses/storage.py`) |
-| 12.1.2 | 2 | Archives checked before unpacking | Partly met | Quiz packages: member count and unpacked size (`quizzes/formats.py` `_zip_documents`); Office files only listed at upload (`core/uploads.py` `MAX_ZIP_ENTRIES`). AI drafting reads a Word or PowerPoint part whole before cutting it to 2 MB (`assist/services.py` `_office_text`), so a small file that unpacks to gigabytes fills the memory (to fix 3) |
+| 12.1.2 | 2 | Archives checked before unpacking | Met | One set of checks for every uploaded zip (`core/archives.py`): entry count, declared size once unpacked, no entry over 1 MB packed more than 100 times over, no encrypted entry or unusual compression, each entry read no further than a limit, XML declaring a document type or entities refused. Used by AI drafting (`assist/services.py` `_office_text`), the similarity check (`similarity/extract.py`), question packages (`quizzes/formats.py`), SCORM, H5P, Common Cartridge and Moodle zips (`packages/archive.py`, `interchange/common.py`); tests with a crafted zip bomb (`core/test_archives.py`) |
 | 12.1.3 | 2 | Quota per person | Partly met | Per-site allowance; 10 photographs per request (`practicals/uploads.py`); no quota per student (to fix 24) |
 | 12.2.1 | 2 | Type checked by contents | Met | `core/uploads.py` `sniff`; tests `core/test_uploads.py`; a video's container header checked (`video/api.py` `looks_like_video`), then FFprobe must find a picture in it (`video/convert.py` `probe`) |
 | 12.3.1 | 1 | File names not used for paths | Met | Random stored names; `original_name` drops folders (test `::test_the_original_name_never_carries_a_folder`) |
@@ -421,7 +483,7 @@ These cannot be closed in the code alone.
 | 12.4.2 | 1 | Virus scan | Not met | To fix 15 |
 | 12.5.1 | 1 | Only intended files served | Met | Caddy serves the built app and static files only |
 | 12.5.2 | 1 | Uploads never run as HTML or script | Met | Attachments with `nosniff`; video copies played as `video/mp4` |
-| 12.6.1 | 1 | Outbound requests by allow-list | Partly met | As 5.2.6 (to fix 6) |
+| 12.6.1 | 1 | Outbound requests by allow-list | Met | As 5.2.6: push services by host list (`PUSH_SERVICE_HOSTS`), private hosts only those named (`OUTBOUND_PRIVATE_HOSTS`), tools' key sets on public https addresses only |
 
 ## V13 API and web service
 
@@ -446,7 +508,7 @@ These cannot be closed in the code alone.
 |---|---|---|---|---|
 | 14.1.1 | 2 | Repeatable build and deployment | Met | Dockerfiles, Compose, CI job `compose` |
 | 14.1.2 | 2 | Compiler hardening flags | Not applicable | No compiled code of our own |
-| 14.1.3 | 2 | Server configuration hardened | Partly met | `check --deploy` in CI; Caddy defaults; the production override still publishes the development ports and mounts the source (to fix 8); host hardening remains open (hosting) |
+| 14.1.3 | 2 | Server configuration hardened | Partly met | `check --deploy` in CI; the production stack (`deploy/compose.prod.yml`): gunicorn, no development server or source mount, `DJANGO_DEBUG` forced off, read-only containers, no new privileges, Caddy with only `NET_BIND_SERVICE`, health checks and restart policies, rotated logs; host hardening remains open (hosting) |
 | 14.1.4 | 2 | Redeploy or restore from a runbook | Met | Encrypted backup, restore with checks, and a timed drill (`scripts/backup.sh`, `restore.sh`, `restore-drill.sh`; the drill passed in 1 min 40 s on a test stack); install, upgrade, restore and keys in `docs/runbook.md` |
 | 14.2.1 | 1 | Components up to date | Met | `pip-audit`, `npm audit` in CI; locked versions |
 | 14.2.2 | 1 | Unneeded features removed | Met | Production images carry no test tools (CI check); API documentation for signed-in people only (`DocsPermission`) |
