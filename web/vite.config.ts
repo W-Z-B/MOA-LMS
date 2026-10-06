@@ -66,6 +66,8 @@ export default defineConfig({
         "src/features/practicals/**",
         // Quizzes (feature 10): the tab, attempts, banks and the question editor.
         "src/features/quizzes/**",
+        // Insight (items 3.11, 6.01 to 6.06): analytics, progress, outcomes, early alerts and the reports.
+        "src/features/insights/**",
       ],
       exclude: ["src/**/*.test.*", "src/test/**"],
       reporter: ["text"],

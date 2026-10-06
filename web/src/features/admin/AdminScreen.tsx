@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { lazy, Suspense, type ReactNode } from "react";
 import { ADMIN_ROLES, hasAnyRole, type Me } from "../../api/types";
 import { AUDIT_READERS, CORRECTION_READERS, OVERSEERS, PRIVACY_READERS } from "../../api/types-staff";
 import { useCrumb } from "../../app/frame";
@@ -9,6 +9,14 @@ import { AuditLog } from "./AuditLog";
 import { IntegrationRuns } from "./IntegrationRuns";
 import { Corrections, Notices } from "./Privacy";
 import { Breaches, Retention } from "./Retention";
+import { COURSE_REPORT_READERS, RULE_KEEPERS, STAFF_REPORT_READERS } from "../../api/types-insights";
+
+// --- insight --- (items 6.03 to 6.06): reports and the early-alert rules, loaded when opened.
+const ReportsSection = lazy(() => import("../insights/ReportsSection"));
+const AlertRulesSection = lazy(() => import("../insights/AlertRulesSection"));
+const later = (screen: ReactNode) => <Suspense fallback={<p className="loading">Opening…</p>}>{screen}</Suspense>;
+const REPORT_READERS = [...new Set([...COURSE_REPORT_READERS, ...STAFF_REPORT_READERS])];
+// --- end insight ---
 
 interface Props {
   me: Me;
@@ -37,6 +45,10 @@ const SECTIONS: readonly Part[] = [
   { key: "corrections", label: "Correction requests", desc: "Requests to correct a record, answered within the time limit", roles: CORRECTION_READERS, render: (me) => <Corrections me={me} /> },
   { key: "retention", label: "Retention and disposal", desc: "How long records are kept; disposal approved by a second person", roles: PRIVACY_READERS, render: (me) => <Retention me={me} /> },
   { key: "breaches", label: "Breach register", desc: "Personal data breaches and what was done about them", roles: PRIVACY_READERS, render: (me) => <Breaches me={me} /> },
+  // --- insight ---
+  { key: "reports", label: "Reports", desc: "Courses by campus and programme, and staff development by unit, with spreadsheet exports", roles: REPORT_READERS, render: (me) => later(<ReportsSection me={me} />) },
+  { key: "alert-rules", label: "Early-alert rules", desc: "The thresholds of the rules that pick out students who may need help", roles: RULE_KEEPERS, render: () => later(<AlertRulesSection />) },
+  // --- end insight ---
 ];
 
 /** Admin (features 35 to 38's console): an overview of the sections the person may open, and each section. */
