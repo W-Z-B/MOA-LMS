@@ -68,6 +68,8 @@ export default defineConfig({
         "src/features/quizzes/**",
         // Similarity, peer review, paper quizzes, open short courses and the guidance (3.20, 3.24, 4.13, 5.07, 6.13).
         "src/features/assess/**",
+        // Lecture video, captions, offline reading, data-light mode and push notices (items 4.03 to 4.07).
+        "src/features/media/**",
         // --- help (item 7.17): the help pages, asking for help and help requests ---
         "src/features/help/**",
         // Insight (items 3.11, 6.01 to 6.06): analytics, progress, outcomes, early alerts and the reports.

@@ -64,6 +64,7 @@ INSTALLED_APPS = [
     "peerreview",
     "paperquizzes",
     "opencourses",
+    "video",
     "insights",
     "lti",
     "assist",
@@ -207,7 +208,7 @@ SESSION_COOKIE_AGE = 8 * 60 * 60  # working day: the absolute limit, enforced by
 SESSION_IDLE_MINUTES = int(env("SESSION_IDLE_MINUTES", "30"))
 
 # Upload limits in megabytes, checked with the file's type in core.uploads. Caddy refuses any request body
-# over 60 MB before it reaches the application.
+# over 60 MB before it reaches the application, except a lecture video (see UPLOAD_LIMIT_VIDEO_MB).
 UPLOAD_LIMIT_CONTENT_MB = int(env("UPLOAD_LIMIT_CONTENT_MB", "50"))
 UPLOAD_LIMIT_SUBMISSION_MB = int(env("UPLOAD_LIMIT_SUBMISSION_MB", "20"))
 UPLOAD_LIMIT_EVIDENCE_MB = int(env("UPLOAD_LIMIT_EVIDENCE_MB", "15"))  # practical photographs and scans
@@ -300,6 +301,42 @@ SIMILARITY_CHECKS = env_bool("SIMILARITY_CHECKS", True)
 OPEN_COURSES_ENABLED = env_bool("OPEN_COURSES_ENABLED", False)
 OPEN_REGISTRATIONS_PER_ADDRESS = int(env("OPEN_REGISTRATIONS_PER_ADDRESS", "5"))
 OPEN_CONFIRM_HOURS = int(env("OPEN_CONFIRM_HOURS", "48"))
+# --- lecture video, offline reading and push notices (items 4.03 to 4.07; ADR 0011, ADR 0015) ---
+# A lecture video is put up once (Caddy allows this one address a larger body) and prepared by the job worker
+# with FFmpeg, an LGPL build in api/Dockerfile, run as a separate program (video.convert).
+UPLOAD_LIMIT_VIDEO_MB = int(env("UPLOAD_LIMIT_VIDEO_MB", "1024"))
+FFMPEG_PATH = env("FFMPEG_PATH", "ffmpeg")
+FFPROBE_PATH = env("FFPROBE_PATH", "ffprobe")
+# The standard copy's height in lines: 480 by default, 720 where GSA's line allows. The low copy is 240.
+VIDEO_STANDARD_HEIGHT = int(env("VIDEO_STANDARD_HEIGHT", "480"))
+VIDEO_CONVERT_TIMEOUT_SECONDS = int(env("VIDEO_CONVERT_TIMEOUT_SECONDS", "3600"))
+# Keep the file as it was put up beside its copies. Off: it is removed once the copies are made.
+VIDEO_KEEP_ORIGINAL = env_bool("VIDEO_KEEP_ORIGINAL", False)
+# Automatic captions by speech recognition on GSA's own server: the whisper.cpp command with its model, for
+# example "/opt/whisper.cpp/build/bin/whisper-cli -m /opt/whisper.cpp/models/ggml-base.en.bin -t 4".
+# Empty (the default) switches it off. Audio is never sent to an outside service (video.transcribe).
+VIDEO_TRANSCRIBE_COMMAND = env("VIDEO_TRANSCRIBE_COMMAND", "")
+VIDEO_TRANSCRIBE_TIMEOUT_SECONDS = int(env("VIDEO_TRANSCRIBE_TIMEOUT_SECONDS", "7200"))
+# Web Push to the installed app (item 4.04). Off until both keys are set; make them with
+#   python manage.py vapid_keys
+# and keep the private key as a server secret. The subject is how a push service can reach GSA.
+VAPID_PUBLIC_KEY = env("VAPID_PUBLIC_KEY", "")
+VAPID_PRIVATE_KEY = env("VAPID_PRIVATE_KEY", "")
+VAPID_SUBJECT = env("VAPID_SUBJECT", "mailto:lms@gsa.edu.gy")
+# The push services of the browsers people use: the only hosts a push subscription may name, so the server
+# never sends a request to an address someone typed in.
+PUSH_SERVICE_HOSTS = [
+    h
+    for h in (
+        env(
+            "PUSH_SERVICE_HOSTS",
+            "fcm.googleapis.com,updates.push.services.mozilla.com,push.apple.com,notify.windows.com",
+        )
+        or ""
+    ).split(",")
+    if h
+]
+
 # --- help and going live (items 7.16, 7.17) ---
 # Help requests one person may send in an hour (item 7.17); they reach the course administrators.
 HELP_REQUESTS_PER_HOUR = int(env("HELP_REQUESTS_PER_HOUR", "5"))

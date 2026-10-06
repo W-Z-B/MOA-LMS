@@ -131,6 +131,7 @@ describe("the frame", () => {
       "My data",
       "My account",
       "Notification settings",
+      "Downloaded",
       "Help",
     ]);
     await user.click(within(menu).getByRole("link", { name: /My data/ }));
@@ -138,7 +139,7 @@ describe("the frame", () => {
     expect(screen.queryByRole("dialog", { name: "Your account" })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Signed in as Natasha Khan" }));
     await user.click(screen.getByRole("button", { name: "Sign out" }));
-    // Signing out waits for the server and clears what the field screens kept on the phone first.
+    // Signing out waits for the server; push is turned off for this device and what was kept is removed first.
     await waitFor(() => expect(props.onLogout).toHaveBeenCalled());
   });
 
@@ -231,6 +232,7 @@ describe("search", () => {
       "My data",
       "My account",
       "Notification settings",
+      "Downloaded",
       "Help",
     ]);
   });

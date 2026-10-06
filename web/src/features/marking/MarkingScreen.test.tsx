@@ -55,7 +55,8 @@ describe("the marking screen (items 2.23 to 2.25, 3.09, 3.16 to 3.18)", () => {
     const marked = submission({ mark: { ...released, is_released: false } });
     const { onNavigate } = open({ id: null, rows: [marked, andre] });
     await screen.findByRole("heading", { name: "Soil profile report", level: 1 });
-    expect(onNavigate).toHaveBeenCalledWith("/sites/9/assignments/3/marking/22");
+    // The address is set by an effect after the screen is drawn: on a busy run it can come a moment later.
+    await vi.waitFor(() => expect(onNavigate).toHaveBeenCalledWith("/sites/9/assignments/3/marking/22"));
   });
 
   it("shows the PDF beside the mark and fills the mark from the rubric, then releases it", async () => {

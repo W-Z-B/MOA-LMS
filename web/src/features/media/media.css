@@ -1,0 +1,111 @@
+/* Lecture video, captions, offline reading and data-light mode (items 4.03 to 4.07). Uses the design tokens of
+   index.css. Controls are 44px tall on a phone and nothing is wider than the screen. */
+
+.video-item {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+.video-player {
+  display: block;
+  width: 100%;
+  max-width: 720px;
+  max-height: 60vh;
+  border-radius: var(--radius-control);
+  background: var(--ink);
+}
+audio.video-player {
+  background: transparent;
+}
+.video-qualities {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.video-qualities legend {
+  padding: 0;
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+.video-qualities label {
+  min-height: 44px;
+}
+.video-state {
+  margin-top: 8px;
+}
+.module-download {
+  margin: 6px 0 4px;
+}
+.keep-confirm {
+  padding: 10px 12px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-control);
+  background: var(--head-row);
+}
+.keep-confirm p {
+  margin: 0 0 8px;
+}
+.kept-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin: 0;
+}
+.kept-list {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+.kept-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 0;
+  border-top: 1px solid var(--rule-soft);
+}
+.kept-list li .stacked {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.captions-screen h1 {
+  overflow-wrap: anywhere;
+}
+.captions-screen .form-row {
+  margin: 12px 0;
+}
+.cue-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+.cue {
+  display: grid;
+  gap: 6px;
+  padding: 10px 0;
+  border-top: 1px solid var(--rule-soft);
+}
+.cue-times {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 6px 12px;
+}
+.cue-times input {
+  width: 8em;
+}
+.cue textarea {
+  width: 100%;
+  box-sizing: border-box;
+}
+.push-section button {
+  margin-top: 4px;
+}
