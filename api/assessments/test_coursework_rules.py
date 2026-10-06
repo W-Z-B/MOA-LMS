@@ -133,6 +133,8 @@ def test_accommodations_apply_everywhere_and_stay_private(
         == 400
     )
     assert admin.post("/api/v1/accommodations/", {"person": lecturer.id}, format="json").status_code == 400
+    second = admin.post("/api/v1/accommodations/", {"person": student.id}, format="json")
+    assert second.status_code == 400 and "already has" in str(second.json()["person"])  # was a 500 (1.16)
     entry = AuditLog.objects.get(entity="assessments.accommodation")
     assert "Dyslexia" not in str(entry.after)
     assert due_for(assignment, student).at == assignment.due_at + timedelta(days=3)

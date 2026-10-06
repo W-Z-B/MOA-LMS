@@ -1076,6 +1076,8 @@ class ContentItemViewSet(TeachingViewSet):
     @action(detail=True, methods=["post"])
     def report(self, request, pk=None):
         item = self.get_object()
+        if site_role(request.user, item.module.site) == "auditor":
+            raise PermissionDenied("The auditor reads a course but does not report its material.")
         data = ReportSerializer(data=request.data)
         data.is_valid(raise_exception=True)
         with transaction.atomic():

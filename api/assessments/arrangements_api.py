@@ -5,6 +5,7 @@ from django.db.models import Q
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
 from rest_framework import serializers, viewsets
+from rest_framework.validators import UniqueValidator
 
 from assessments.models import Accommodation, Assignment, Extension
 from audit.services import masked, record, snapshot
@@ -113,7 +114,15 @@ class ExtensionViewSet(TeachingViewSet):
 
 class AccommodationSerializer(serializers.ModelSerializer):
     person = serializers.PrimaryKeyRelatedField(
-        queryset=PersonRef.objects.filter(kind=PersonRef.Kind.STUDENT), help_text="The student (person id)"
+        queryset=PersonRef.objects.filter(kind=PersonRef.Kind.STUDENT),
+        help_text="The student (person id)",
+        # One per student (a database rule): a second one was a server error, now a plain refusal (1.16).
+        validators=[
+            UniqueValidator(
+                Accommodation.objects.all(),
+                message="This student already has an accommodation; change that one.",
+            )
+        ],
     )
     student_no = serializers.CharField(source="person.external_id", read_only=True)
 
@@ -160,7 +169,9 @@ class AccommodationViewSet(viewsets.ModelViewSet):
     read_roles = SITE_ADMIN_ROLES
     write_roles = SITE_ADMIN_ROLES
     serializer_class = AccommodationSerializer
-    queryset = Accommodation.objects.select_related("person")
+    queryset = Accommodation.objects.select_related("person").order_by(
+        "person__last_name", "person__first_name", "id"
+    )
     http_method_names = ["get", "post", "patch", "delete", "head", "options"]
 
     def perform_create(self, serializer):

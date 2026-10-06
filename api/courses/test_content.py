@@ -642,3 +642,14 @@ def test_only_a_course_administrator_changes_a_sites_allowance(
     )
     assert allowed.status_code == 200 and allowed.json()["storage_allowance_mb"] == 3
     assert upload(teacher, module, "Big", pdf("big.pdf", 2 * 1024 * 1024)).status_code == 201
+
+
+@pytest.mark.django_db
+def test_the_auditor_reads_material_but_does_not_report_it(teacher, module, make_user, client_for):
+    """Found by the permission table (item 1.16): the auditor, who only reads, could ask for a takedown."""
+    item = page(teacher, module, "<p>Notes</p>").json()
+    auditor = client_for(make_user("auditor.content", "auditor"))
+    assert auditor.get(f"/api/v1/content/{item['id']}/").status_code == 200
+    refused = auditor.post(f"/api/v1/content/{item['id']}/report/", {"reason": "Copied"}, format="json")
+    assert refused.status_code == 403 and refused.json()["code"] == "permission_denied"
+    assert not TakedownRequest.objects.exists()

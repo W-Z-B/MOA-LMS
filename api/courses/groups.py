@@ -129,7 +129,9 @@ def join(group: SiteGroup, person) -> None:
 @transaction.atomic
 def leave(group: SiteGroup, person) -> None:
     membership = student_membership(person, group.site)
-    if membership is None or not group.members.filter(pk=membership.pk).exists():
+    if membership is None:  # refused as joining is: teaching staff and the auditor are never in a set
+        raise GroupRefused("not_a_student", "Only students of this course can leave its groups.")
+    if not group.members.filter(pk=membership.pk).exists():
         raise GroupRefused("not_member", "You are not in this group.")
     sign_up = GroupSignUp.objects.filter(group=group).first()
     if sign_up is None:
