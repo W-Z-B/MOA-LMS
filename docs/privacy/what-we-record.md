@@ -15,6 +15,10 @@ when people use it, so that the privacy notice can say it and anyone adding a fe
 | Reading of the privacy notice | Once per version | Acknowledgements, audit log | Administrators, the DPO | With the account |
 | Viewing or downloading one's own record | Each time | Audit log | Administrators, the auditor | With the audit log |
 | Notifications sent, and whether read | Each one | Notifications | The person | 2 years, removed nightly |
+| Opening an outside tool (LTI launch): which tool, which course, whether names or emails were sent | Each launch | Audit log | Administrators, the auditor | With the audit log |
+| A score an outside tool posts, and a tool reading a class list | Each time | Tool scores, audit log | The student, the course's teaching staff | With the marks; the audit log |
+| A question to the AI study helper: when, by whom, whether answered, which items were the sources (never the question or the answer) | Each question | AI exchanges | The system | 1 year, removed nightly (rule `ai-exchanges`) |
+| An AI draft for a lecturer, and the record it was saved as | Each draft | AI exchanges, audit log ("AI-drafted") | Administrators, the auditor | Drafts 1 year; the audit entry with the audit log |
 
 ## What the LMS does not record
 
