@@ -4,16 +4,25 @@
 	admin off
 	servers {
 		trusted_proxies static private_ranges 100.64.0.0/10
+		# The client is the right-most address the edge added, not whatever the client wrote first.
+		trusted_proxies_strict
 	}
 }
 
 :{$PORT:8080} {
 	encode zstd gzip
 
+	# Nothing the application accepts is larger (course files are at most 50 MB, core/uploads.py).
+	request_body {
+		max_size 60MB
+	}
+
 	@app path /api/* /admin/*
 	handle @app {
 		reverse_proxy 127.0.0.1:8000 {
 			header_up X-Forwarded-Proto https
+			# The address Caddy worked out from the edge, replacing anything the client sent (core/net.py).
+			header_up X-Real-IP {client_ip}
 		}
 	}
 	handle_path /static/* {
@@ -23,6 +32,9 @@
 	handle {
 		root * /srv/web
 		try_files {path} /index.html
+		# The web app loads only its own scripts, styles and data. Keep in step with
+		# deploy/Caddyfile.prod.
+		header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
 		file_server
 	}
 
@@ -31,5 +43,6 @@
 		X-Content-Type-Options "nosniff"
 		X-Frame-Options "DENY"
 		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(self), geolocation=(self), microphone=(), payment=(), usb=()"
 	}
 }

@@ -88,7 +88,8 @@ def test_file_download_is_membership_checked_and_audited(site, student, lecturer
     outsider = make_person("student", "26ESQ0009", "Out", "Sider", "student")
     assert client_for(outsider.user).get(body["download_url"]).status_code == 404
     ContentItem.objects.filter(pk=body["id"]).update(is_published=False)
-    assert client_for(student.user).get(body["download_url"]).status_code == 403
+    # A draft is unknown to students.
+    assert client_for(student.user).get(body["download_url"]).status_code == 404
 
 
 @pytest.mark.django_db
@@ -101,3 +102,53 @@ def test_announcement_notifies_students(site, student, lecturer, client_for):
     assert posted.status_code == 201 and posted.json()["author_name"] == "Asha Persaud"
     note = Notification.objects.get(recipient=student.user)
     assert note.title == f"{site.code}: Field trip Friday" and note.emailed
+
+
+@pytest.mark.django_db
+def test_course_files_are_stored_under_random_names_and_keep_the_name_chosen(
+    site, lecturer, student, client_for
+):
+    """Item 1.12."""
+    module = Module.objects.create(site=site, title="Week 1")
+    upload = SimpleUploadedFile("Asha Persaud week 1.pdf", b"%PDF-1.7 week one")
+    created = client_for(lecturer.user).post(
+        "/api/v1/content/",
+        {"module": module.id, "kind": "file", "title": "Week 1", "file": upload},
+        format="multipart",
+    ).json()
+    stored = ContentItem.objects.get(pk=created["id"])
+    assert stored.file.name.startswith("content/") and stored.file.name.endswith(".pdf")
+    assert "Asha" not in stored.file.name
+    assert stored.original_name == "Asha Persaud week 1.pdf" == created["filename"]
+    download = client_for(student.user).get(created["download_url"])
+    assert "Asha Persaud week 1.pdf" in download["Content-Disposition"]
+
+
+@pytest.mark.django_db
+def test_a_page_disguised_as_a_handout_is_refused(site, lecturer, client_for):
+    module = Module.objects.create(site=site, title="Week 1")
+    upload = SimpleUploadedFile("handout.pdf", b"<html><script>steal()</script></html>")
+    refused = client_for(lecturer.user).post(
+        "/api/v1/content/",
+        {"module": module.id, "kind": "file", "title": "Handout", "file": upload},
+        format="multipart",
+    )
+    assert refused.status_code == 400
+    assert "do not match its name" in refused.json()["file"][0]
+    assert not ContentItem.objects.exists()
+
+
+@pytest.mark.django_db
+def test_drafts_are_unknown_to_students_in_every_list(site, lecturer, student, client_for):
+    module = Module.objects.create(site=site, title="Week 1")
+    ContentItem.objects.create(module=module, title="Notes", body="x")
+    draft = ContentItem.objects.create(module=module, title="Answers", body="secret", is_published=False)
+    learner = client_for(student.user)
+    assert [i["title"] for i in learner.get("/api/v1/content/").json()["results"]] == ["Notes"]
+    assert learner.get(f"/api/v1/content/{draft.id}/").status_code == 404
+    assert [i["title"] for i in learner.get("/api/v1/modules/").json()["results"][0]["items"]] == ["Notes"]
+    teacher = client_for(lecturer.user)
+    assert [i["title"] for i in teacher.get("/api/v1/modules/").json()["results"][0]["items"]] == [
+        "Notes",
+        "Answers",
+    ]

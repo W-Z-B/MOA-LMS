@@ -12,17 +12,28 @@
 	encode zstd gzip
 	tls internal
 
+	# Nothing the application accepts is larger (course files are at most 50 MB, core/uploads.py).
+	request_body {
+		max_size 60MB
+	}
+
+	# X-Real-IP carries the address Caddy itself saw, replacing anything the client sent (core/net.py).
 	handle /api/* {
-		reverse_proxy api:8000
+		reverse_proxy api:8000 {
+			header_up X-Real-IP {client_ip}
+		}
 	}
 	handle /admin/* {
-		reverse_proxy api:8000
+		reverse_proxy api:8000 {
+			header_up X-Real-IP {client_ip}
+		}
 	}
 	handle /static/* {
 		reverse_proxy api:8000
 	}
 	handle {
-		# development: Vite dev server; production compose serves /srv/web instead
+		# development: Vite dev server, which needs inline scripts for hot reload, so no
+		# Content-Security-Policy here; the production and hosted configurations set one.
 		reverse_proxy web:5173
 	}
 

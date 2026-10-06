@@ -3,13 +3,18 @@ from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 from config.views import health
+from iam.permissions import DocsPermission
 from integration.api import integration_urls, reference_urls
 
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/health/", health, name="health"),
-    path("api/schema/", SpectacularAPIView.as_view(permission_classes=[]), name="schema"),
-    path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema", permission_classes=[]), name="docs"),
+    path("api/schema/", SpectacularAPIView.as_view(permission_classes=[DocsPermission]), name="schema"),
+    path(
+        "api/docs/",
+        SpectacularSwaggerView.as_view(url_name="schema", permission_classes=[DocsPermission]),
+        name="docs",
+    ),
     path("api/v1/auth/", include("iam.urls")),
     path("api/v1/notifications/", include("notifications.api")),
     path("api/v1/", include("assessments.api")),

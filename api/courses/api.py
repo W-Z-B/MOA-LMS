@@ -3,6 +3,8 @@
 from django.db import transaction
 from django.http import FileResponse
 from django.shortcuts import get_object_or_404
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema
 from rest_framework import serializers, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
@@ -11,7 +13,9 @@ from rest_framework.response import Response
 from rest_framework.routers import DefaultRouter
 
 from audit.services import record, snapshot
-from courses.access import ADMIN, can_teach, person_of, site_role, visible_sites
+from core.serializers import ErrorSerializer
+from core.uploads import CONTENT, original_name, validate_upload
+from courses.access import ADMIN, TaughtRecord, can_teach, person_of, site_role, taught_sites, visible_sites
 from courses.models import Announcement, ContentItem, CourseSite, Membership, Module
 from iam.permissions import RolePermission
 from iam.services import SITE_ADMIN_ROLES, has_role
@@ -24,9 +28,15 @@ class PublishedByDefault(serializers.BooleanField):
 
 
 class ContentItemSerializer(serializers.ModelSerializer):
+    module = TaughtRecord(Module, "site")
     is_published = PublishedByDefault(required=False)
-    file = serializers.FileField(write_only=True, required=False)
-    filename = serializers.SerializerMethodField()
+    file = serializers.FileField(
+        write_only=True,
+        required=False,
+        help_text="A PDF, a photograph, or a Word, Excel or PowerPoint file without macros; at most "
+        "UPLOAD_LIMIT_CONTENT_MB (50 MB by default)",
+    )
+    filename = serializers.SerializerMethodField(help_text="The name the file had when it was put up")
     download_url = serializers.SerializerMethodField()
 
     class Meta:
@@ -45,28 +55,43 @@ class ContentItemSerializer(serializers.ModelSerializer):
             "is_published",
         )
 
-    def get_filename(self, obj):
-        return obj.file.name.rsplit("/", 1)[-1] if obj.file else None
+    def validate_file(self, upload):
+        return validate_upload(upload, CONTENT)
 
-    def get_download_url(self, obj):
+    def get_filename(self, obj) -> str | None:
+        return (obj.original_name or obj.file.name.rsplit("/", 1)[-1]) if obj.file else None
+
+    def get_download_url(self, obj) -> str | None:
         return f"/api/v1/content/{obj.id}/download/" if obj.file else None
+
+    def save(self, **kwargs):
+        upload = self.validated_data.get("file")
+        if upload:
+            kwargs["original_name"] = original_name(upload)
+        return super().save(**kwargs)
 
 
 class ModuleSerializer(serializers.ModelSerializer):
+    site = TaughtRecord(CourseSite)
     items = serializers.SerializerMethodField()
 
     class Meta:
         model = Module
         fields = ("id", "site", "title", "position", "items")
 
-    def get_items(self, obj):
+    def get_items(self, obj) -> list[dict]:
         items = obj.items.all()
-        if not self.context.get("teaching", False):
+        teaching = self.context.get("teaching")
+        if teaching is None:  # the modules list: work it out for each module's site
+            request = self.context.get("request")
+            teaching = request is not None and can_teach(request.user, obj.site)
+        if not teaching:
             items = [i for i in items if i.is_published]
         return ContentItemSerializer(items, many=True).data
 
 
 class AnnouncementSerializer(serializers.ModelSerializer):
+    site = TaughtRecord(CourseSite)
     author_name = serializers.CharField(source="author.full_name", read_only=True, default=None)
 
     class Meta:
@@ -96,10 +121,10 @@ class SiteSerializer(serializers.ModelSerializer):
         )
         read_only_fields = ("source",)
 
-    def get_my_role(self, obj):
+    def get_my_role(self, obj) -> str | None:
         return site_role(self.context["request"].user, obj)
 
-    def get_members(self, obj):
+    def get_members(self, obj) -> int:
         return obj.memberships.filter(is_active=True).count()
 
 
@@ -112,6 +137,17 @@ class SiteViewSet(viewsets.ModelViewSet):
         qs = visible_sites(self.request.user)
         term = self.request.query_params.get("term")
         return qs.filter(term_code=term) if term else qs
+
+    def create(self, request, *args, **kwargs):
+        # Who may write is settled before anything sent is looked at (item 1.15).
+        if not has_role(request.user, *SITE_ADMIN_ROLES):
+            raise PermissionDenied("Only course administrators create sites.")
+        return super().create(request, *args, **kwargs)
+
+    def update(self, request, *args, **kwargs):
+        if not can_teach(request.user, self.get_object()):
+            raise PermissionDenied("Only the site's teaching staff can change it.")
+        return super().update(request, *args, **kwargs)
 
     def perform_create(self, serializer):
         if not has_role(self.request.user, *SITE_ADMIN_ROLES):
@@ -167,7 +203,12 @@ class SiteViewSet(viewsets.ModelViewSet):
 
 
 class TeachingViewSet(viewsets.ModelViewSet):
-    """Base for objects that belong to a site and are managed by its teaching staff."""
+    """Base for objects that belong to a site and are managed by its teaching staff.
+
+    Every write settles the site first (item 1.15): a record, or a site named by id, that the caller cannot
+    open reads as unknown (404, or "does not exist" for an id in the body, see courses.access.TaughtRecord),
+    and a site they can open but do not teach on is refused, before any other field is looked at.
+    """
 
     permission_classes = [RolePermission]
     http_method_names = ["get", "post", "patch", "delete", "head", "options"]
@@ -182,6 +223,10 @@ class TeachingViewSet(viewsets.ModelViewSet):
     def _require_teaching(self, site: CourseSite) -> None:
         if not can_teach(self.request.user, site):
             raise PermissionDenied("Only the site's teaching staff can do this.")
+
+    def update(self, request, *args, **kwargs):
+        self._require_teaching(self.site_of(self.get_object()))
+        return super().update(request, *args, **kwargs)
 
     def perform_create(self, serializer):
         self._require_teaching(self.site_from_data(serializer.validated_data))
@@ -207,9 +252,6 @@ class TeachingViewSet(viewsets.ModelViewSet):
 class ModuleViewSet(TeachingViewSet):
     serializer_class = ModuleSerializer
 
-    def get_serializer_context(self):
-        return {**super().get_serializer_context(), "teaching": True}
-
     def get_queryset(self):
         return Module.objects.filter(site__in=visible_sites(self.request.user)).prefetch_related("items")
 
@@ -224,7 +266,12 @@ class ContentItemViewSet(TeachingViewSet):
     serializer_class = ContentItemSerializer
 
     def get_queryset(self):
-        return ContentItem.objects.filter(module__site__in=visible_sites(self.request.user))
+        """Published items on the sites the user can open, and drafts only where they teach: a draft is
+        unknown to everyone else."""
+        user = self.request.user
+        items = ContentItem.objects.filter(module__site__in=visible_sites(user))
+        items = items.select_related("module__site")
+        return items.filter(is_published=True) | items.filter(module__site__in=taught_sites(user))
 
     def site_of(self, instance):
         return instance.module.site
@@ -232,18 +279,17 @@ class ContentItemViewSet(TeachingViewSet):
     def site_from_data(self, data):
         return data["module"].site
 
+    @extend_schema(responses={(200, "application/octet-stream"): OpenApiTypes.BINARY, 404: ErrorSerializer})
     @action(detail=True, methods=["get"])
     def download(self, request, pk=None):
         item = get_object_or_404(self.get_queryset(), pk=pk)
-        site = item.module.site
-        role = site_role(request.user, site)
-        if role is None or (not item.is_published and not can_teach(request.user, site)):
-            raise PermissionDenied("You cannot open this file.")
         if not item.file:
             return Response({"code": "no_file", "detail": "This item has no file."}, status=404)
         record(request, "download", item, after={"title": item.title})
         return FileResponse(
-            item.file.open("rb"), as_attachment=True, filename=item.file.name.rsplit("/", 1)[-1]
+            item.file.open("rb"),
+            as_attachment=True,
+            filename=item.original_name or item.file.name.rsplit("/", 1)[-1],
         )
 
 
