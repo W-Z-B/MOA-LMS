@@ -12,7 +12,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('assessments', '0006_first_attempts'),
-        ('courses', '0007_alter_contentitem_kind_alter_itemcompletion_how'),
+        ('courses', '0008_package_kind'),
         ('people', '0002_personref_post_unit_supervisor_invited'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]

@@ -1,7 +1,8 @@
 """Create notifications and deliver them by email. Synchronous for now; a worker task can take over later.
 
 Each person chooses, kind by kind, whether a notification also comes by email at once, in a daily summary,
-or not by email at all (item 2.33). The notification itself always appears in the app.
+or not by email at all (item 2.33), and whether it is pushed to their installed app (item 4.04). The
+notification itself always appears in the app.
 """
 
 import logging
@@ -14,6 +15,7 @@ from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.utils import timezone
 
+from notifications import push
 from notifications.models import Notification, NotificationPreference
 
 log = logging.getLogger(__name__)
@@ -70,8 +72,17 @@ def notify(
             note.emailed = _send_email(user.email, title, body, link)
             if note.emailed:
                 note.save(update_fields=["emailed"])
+        if push.wanted(user, kind):
+            _push_later(note.id)
         created.append(note)
     return created
+
+
+def _push_later(notification_id: int) -> None:
+    """Push is sent by the job worker once the notification is committed, never inside the request."""
+    from notifications.tasks import send_push
+
+    transaction.on_commit(lambda: send_push.defer(notification_id=notification_id))
 
 
 def send_daily_summaries(now=None) -> int:

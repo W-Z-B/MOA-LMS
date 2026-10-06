@@ -116,6 +116,8 @@ class ContentItem(ReleaseConditions, TimeStampedModel):
         FILE = "file", "File"
         LINK = "link", "Link"
         PACKAGE = "package", "SCORM or H5P package"
+        # Lecture video (item 4.06): its copies and captions are a video.Video; file_size counts them all.
+        VIDEO = "video", "Video"
 
     class Licence(models.TextChoices):
         GSA_OWN = "gsa_own", "GSA's own material"

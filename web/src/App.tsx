@@ -4,7 +4,7 @@ import { SIGNED_OUT_EVENT, get } from "./api/client";
 import { ADMIN_ROLES, hasAnyRole, type Me } from "./api/types";
 import { usesCampusSwitch } from "./app/people";
 import { Shell } from "./app/Shell";
-import { adminAddress, contentAddress, forumAddress, helpAddress, isToolsAdmin, messageAddress, packageAddress, siteAddress, useHashRoute } from "./app/router";
+import { adminAddress, captionsAddress, contentAddress, forumAddress, helpAddress, isToolsAdmin, messageAddress, packageAddress, siteAddress, useHashRoute } from "./app/router";
 import { AccountScreen } from "./features/account/AccountScreen";
 import { CalendarScreen } from "./features/calendar/CalendarScreen";
 import { ForumScreen } from "./features/forums/ForumScreen";
@@ -49,6 +49,11 @@ const HelpScreen = lazy(() => import("./features/help/HelpScreen"));
 const ToolsAdminScreen = lazy(() => import("./features/tools/ToolsAdminScreen"));
 // --- end tools and AI help ---
 
+// --- media: lecture video captions, offline reading and data-light mode (items 4.03 to 4.07) ---
+const CaptionsScreen = lazy(() => import("./features/media/CaptionsScreen"));
+const DownloadsScreen = lazy(() => import("./features/media/DownloadsScreen"));
+// --- end media ---
+
 const later = (screen: ReactNode) => <Suspense fallback={<p className="loading">Opening…</p>}>{screen}</Suspense>;
 
 function readCampus(): string | null {
@@ -69,6 +74,11 @@ export default function App() {
   // Writes kept on the device are sent only for the person signed in now (shared phones).
   const signedIn = me && !(me.mfa_required && !me.mfa_verified) ? me.id : null;
   useEffect(() => setQueueOwner(signedIn), [signedIn]);
+  // Modules kept to read offline belong to the person signed in; anyone else's are removed (item 4.03).
+  const known = me !== undefined;
+  useEffect(() => {
+    if (known) void import("./features/media/offlineStore").then((m) => m.setOfflineOwner(signedIn)).catch(() => undefined);
+  }, [known, signedIn]);
   const noticeRead = useCallback(() => setMe((m) => (m ? { ...m, privacy_notice_due: null } : m)), []);
 
   useEffect(() => {
@@ -140,6 +150,7 @@ export default function App() {
   const forum = forumAddress(path);
   const messages = messageAddress(path);
   const packaged = packageAddress(path);
+  const captions = captionsAddress(path);
   const campus = usesCampusSwitch(me) ? campusCode : null;
   // Marking, rubrics, accommodations and notification settings have addresses of their own.
   const marking = markingScreen(path, navigate);
@@ -166,6 +177,10 @@ export default function App() {
   else if (packaged?.view === "transfer") screen = later(<TransferScreen siteId={packaged.siteId} />);
   else if (packaged?.view === "library") screen = later(<LibraryScreen path={packaged.rest} onNavigate={navigate} />);
   // --- end packaged content ---
+  // --- media ---
+  else if (captions) screen = later(<CaptionsScreen key={captions.itemId} siteId={captions.siteId} itemId={captions.itemId} />);
+  else if (path === "/downloads") screen = later(<DownloadsScreen />);
+  // --- end media ---
   // --- talk: forums, messages and the calendar (items 4.08 to 4.11, 2.32) ---
   else if (forum?.thread) screen = <ThreadScreen key={forum.thread} forumId={forum.forum ?? 0} threadId={forum.thread} />;
   else if (forum?.forum) screen = <ForumScreen key={forum.forum} forumId={forum.forum} onNavigate={navigate} />;

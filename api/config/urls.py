@@ -30,6 +30,7 @@ urlpatterns = [
     path("api/v1/", include("library.api")),
     path("api/v1/", include("interchange.api")),
     # --- end packaged content ---
+    path("api/v1/", include("video.urls")),
     path("api/v1/", include("forums.api")),
     path("api/v1/", include("messaging.api")),
     path("api/v1/", include("attendance.api")),

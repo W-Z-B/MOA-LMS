@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useRef, useState, type DragEvent, type FormEvent } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, type DragEvent, type FormEvent } from "react";
 import { errorMessage, get, patch, post } from "../../api/client";
 import type { Paginated, SiteContents } from "../../api/types";
 import type { Contents, CourseModule, Item, SiteGroup } from "../../api/types-content";
@@ -10,6 +10,10 @@ import "./content.css";
 
 // Packages (items 5.12, 5.13): the form loads only when a package is put up.
 const PackageForm = lazy(() => import("../packages/PackageForm"));
+// --- media: lecture video and offline reading (items 4.03, 4.06), fetched when a course has them ---
+const VideoItem = lazy(() => import("../media/VideoItem"));
+const ModuleDownload = lazy(() => import("../media/ModuleDownload"));
+// --- end media ---
 
 interface Props {
   data: SiteContents;
@@ -18,7 +22,7 @@ interface Props {
 }
 
 type Release = { kind: "module"; id: number } | { kind: "item"; id: number };
-type Adding = { module: number; kind: "file" | "link" | "package" };
+type Adding = { module: number; kind: "file" | "link" | "video" | "package" };
 type Dragged = { item: number; from: number };
 
 /** Where a button that was used lives after the list is drawn again, so focus can go back to it. */
@@ -47,6 +51,8 @@ export function ContentTab({ data, teaching, onChanged }: Props) {
   const [dragged, setDragged] = useState<Dragged | null>(null);
   const [destinations, setDestinations] = useState<Record<number, string>>({});
   const refocus = useRef<string | null>(null);
+  // The size of each course file by item id: pictures on pages say it in data-light mode (item 4.05).
+  const sizes = useMemo(() => Object.fromEntries(modules.flatMap((m) => m.items).map((i) => [i.id, i.file_size])), [modules]);
 
   useEffect(() => {
     if (!teaching) return;
@@ -199,6 +205,11 @@ export function ContentTab({ data, teaching, onChanged }: Props) {
                   <span style={{ width: `${Math.round((done * 100) / m.items.length)}%` }} />
                 </span>
               </div>
+            )}
+            {m.items.length > 0 && (
+              <Suspense fallback={null}>
+                <ModuleDownload moduleId={m.id} title={m.title} />
+              </Suspense>
             )}
             {release?.kind === "module" && release.id === m.id && (
               <ReleaseEditor
@@ -371,7 +382,7 @@ export function ContentTab({ data, teaching, onChanged }: Props) {
                       onClose={() => setRelease(null)}
                     />
                   )}
-                  {editing === i.id && (i.kind === "file" || i.kind === "link") && (
+                  {editing === i.id && i.kind !== "page" && i.kind !== "package" && (
                     <ItemForm
                       moduleId={m.id}
                       kind={i.kind}
@@ -384,8 +395,15 @@ export function ContentTab({ data, teaching, onChanged }: Props) {
                       }}
                     />
                   )}
-                  {i.kind === "page" && <PageBody html={i.body} />}
-                  {i.kind === "file" && i.download_url && <DocumentView title={i.title} filename={i.filename} url={i.download_url} />}
+                  {i.kind === "page" && <PageBody html={i.body} sizes={sizes} />}
+                  {i.kind === "file" && i.download_url && (
+                    <DocumentView title={i.title} filename={i.filename} url={i.download_url} size={i.file_size} />
+                  )}
+                  {i.kind === "video" && (
+                    <Suspense fallback={<p className="loading">Opening the video…</p>}>
+                      <VideoItem item={i} siteId={siteId} teaching={teaching} />
+                    </Suspense>
+                  )}
                   {i.kind === "link" && (
                     <p className="link-line">
                       <a href={i.url} target="_blank" rel="noopener noreferrer">
@@ -438,6 +456,9 @@ export function ContentTab({ data, teaching, onChanged }: Props) {
                   <a className="button secondary" href="#/library">
                     From the library
                   </a>
+                  <button type="button" className="secondary" onClick={() => setAdding({ module: m.id, kind: "video" })}>
+                    Put a video up
+                  </button>
                 </div>
               ))}
           </section>

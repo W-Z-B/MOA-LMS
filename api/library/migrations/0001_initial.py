@@ -12,7 +12,7 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('courses', '0007_alter_contentitem_kind_alter_itemcompletion_how'),
+        ('courses', '0008_package_kind'),
         ('quizzes', '0002_quiz_grade_category'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]

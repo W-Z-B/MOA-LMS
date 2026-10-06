@@ -3,6 +3,8 @@
 from django.conf import settings
 from django.db import models
 
+from core.fields import EncryptedTextField
+
 
 class Notification(models.Model):
     class Kind(models.TextChoices):
@@ -12,6 +14,7 @@ class Notification(models.Model):
         MARK = "mark", "Marks and feedback"
         REMINDER = "reminder", "Reminders before due dates"
         RECEIPT = "receipt", "Receipts for work handed in"
+        ANNOUNCEMENT = "announcement", "Course announcements"
 
     recipient = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="notifications"
@@ -59,7 +62,9 @@ class NotificationPreference(models.Model):
     )
     kind = models.CharField(max_length=20, choices=Notification.Kind.choices)
     email = models.CharField(max_length=10, choices=Email.choices, default=Email.INSTANT)
-    push = models.BooleanField(default=False, help_text="Phone push; kept for when push arrives (item 4.04)")
+    push = models.BooleanField(
+        default=False, help_text="Also a push notice to the person's installed app (4.04)"
+    )
 
     class Meta:
         ordering = ["user", "kind"]
@@ -67,3 +72,27 @@ class NotificationPreference(models.Model):
 
     def __str__(self) -> str:
         return f"{self.user}: {self.kind} by email {self.email}"
+
+
+class PushSubscription(models.Model):
+    """One installed app (a browser on a phone or computer) that has agreed to receive push notices (item
+    4.04). The push service named by the endpoint delivers them; the keys encrypt each notice for that browser
+    alone (RFC 8291), so the service cannot read it. Removed when the person turns push off there, or when
+    the service says the subscription has expired."""
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="push_subscriptions"
+    )
+    endpoint = models.URLField(max_length=1000, unique=True)
+    p256dh = EncryptedTextField(help_text="The browser's public key for this subscription")
+    auth = EncryptedTextField(help_text="The browser's authentication secret, encrypted at rest")
+    device = models.CharField(max_length=120, blank=True, help_text="Which browser and system, in words")
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_sent_at = models.DateTimeField(null=True, blank=True)
+    failures = models.PositiveSmallIntegerField(default=0, help_text="Sends that failed in a row")
+
+    class Meta:
+        ordering = ["user", "-created_at"]
+
+    def __str__(self) -> str:
+        return f"Push to {self.user} ({self.device or 'a browser'})"

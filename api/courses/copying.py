@@ -20,6 +20,7 @@ from audit.services import record, snapshot
 from courses import richtext, storage
 from courses.models import ContentItem, CourseSite, ItemCompletion, Module
 from courses.release import taken_down
+from video.copying import copy_video
 
 # (kind, field) -> model; the fields the date manager may change.
 DATED = {
@@ -157,7 +158,9 @@ def copy_content(source: CourseSite, target: CourseSite, offset: timedelta, requ
     # Material taken down, or waiting for a takedown decision, does not travel to a new term.
     left_out = [item.title for item in items if taken_down(item)]
     items = [item for item in items if not taken_down(item)]
-    storage.require_room(target, sum(i.file_size for i in items if i.file))
+    storage.require_room(
+        target, sum(i.file_size for i in items if i.file or i.kind == ContentItem.Kind.VIDEO)
+    )
 
     user = request.user
     modules: dict[int, Module] = {}
@@ -195,11 +198,18 @@ def copy_content(source: CourseSite, target: CourseSite, offset: timedelta, requ
                 copy.original_name, copy.file_size = item.original_name, item.file_size
             except FileNotFoundError:
                 missing.append(item.title)
+        if item.kind == ContentItem.Kind.VIDEO:
+            copy.file_size = item.file_size  # the video's copies, poster and captions (item 4.06)
         copy.save()
         if item.kind == ContentItem.Kind.PACKAGE:
             from packages.services import copy_package  # items 5.12, 5.13: the package's settings too
 
             copy_package(item, copy)
+        if item.kind == ContentItem.Kind.VIDEO:
+            try:
+                copy_video(item, copy, user)
+            except FileNotFoundError:
+                missing.append(item.title)
         copies[item.id] = copy
     mapping = {old: new.id for old, new in copies.items()}
     for item in items:

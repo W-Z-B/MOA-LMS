@@ -39,7 +39,10 @@ class Licensed(models.Model):
 
 
 class LibraryItem(Licensed, TimeStampedModel):
-    kind = models.CharField(max_length=10, choices=ContentItem.Kind.choices)
+    # Lecture videos are not shared through the library: their copies and captions belong to a course.
+    kind = models.CharField(
+        max_length=10, choices=[c for c in ContentItem.Kind.choices if c[0] != ContentItem.Kind.VIDEO]
+    )
     title = models.CharField(max_length=160)
     description = models.TextField(blank=True)
     body = models.TextField(blank=True, help_text="A page's text as cleaned HTML (courses.richtext)")

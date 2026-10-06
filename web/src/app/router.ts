@@ -55,6 +55,9 @@ export const PAGES: readonly Page[] = [
   { path: "/rubrics", label: "Rubric library", desc: "The GSA rubrics every course may copy", roles: ADMIN_ROLES },
   { path: "/accommodations", label: "Accommodations", desc: "Extra time and other arrangements for students", roles: ADMIN_ROLES },
   // --- end marking ---
+  // --- media: offline reading and data-light mode (items 4.03, 4.05) ---
+  { path: "/downloads", label: "Downloaded", desc: "Modules kept to read offline, and data-light mode" },
+  // --- end media ---
   // --- staff development and the console ---
   {
     path: "/learning",
@@ -241,6 +244,13 @@ export function packageAddress(path: string): PackageRoute | null {
   return library ? { view: "library", rest: library[1] ?? "" } : null;
 }
 // --- end packaged content ---
+// --- media ---
+/** #/sites/4/videos/12/captions: the captions of a lecture video, for its teaching staff (item 4.06). */
+export function captionsAddress(path: string): { siteId: number; itemId: number } | null {
+  const match = path.split("?")[0].match(/^\/sites\/(\d+)\/videos\/(\d+)\/captions\/?$/);
+  return match ? { siteId: Number(match[1]), itemId: Number(match[2]) } : null;
+}
+// --- end media ---
 // --- help (item 7.17) ---
 /**
  * Help has addresses of its own: #/help lists the help for each role, #/help/student the student's help and
