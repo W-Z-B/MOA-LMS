@@ -127,7 +127,7 @@ def test_questions_are_validated_versioned_and_kept_for_attempts(
     )
     assert changed.json()["new_version"] is True and changed.json()["versions_count"] == 2
     assert learner.get(f"/api/v1/quiz-attempts/{attempt['id']}/").json()["questions"][0]["text"] == (
-        "Clay soils hold water."
+        "<p>Clay soils hold water.</p>"
     )
     assert put(learner, attempt["id"], 1, {"answer": True}).status_code == 200
     finished = learner.post(f"/api/v1/quiz-attempts/{attempt['id']}/submit/").json()
