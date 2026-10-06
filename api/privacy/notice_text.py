@@ -26,6 +26,10 @@ assistant).
 - Your work: what you submit for assignments (the file or text), when you submitted it and whether it was \
 late.
 - Your marks: the mark and feedback for each piece of work. You see them once your lecturer releases them.
+- If you registered yourself for a short course (when GSA offers them): the name and email address you \
+gave.
+- Checks of your work for copying: the words of what you hand in are compared with other GSA work, on \
+GSA's own server. The result goes to your lecturers only, and is deleted with your work.
 - Completions: the courses you have completed. For staff development courses this is sent to the Human \
 Resources system for your training record.
 - Notifications sent to you, and whether you have read them.
@@ -46,7 +50,8 @@ Who sees it
 - Your lecturers and teaching assistants see the work, marks and membership of the courses they teach.
 - Course administrators and system administrators see what they need to run the courses.
 - The auditor and the Data Protection Officer see records when they check how the system is used.
-- Other students never see your work or your marks.
+- Other students never see your marks. When a course uses peer review, a few classmates see your work \
+without your name, and you see theirs; your lecturer sees who reviewed whom.
 - Coursework marks go to the Student Records system; staff training completions go to the Human Resources \
 system. Nothing is sold or shared for marketing.
 

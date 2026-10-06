@@ -43,6 +43,9 @@ to be confirmed). Staging on Railway (United States) holds fictional data only.
 | Students | Course memberships (from SRMS class lists) | The SRMS | Giving access to course material | Functions of a public body |
 | Students | Submitted work (files and text), time of submission, late flag | The student | Assessment | Functions of a public body |
 | Students | Marks and feedback, released or not | Lecturers | Assessment; coursework totals sent to the SRMS | Functions of a public body |
+| Students | The words of their work and its fingerprints, compared with other GSA work on GSA's server; matching passages (item 3.20, ADR 0020) | The LMS | Academic integrity: evidence for a lecturer to judge, never a decision by itself | Functions of a public body |
+| Students | Peer reviews they write and receive (item 4.13): seen by classmates without names | Students | Learning by assessing; optionally part of the mark | Functions of a public body |
+| Open-course learners (only if GSA turns it on, ADR 0021) | Name and email address they give, network address of the request | The person | Short courses for farmers and extension officers | Consent given when registering; to confirm with GSA |
 | Students and staff | Completions of a course site | The LMS | Records of learning; staff development completions sent to the HRMS | Functions of a public body; employment contract (staff) |
 | Staff | Name, employee number, email, campus | The HRMS | Knowing who teaches | Employment contract |
 | Staff | Memberships as lecturer or assistant; what they did (content, marks, announcements) | The LMS | Running courses; accountability | Employment contract; functions of a public body |

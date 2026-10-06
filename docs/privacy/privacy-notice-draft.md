@@ -22,6 +22,9 @@ Our Data Protection Officer is [name or post], [email], [phone].
   Records system (students) or the Human Resources system (staff); the LMS does not ask you for them.
 - Your courses: the course sites you belong to and your role in each.
 - Your work: what you hand in for assignments, when, and whether it was late.
+- If you registered yourself for a short course (when GSA offers them): the name and email address you gave.
+- Checks of your work for copying: the words of what you hand in are compared with other GSA work, on
+  GSA's own server. The result goes to your lecturers only, and is deleted with your work.
 - Your marks: the mark and feedback for each piece of work, which you see once your lecturer releases them.
 - The courses you have completed. For staff development courses this goes to your training record.
 - The notifications we send you, and your account: username and roles.
@@ -41,7 +44,8 @@ and training.]
 **Who sees it.** Your lecturers and teaching assistants see the work, marks and membership of the courses
 they teach. Course administrators and system administrators see what they need to run the courses. The
 auditor and the Data Protection Officer see records when they check how the system is used. Other students
-never see your work or marks. Coursework marks go to the Student Records system; staff development
+never see your marks. When a course uses peer review, a few classmates see your work without your name,
+and you see theirs; your lecturer sees who reviewed whom. Coursework marks go to the Student Records system; staff development
 completions go to the Human Resources system. Nothing is sold or used for marketing.
 
 **Students under 18.** The same protections apply to you. A parent or guardian may ask on your behalf

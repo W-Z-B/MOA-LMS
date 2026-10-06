@@ -15,6 +15,11 @@ when people use it, so that the privacy notice can say it and anyone adding a fe
 | Reading of the privacy notice | Once per version | Acknowledgements, audit log | Administrators, the DPO | With the account |
 | Viewing or downloading one's own record | Each time | Audit log | Administrators, the auditor | With the audit log |
 | Notifications sent, and whether read | Each one | Notifications | The person | 2 years, removed nightly |
+| The words of each hand-in, its fingerprints and what it shares with other GSA work (item 3.20) | Each hand-in | Similarity tables, on GSA's server | The course's teaching staff; the other work named only to staff of both courses | With the submission: deleted with it |
+| Viewing or re-running a similarity report | Each time | Audit log | Administrators, the auditor | With the audit log |
+| Peer reviews written: rubric scores and comment (item 4.13) | Each review | Peer reviews, audit log | The reviewer; the student reviewed once released, without the reviewer's name; the teaching staff | With the submission |
+| Paper quiz answers keyed in (item 3.24) | Each answer sheet | Quiz attempts, audit log | The student as the quiz's review options allow, the teaching staff | With quiz attempts |
+| Registration for an open short course: name, email, network address (item 5.07, when GSA turns it on) | Each request | Open registrations | The system | Unconfirmed: deleted when the link expires (48 hours); confirmed: with the account |
 
 ## What the LMS does not record
 
