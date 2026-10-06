@@ -1,4 +1,4 @@
-"""Open short courses for farmers and extension officers (item 5.07; needs GSA's decision D0, ADR 0021).
+"""Open short courses for farmers and extension officers (item 5.07; needs GSA's decision D0, ADR 0022).
 
 Off unless OPEN_COURSES_ENABLED is set. When on, the published open sites are listed on a public page and
 anyone may register with their email address. Registration only asks: the account is made when the person

@@ -58,11 +58,15 @@ INSTALLED_APPS = [
     "messaging",
     "attendance",
     "calendars",
+    "helpdesk",
     "rubrics",
     "similarity",
     "peerreview",
     "paperquizzes",
     "opencourses",
+    "insights",
+    "lti",
+    "assist",
 ]
 
 MIDDLEWARE = [
@@ -146,6 +150,7 @@ SPECTACULAR_SETTINGS = {
         "QuizReviewEnum": "quizzes.models.Quiz.Review",
         "RubricKindEnum": "rubrics.models.Rubric.Kind",
         "NotificationKindEnum": "notifications.models.Notification.Kind",
+        "AlertKindEnum": "insights.models.AlertRule.Kind",
     },
 }
 
@@ -284,14 +289,52 @@ ATTENDANCE_LATE_AFTER_MINUTES = int(env("ATTENDANCE_LATE_AFTER_MINUTES", "10"))
 MARKING_DAYS = int(env("MARKING_DAYS", "14"))
 DECISION_DAYS = int(env("DECISION_DAYS", "7"))
 
-# Similarity check (item 3.20, decision D4, ADR 0020): each hand-in is compared with other GSA submissions on
+# Similarity check (item 3.20, decision D4, ADR 0021): each hand-in is compared with other GSA submissions on
 # GSA's own server, in the background. On by default, as decided; off stops new checks and the report's
 # "check again".
 SIMILARITY_CHECKS = env_bool("SIMILARITY_CHECKS", True)
 
 # Open short courses for farmers and extension officers (item 5.07). Off until GSA decides to offer them
-# (decision D0, ADR 0021). On: a public catalogue of open sites, registration by email, and learner accounts
+# (decision D0, ADR 0022). On: a public catalogue of open sites, registration by email, and learner accounts
 # that see open sites only. Registrations: this many an hour from one network address; a link lasts this long.
 OPEN_COURSES_ENABLED = env_bool("OPEN_COURSES_ENABLED", False)
 OPEN_REGISTRATIONS_PER_ADDRESS = int(env("OPEN_REGISTRATIONS_PER_ADDRESS", "5"))
 OPEN_CONFIRM_HOURS = int(env("OPEN_CONFIRM_HOURS", "48"))
+# --- help and going live (items 7.16, 7.17) ---
+# Help requests one person may send in an hour (item 7.17); they reach the course administrators.
+HELP_REQUESTS_PER_HOUR = int(env("HELP_REQUESTS_PER_HOUR", "5"))
+# Student orientation (item 7.16): the self-paced course seed_orientation makes, and whether a student is
+# enrolled on it at their first sign-in. On by default; set ORIENTATION_AUTO_ENROL=0 to enrol by hand.
+ORIENTATION_SITE_CODE = env("ORIENTATION_SITE_CODE", "GSA-LMS-ORIENTATION")
+ORIENTATION_AUTO_ENROL = env_bool("ORIENTATION_AUTO_ENROL", True)
+
+# Insight (phase 6, item 3.11). Reports that leave a course hide totals for groups smaller than this
+# (item 6.06); a student's standing on a learning outcome is "met" at this percentage of the evidence.
+REPORT_MIN_GROUP = int(env("REPORT_MIN_GROUP", "5"))
+OUTCOME_MET_PERCENT = int(env("OUTCOME_MET_PERCENT", "50"))
+# Competency results and outcome standings sent to the SRMS each night (item 6.10). Off until GSA decides
+# competency records (decision D8, ADR 0017) and the Registrar agrees the SRMS endpoint.
+SRMS_COMPETENCY_PUSH = env_bool("SRMS_COMPETENCY_PUSH", False)
+
+# Outside tools over LTI 1.3 with Advantage (item 6.07, docs/lti.md). The LMS's issuer is its public address.
+# A launch must come back from the tool within LTI_LAUNCH_SECONDS; content chosen in a tool within
+# LTI_DEEP_LINK_SECONDS. Tools receive names and email addresses only where a course administrator allows it
+# for that tool (off by default).
+LTI_ISSUER = env("LTI_ISSUER", PUBLIC_URL)
+LTI_LAUNCH_SECONDS = int(env("LTI_LAUNCH_SECONDS", "300"))
+LTI_DEEP_LINK_SECONDS = int(env("LTI_DEEP_LINK_SECONDS", "3600"))
+LTI_TOKEN_SECONDS = int(env("LTI_TOKEN_SECONDS", "3600"))
+LTI_JWKS_CACHE_SECONDS = int(env("LTI_JWKS_CACHE_SECONDS", "3600"))
+LTI_CLOCK_LEEWAY_SECONDS = int(env("LTI_CLOCK_LEEWAY_SECONDS", "60"))
+
+# AI assistance (items 6.11, 6.12, decision D5, ADR 0007, docs/ai.md). Off unless GSA switches it on, and then
+# only a model GSA hosts itself, reached through Ollama's HTTP API at AI_OLLAMA_URL: no outside AI service is
+# built in. Each course site also has its own switches, off until its teaching staff turn them on.
+AI_ENABLED = env_bool("AI_ENABLED", False)
+AI_OLLAMA_URL = env("AI_OLLAMA_URL", "")
+AI_MODEL = env("AI_MODEL", "")
+AI_VISION_MODEL = env("AI_VISION_MODEL", "")  # for alternative text; a model that reads pictures
+AI_TIMEOUT_SECONDS = int(env("AI_TIMEOUT_SECONDS", "60"))
+# The study helper is switched off while a student has an assignment open (not yet handed in, before its due
+# date) on the site, as for quizzes. GSA may decide assignments should not switch it off.
+AI_HELPER_OFF_DURING_ASSIGNMENTS = env_bool("AI_HELPER_OFF_DURING_ASSIGNMENTS", True)

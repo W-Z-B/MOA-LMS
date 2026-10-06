@@ -7,7 +7,7 @@ import { AuthFrame } from "../auth/AuthFrame";
 import { PASSWORD_RULES } from "../auth/SetPasswordScreen";
 import "./assess.css";
 
-/** What the catalogue says when GSA has not switched open courses on (OPEN_COURSES_ENABLED, ADR 0021). */
+/** What the catalogue says when GSA has not switched open courses on (OPEN_COURSES_ENABLED, ADR 0022). */
 const OFF = "GSA does not offer open short courses at present.";
 
 function useCatalogue() {

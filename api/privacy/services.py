@@ -140,7 +140,26 @@ def _teaching_actions(user) -> list[dict]:
     ]
 
 
-def _person_record(person) -> dict:
+def _early_alerts(person) -> list[dict]:
+    """Early alerts raised about a student (item 6.05), with what was decided. They go in the copy produced
+    for a request, which a member of staff hands over and can explain; they are not shown as a label in the
+    student's own My data (decision D5, docs/privacy/what-we-record.md)."""
+    from insights.models import Alert
+
+    return [
+        {
+            "course": a.site.code,
+            "rule": a.get_kind_display(),
+            "raised_on": a.raised_at,
+            "evidence": [e.get("what", "") for e in a.evidence],
+            "decision": a.get_state_display(),
+            "note": a.note,
+        }
+        for a in Alert.objects.filter(student=person).select_related("site").order_by("raised_at")
+    ]
+
+
+def _person_record(person, *, alerts: bool = False) -> dict:
     data = {
         "kind": person.get_kind_display(),
         "number": person.external_id,
@@ -168,6 +187,8 @@ def _person_record(person) -> dict:
     }
     if person.kind == person.Kind.STUDENT:
         data.update(_student_work(person))
+        if alerts:
+            data["early_alerts"] = _early_alerts(person)
     return data
 
 
@@ -181,15 +202,17 @@ def record_of(user) -> dict:
 def record_of_person(person) -> dict:
     """The same copy for a person who asked for it on paper, account included when they have one."""
     user = person.user if person.user_id else None
-    return _record(user, person, "What the GSA LMS holds about this person, produced for their request.")
+    return _record(
+        user, person, "What the GSA LMS holds about this person, produced for their request.", alerts=True
+    )
 
 
-def _record(user, person, about: str) -> dict:
+def _record(user, person, about: str, *, alerts: bool = False) -> dict:
     staff = person is not None and person.kind == person.Kind.STAFF
     return {
         "produced_at": timezone.now(),
         "about": about,
         "account": _account(user) if user is not None else None,
-        "person": _person_record(person) if person is not None else None,
+        "person": _person_record(person, alerts=alerts) if person is not None else None,
         "teaching_actions": _teaching_actions(user) if staff and user is not None else None,
     }

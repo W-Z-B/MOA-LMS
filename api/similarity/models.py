@@ -1,4 +1,4 @@
-"""The similarity check (item 3.20; decision D4, ADR 0006 and ADR 0020).
+"""The similarity check (item 3.20; decision D4, ADR 0006 and ADR 0021).
 
 Each submission's latest hand-in is read into words, and a sample of fingerprints of its five-word runs is
 kept so later work can be compared with it. Everything here is derived from the submission and goes with

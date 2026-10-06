@@ -1,4 +1,4 @@
-# ADR 0020: How the similarity check compares work
+# ADR 0021: How the similarity check compares work
 
 **Status:** accepted, 6 October 2026, as the way to carry out [ADR 0006](0006-academic-integrity.md) (decision D4).
 **Date:** 6 October 2026.

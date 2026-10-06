@@ -15,6 +15,8 @@ interface Props {
   initialHtml: string;
   onChange: (html: string) => void;
   pictures: Picture[];
+  /** AI help with a picture's description (item 6.11): given only where it is switched on. */
+  describe?: (picture: Picture) => Promise<{ text: string; used: () => void }>;
   label: string;
 }
 
@@ -25,7 +27,7 @@ type Panel = "link" | "picture" | "maths" | null;
  * control is a labelled button in one toolbar, and links, pictures and maths open a small form under it
  * instead of a dialog box, so the editor works the same with a keyboard, a screen reader or on a phone.
  */
-export function RichEditor({ initialHtml, onChange, pictures, label }: Props) {
+export function RichEditor({ initialHtml, onChange, pictures, label, describe }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const changed = useRef(onChange);
   // The editor is made once: the text and name it opens with are read only then.
@@ -100,7 +102,7 @@ export function RichEditor({ initialHtml, onChange, pictures, label }: Props) {
         </div>
       )}
       {editor && panel === "link" && <LinkForm editor={editor} onDone={() => setPanel(null)} />}
-      {editor && panel === "picture" && <PictureForm editor={editor} pictures={pictures} onDone={() => setPanel(null)} />}
+      {editor && panel === "picture" && <PictureForm editor={editor} pictures={pictures} describe={describe} onDone={() => setPanel(null)} />}
       {editor && panel === "maths" && <MathsForm editor={editor} onDone={() => setPanel(null)} />}
       <div ref={host} className="editor-host" />
     </div>
@@ -146,10 +148,22 @@ function LinkForm({ editor, onDone }: { editor: Editor; onDone: () => void }) {
   );
 }
 
-function PictureForm({ editor, pictures, onDone }: { editor: Editor; pictures: Picture[]; onDone: () => void }) {
+function PictureForm({
+  editor,
+  pictures,
+  describe,
+  onDone,
+}: {
+  editor: Editor;
+  pictures: Picture[];
+  describe?: Props["describe"];
+  onDone: () => void;
+}) {
   const chosen = editor.isActive("image") ? editor.getAttributes("image") : null;
   const [src, setSrc] = useState<string>(String(chosen?.src ?? pictures[0]?.url ?? ""));
   const [alt, setAlt] = useState<string>(String(chosen?.alt ?? ""));
+  const [suggested, setSuggested] = useState<{ used: () => void } | null>(null);
+  const [suggesting, setSuggesting] = useState<string | null>(null);
   if (pictures.length === 0 && !chosen)
     return (
       <div className="editor-panel" role="group" aria-label="Picture">
@@ -165,6 +179,7 @@ function PictureForm({ editor, pictures, onDone }: { editor: Editor; pictures: P
     );
   const insert = () => {
     const text = alt.trim();
+    suggested?.used(); // the lecturer checked the AI's suggestion and kept what they wrote
     if (chosen) editor.chain().focus().updateAttributes("image", { src, alt: text }).run();
     else editor.chain().focus().setImage({ src, alt: text }).run();
     onDone();
@@ -186,6 +201,34 @@ function PictureForm({ editor, pictures, onDone }: { editor: Editor; pictures: P
         <input value={alt} onChange={(e) => setAlt(e.target.value)} placeholder="Maize seedlings ten days after sowing" required aria-required="true" />
       </label>
       <p className="muted small">Read aloud to students who cannot see the picture. Say what matters in it, in a few words.</p>
+      {describe && (
+        <div className="actions">
+          <button
+            type="button"
+            className="secondary"
+            disabled={suggesting === "…"}
+            onClick={() => {
+              const picture = pictures.find((p) => p.url === src);
+              if (!picture) return;
+              setSuggesting("…");
+              describe(picture)
+                .then((s) => {
+                  setAlt(s.text);
+                  setSuggested(s);
+                  setSuggesting("Suggested with AI help: check that it says what matters, and change it.");
+                })
+                .catch(() => setSuggesting("No suggestion could be made. Write the description yourself."));
+            }}
+          >
+            {suggesting === "…" ? "Suggesting…" : "Suggest a description"}
+          </button>
+        </div>
+      )}
+      {suggesting && suggesting !== "…" && (
+        <p className="notice small" role="status">
+          {suggesting}
+        </p>
+      )}
       <div className="actions">
         <button type="button" className="secondary" onClick={onDone}>
           Cancel

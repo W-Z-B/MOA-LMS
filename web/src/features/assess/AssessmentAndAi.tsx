@@ -2,7 +2,7 @@ import "./assess.css";
 
 /**
  * Guidance for lecturers on assessment in the age of AI (item 6.13; decisions D4 and D5, ADRs 0006, 0007 and
- * 0020). The same words as docs/guides/assessment-and-ai.md: change both together.
+ * 0021). The same words as docs/guides/assessment-and-ai.md: change both together.
  */
 export default function AssessmentAndAi() {
   return (

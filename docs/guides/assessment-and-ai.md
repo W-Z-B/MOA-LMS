@@ -1,6 +1,6 @@
 # Assessment in the age of AI: guidance for lecturers
 
-Item 6.13. Decisions behind it: D4 ([ADR 0006](../adr/0006-academic-integrity.md), [ADR 0020](../adr/0020-similarity-check-method.md))
+Item 6.13. Decisions behind it: D4 ([ADR 0006](../adr/0006-academic-integrity.md), [ADR 0021](../adr/0021-similarity-check-method.md))
 and D5 ([ADR 0007](../adr/0007-ai-assistance.md)). The same guidance is in the LMS under
 **Help: Assessment and AI** (`web/src/features/assess/AssessmentAndAi.tsx`, at `#/help/assessment-and-ai`); change both together.
 

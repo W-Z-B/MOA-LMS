@@ -5,7 +5,7 @@ import { dmyTime } from "../../app/format";
 import { plainMark, STATE_WORDS } from "../assignments/words";
 import "../marking/marking.css";
 
-const KIND = { assignment: "Assignment", quiz: "Quiz", practical: "Practical task", forum: "Graded forum" } as const;
+const KIND = { assignment: "Assignment", quiz: "Quiz", practical: "Practical task", forum: "Graded forum", tool: "Outside tool" } as const;
 
 function stateOf(item: WorkingItem): string {
   if (item.anonymous) return "Pending (anonymous marking)";

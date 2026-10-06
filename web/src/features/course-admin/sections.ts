@@ -15,6 +15,8 @@ export const ADMIN_SECTIONS: readonly AdminSection[] = [
   { path: "/admin/templates", title: "Course templates", sub: "The layout every new course starts with" },
   { path: "/admin/takedowns", title: "Takedown requests", sub: "Material reported as not allowed: withdraw it or restore it" },
   { path: "/admin/storage", title: "Storage allowances", sub: "How much each course may keep in files" },
+  // --- tools and AI help ---
+  { path: "/admin/tools", title: "Outside tools", sub: "Tools courses open without a second sign-in, and what each receives" },
 ];
 
 /** Plain text written in a template's form becomes paragraphs; text with tags is kept for the server to clean. */

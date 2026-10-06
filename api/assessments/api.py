@@ -475,6 +475,9 @@ class GradebookRowSerializer(serializers.Serializer):
     quizzes = serializers.DictField(child=serializers.JSONField(), help_text="Keyed by quiz id")
     practicals = serializers.DictField(child=GradebookItemCellSerializer(), help_text="Keyed by task id")
     forums = serializers.DictField(child=GradebookItemCellSerializer(), help_text="Keyed by forum id")
+    tools = serializers.DictField(
+        child=GradebookItemCellSerializer(), help_text="Keyed by line item id: outside tools (item 6.07)"
+    )
     categories = serializers.DictField(
         child=serializers.CharField(allow_null=True), help_text="Percent per category id"
     )
@@ -491,6 +494,9 @@ class GradebookSerializer(serializers.Serializer):
     quizzes = serializers.ListField(child=serializers.JSONField())
     practicals = GradebookColumnSerializer(many=True, help_text="Practical tasks that count")
     forums = GradebookColumnSerializer(many=True, help_text="Graded forums that count")
+    tools = GradebookColumnSerializer(
+        many=True, help_text="Columns outside tools post scores to; weight 0 shows but does not count"
+    )
     rows = GradebookRowSerializer(many=True)
 
 

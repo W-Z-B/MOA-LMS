@@ -1,7 +1,7 @@
 """Open short courses (item 5.07): the public catalogue and registration, and joining once signed in.
 
 Every endpoint answers 404 with open_courses_off while OPEN_COURSES_ENABLED is off (the default): GSA has
-not yet decided to offer open courses (decision D0, ADR 0021).
+not yet decided to offer open courses (decision D0, ADR 0022).
 """
 
 from django.shortcuts import get_object_or_404

@@ -33,8 +33,15 @@ Our Data Protection Officer is [name or post], [email], [phone].
 - Each time you sign in or out, and from which network address; failed sign-in attempts.
 - Each time you download a course file or a submission.
 - Each submission, mark and change to a course, with who made it and when.
+- The first time you open each item of a course, to show your progress to you and your lecturers.
 
-We do not record how long you spend on a page, which pages you read, or where you are. We use no
+**Early alerts.** Each night the LMS checks three rules that anyone can read: work missed, marks that
+have fallen, and no activity on a course for some days. When one matches, your lecturers see it with the
+evidence (for example, the work that was not handed in), and a person decides whether to contact you. The
+LMS does not predict anything about you, decide anything about you, or label you; you can ask for these
+records as part of your data.
+
+We do not record how long you spend on a page, how often you read it, or where you are. We use no
 advertising or tracking cookies.
 
 **Why.** To run your courses, mark your work and send your coursework marks to the Student Records
@@ -47,6 +54,18 @@ auditor and the Data Protection Officer see records when they check how the syst
 never see your marks. When a course uses peer review, a few classmates see your work without your name,
 and you see theirs; your lecturer sees who reviewed whom. Coursework marks go to the Student Records system; staff development
 completions go to the Human Resources system. Nothing is sold or used for marketing.
+
+**Outside tools.** Some courses open outside tools (item 6.07). A tool receives a code that stands for you
+in that tool alone, your role on the course and the course's name; it receives your name or email only
+where GSA has allowed it for that tool [GSA to list the tools and what each receives], and it may send your
+score back to the gradebook.
+
+**AI help.** [Only once GSA switches it on, decision D5.] Lecturers may ask a model run on GSA's own server
+to draft questions, rubric wording or picture descriptions from their own material; they check and edit
+every draft. The study helper answers your questions only from your course's material and shows where the
+answer came from. It is sent your question and the course's material, nothing else about you. Your question
+and its answer are not kept, only that a question was asked ([1 year]). It is switched off while you have a
+quiz or assignment open on that course.
 
 **Students under 18.** The same protections apply to you. A parent or guardian may ask on your behalf
 through the Registry. [GSA to confirm how the Registry checks who is asking.]
