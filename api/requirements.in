@@ -15,3 +15,5 @@ weasyprint>=62
 django-cors-headers>=4.4,<5
 # Cleans the HTML of rich pages (item 2.12). MIT.
 nh3>=0.2.18,<1
+# Reads the text of PDFs handed in, for the similarity check (item 3.20). BSD-3-Clause, pure Python.
+pypdf>=5,<7

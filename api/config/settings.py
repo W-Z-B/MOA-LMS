@@ -59,6 +59,7 @@ INSTALLED_APPS = [
     "attendance",
     "calendars",
     "rubrics",
+    "similarity",
 ]
 
 MIDDLEWARE = [
@@ -279,3 +280,8 @@ ATTENDANCE_LATE_AFTER_MINUTES = int(env("ATTENDANCE_LATE_AFTER_MINUTES", "10"))
 # To do (items 2.07 to 2.09): days after which work to mark, and a decision, are marked overdue.
 MARKING_DAYS = int(env("MARKING_DAYS", "14"))
 DECISION_DAYS = int(env("DECISION_DAYS", "7"))
+
+# Similarity check (item 3.20, decision D4, ADR 0020): each hand-in is compared with other GSA submissions on
+# GSA's own server, in the background. On by default, as decided; off stops new checks and the report's
+# "check again".
+SIMILARITY_CHECKS = env_bool("SIMILARITY_CHECKS", True)
