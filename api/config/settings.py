@@ -59,6 +59,7 @@ INSTALLED_APPS = [
     "attendance",
     "calendars",
     "rubrics",
+    "insights",
 ]
 
 MIDDLEWARE = [
@@ -142,6 +143,7 @@ SPECTACULAR_SETTINGS = {
         "QuizReviewEnum": "quizzes.models.Quiz.Review",
         "RubricKindEnum": "rubrics.models.Rubric.Kind",
         "NotificationKindEnum": "notifications.models.Notification.Kind",
+        "AlertKindEnum": "insights.models.AlertRule.Kind",
     },
 }
 
@@ -279,3 +281,11 @@ ATTENDANCE_LATE_AFTER_MINUTES = int(env("ATTENDANCE_LATE_AFTER_MINUTES", "10"))
 # To do (items 2.07 to 2.09): days after which work to mark, and a decision, are marked overdue.
 MARKING_DAYS = int(env("MARKING_DAYS", "14"))
 DECISION_DAYS = int(env("DECISION_DAYS", "7"))
+
+# Insight (phase 6, item 3.11). Reports that leave a course hide totals for groups smaller than this
+# (item 6.06); a student's standing on a learning outcome is "met" at this percentage of the evidence.
+REPORT_MIN_GROUP = int(env("REPORT_MIN_GROUP", "5"))
+OUTCOME_MET_PERCENT = int(env("OUTCOME_MET_PERCENT", "50"))
+# Competency results and outcome standings sent to the SRMS each night (item 6.10). Off until GSA decides
+# competency records (decision D8, ADR 0017) and the Registrar agrees the SRMS endpoint.
+SRMS_COMPETENCY_PUSH = env_bool("SRMS_COMPETENCY_PUSH", False)
