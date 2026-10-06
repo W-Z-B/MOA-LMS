@@ -18,3 +18,5 @@ nh3>=0.2.18,<1
 # Web Push to the installed app (item 4.04): signs each notice (VAPID) and encrypts it for the browser.
 # pywebpush and py-vapid are MPL-2.0, as is certifi (through requests): named exceptions under ADR 0002.
 pywebpush>=2.0,<3
+# LTI 1.3 (item 6.07): signing and checking the JSON Web Tokens exchanged with outside tools. MIT.
+pyjwt>=2.9,<3

@@ -84,6 +84,10 @@ What the LMS records is kept to what teaching and security need (see `what-we-re
   the work itself is opened from the course, so the copy that may be emailed or saved is small.
 - An unreleased mark is not shown to the student until the lecturer releases it.
 - The audit entry of a disposal names which work was destroyed, never its content or its mark.
+- Course analytics and progress (items 6.01, 6.02) are worked out from what is already recorded; only the
+  first opening of each item is kept. Early alerts (item 6.05) follow visible rules with thresholds a course
+  administrator sets, carry their evidence, and are decided by a person; the student never sees a label.
+- Reports that leave a course hide totals about fewer than five people (item 6.06).
 
 ## 6. Rights of the people concerned
 
@@ -117,6 +121,44 @@ assignments.
 | Notifications | 2 years after they were sent | Removed every night at 04:00 |
 | Privacy notice acknowledgements, correction requests | As long as the account | With the account |
 | Access review sign-offs | 7 years, with the audit log | |
+| AI exchanges (when the study helper was asked and whether it answered; lecturers' drafts) | 1 year, as sign-in attempts | Removed every night at 04:00 (rule `ai-exchanges`); a student's question and the answer are never kept |
+| Scores posted by outside tools | With the marks | |
+
+## 7a. Outside tools (LTI 1.3, item 6.07): a note for this assessment
+
+Outside tools are run by third parties, usually outside Guyana, so anything sent to one is a disclosure and
+possibly a transfer. The LMS keeps it to the least a tool needs:
+
+- **Always sent at a launch:** an identifier for the person that is random and different for every tool (not
+  the student or employee number, not the username); the person's role on the course (learner, instructor,
+  teaching assistant or administrator); the course's code and title; the item's title.
+- **Sent only when a course administrator switches it on for that tool:** the person's name; the person's
+  email address. Both switches are **off by default**, are audited when changed, and are shown to teaching
+  staff beside each tool ("What the tool receives").
+- **Class lists** (Names and Role Provisioning) go only to a tool allowed to read them, with the same
+  identifiers and the same name and email rule; each reading is audited.
+- **Scores** come back from the tool for students of the course only, are audited per student, and count in
+  the coursework only where the lecturer gives the column a weight.
+- **Before a tool is registered** GSA should record, per tool: its maker and where it stores data; the
+  contract or terms that make the maker a processor; whether names or emails are truly needed; and, for a tool
+  used by students under 18, why it is suitable. Until then leave both data-sharing switches off.
+
+## 7b. AI assistance (items 6.11, 6.12, decision D5): a note for this assessment
+
+- **Off by default** (`AI_ENABLED=False`), and then per course, off until its teaching staff switch it on.
+- **Where it runs:** only a model GSA hosts itself, reached through Ollama's HTTP API at an address GSA sets
+  (`AI_OLLAMA_URL`). No outside AI service is implemented; adding one is a new decision with its own
+  assessment (ADR 0007).
+- **Lecturer drafts** use the lecturer's own material (a page, a Word or PowerPoint file, a picture), never
+  student data. Every draft is reviewed and edited by the lecturer before it is saved; the save is marked
+  "AI-drafted" in the audit log.
+- **The study helper** is sent the student's question and passages of the course's own published material
+  that the student may see; nothing else about the student (no name, number or marks). It refuses when the
+  material holds nothing relevant, shows its sources, and is switched off while the student has a quiz attempt
+  in progress or a quiz or assignment open on that course. The question and the answer are not stored; only
+  the time, the person, whether it was answered and which items were used, for 1 year.
+- **No decision about a student** is made by the model (ADR 0007): it drafts for lecturers and answers study
+  questions only.
 
 ## 8. Risks and measures
 
@@ -128,6 +170,8 @@ assignments.
 | Work kept longer than needed | Retention schedule with reviewed disposal; nightly purge of logs | Low once GSA confirms the periods |
 | A role kept after someone leaves or stops teaching | Access review each term, with a reminder listing role holders and teaching staff | Low |
 | A breach not handled in time | Breach register with alerts; the DPO named in the system | Medium until GSA names the DPO and a procedure |
+| An outside tool learns more about people than it needs | Opaque identifier per tool; names and emails off by default, per tool; launches and class-list readings audited (section 7a) | Low while the switches stay off; Medium for a tool given names or emails |
+| AI used on student data, or its answers taken as fact | Off by default; a model GSA hosts; the helper answers only from course material with sources, and refuses otherwise; off during assessments; drafts always reviewed (section 7b) | Low |
 | Data of minors handled like adults' | Same protections for all; parent or guardian requests through the Registry; minors flagged in breaches | Medium until GSA decides section 4's open points |
 
 ## 9. Sign-off

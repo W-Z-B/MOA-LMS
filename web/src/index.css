@@ -2006,3 +2006,40 @@ td input[type="number"] {
 .kind-choices label.inline {
   min-height: 44px;
 }
+/* --- help (item 7.17): the breadcrumb row with the Help link at its end --- */
+.crumb-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0 12px;
+}
+.crumb-row .crumbs {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.help-link {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  margin-bottom: 8px;
+  padding: 0 4px;
+  color: var(--accent);
+  font-size: 13.5px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.help-link:hover {
+  text-decoration: underline;
+}
+@media (max-width: 760px) {
+  .help-link {
+    min-height: 44px;
+  }
+}
+@media print {
+  .help-link {
+    display: none;
+  }
+}
+/* --- end help --- */

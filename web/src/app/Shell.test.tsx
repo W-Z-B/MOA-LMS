@@ -132,13 +132,14 @@ describe("the frame", () => {
       "My account",
       "Notification settings",
       "Downloaded",
+      "Help",
     ]);
     await user.click(within(menu).getByRole("link", { name: /My data/ }));
     expect(props.onNavigate).toHaveBeenCalledWith("/my-data");
     expect(screen.queryByRole("dialog", { name: "Your account" })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Signed in as Natasha Khan" }));
     await user.click(screen.getByRole("button", { name: "Sign out" }));
-    // Push is turned off for this device and kept modules are removed first (items 4.03, 4.04).
+    // Signing out waits for the server; push is turned off for this device and what was kept is removed first.
     await waitFor(() => expect(props.onLogout).toHaveBeenCalled());
   });
 
@@ -232,6 +233,7 @@ describe("search", () => {
       "My account",
       "Notification settings",
       "Downloaded",
+      "Help",
     ]);
   });
 

@@ -6,6 +6,7 @@ import { Breadcrumbs } from "./Breadcrumbs";
 import { CampusSwitch } from "./CampusSwitch";
 import { Crest } from "./Crest";
 import { FrameContext, usePhone, type Frame } from "./frame";
+import { helpLink } from "./help";
 import { MessagesLink } from "../features/messages/MessagesLink";
 import { NotificationsBell } from "./NotificationsBell";
 import { usesCampusSwitch } from "./people";
@@ -194,7 +195,15 @@ export function Shell({ me, path, onNavigate, onLogout, campusCode, onCampusChan
                 {what}
               </button>
             )}
-            <Breadcrumbs path={path} item={crumb} onNavigate={go} />
+            {/* The way back, and help with this page (item 7.17), except on the help pages themselves. */}
+            <div className="crumb-row">
+              <Breadcrumbs path={path} item={crumb} onNavigate={go} />
+              {!path.startsWith("/help") && (
+                <a className="help-link" {...link(helpLink(path))}>
+                  Help<span className="sr-only"> with this page</span>
+                </a>
+              )}
+            </div>
             {children}
           </main>
         </div>

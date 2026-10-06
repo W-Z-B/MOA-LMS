@@ -22,6 +22,8 @@ const MINE = [
   { path: "/account", label: "My account", desc: "Password, sign-in email and devices" },
   { path: "/notification-settings", label: "Notification settings", desc: "What comes by email or push" },
   { path: "/downloads", label: "Downloaded", desc: "Read offline, and data-light mode" },
+  // --- help (item 7.17) ---
+  { path: "/help", label: "Help", desc: "How to do each task, and asking for help" },
 ];
 
 /** The person's own pages and Sign out, behind their initials (as in the HRMS). */

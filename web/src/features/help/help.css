@@ -1,0 +1,137 @@
+/* Help pages and help requests (item 7.17). Loaded with the Help screen only. */
+
+/* A link that does what a button does, styled as the main action. */
+.button-like {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: var(--radius-control);
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 600;
+  text-decoration: none;
+}
+.button-like:hover {
+  background: var(--accent-hover);
+  color: var(--accent-ink);
+}
+
+.help-search {
+  max-width: 560px;
+  margin-bottom: 16px;
+}
+.help-hits li,
+.help-contents li {
+  padding: 6px 0;
+}
+.help-hits a,
+.help-contents a,
+.help-roles h2 a {
+  display: inline-block;
+  min-height: 32px;
+  color: var(--accent);
+  font-weight: 600;
+}
+.help-roles {
+  display: grid;
+  gap: 12px;
+  margin: 16px 0;
+}
+.help-roles h2 {
+  margin: 0 0 4px;
+}
+
+.help-contents {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  gap: 8px 24px;
+  margin-bottom: 24px;
+}
+.help-contents .small-heading {
+  margin: 0 0 4px;
+  font-size: 14px;
+}
+
+.help-section > h2 {
+  margin: 28px 0 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--rule);
+}
+.help-task {
+  padding: 8px 12px;
+  margin: 0 -12px;
+  border-radius: var(--radius-control);
+  scroll-margin-top: 16px;
+}
+.help-task.focus,
+.help-requests li.focus {
+  background: var(--stripe);
+  outline: 2px solid var(--accent);
+}
+.help-task h3 {
+  margin: 8px 0 6px;
+  font-size: 16px;
+}
+.help-task ol {
+  margin: 0;
+  padding-left: 22px;
+}
+.help-task li {
+  margin: 4px 0;
+  line-height: 1.5;
+}
+.help-note {
+  margin: 8px 0 0;
+  padding: 8px 12px;
+  border-left: 3px solid var(--accent);
+  background: var(--stripe);
+  font-size: 14px;
+}
+.help-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 16px;
+  margin-top: 28px;
+}
+
+.help-form {
+  display: grid;
+  gap: 14px;
+  max-width: 720px;
+}
+.help-form label.check {
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  font-weight: 400;
+}
+.help-form code {
+  overflow-wrap: anywhere;
+}
+.help-requests {
+  display: grid;
+  gap: 12px;
+}
+.help-message {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.help-answer {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--rule);
+}
+.help-requests .help-form {
+  margin-top: 10px;
+}
+
+@media print {
+  .help-contents,
+  .help-foot,
+  .page-head .button-like {
+    display: none;
+  }
+}

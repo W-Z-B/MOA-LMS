@@ -62,6 +62,7 @@ def test_the_schedule_is_seeded_as_proposals_to_be_confirmed(seeded):
         "forum-posts": (36, False, None),
         "audit-log": (84, False, None),
         "login-attempts": (12, True, None),
+        "ai-exchanges": (12, True, None),  # items 6.11, 6.12
         "notifications": (24, True, None),
     }
     assert all("to be confirmed by GSA" in r.note for r in RetentionRule.objects.all())
@@ -162,7 +163,7 @@ def test_who_keeps_the_schedule_and_what_cannot_be_disposed_of_here(
     assert zero.status_code == 400
 
     auditor = client_for(make_user("the.auditor", "auditor"))
-    assert len(auditor.get("/api/v1/privacy/retention-rules/").json()) == 6
+    assert len(auditor.get("/api/v1/privacy/retention-rules/").json()) == 7
     assert auditor.patch(f"/api/v1/privacy/retention-rules/{work.id}/", {"keep_months": 1}).status_code == 403
     assert client_for(course_admin).get("/api/v1/privacy/retention-rules/").status_code == 403
     assert (
@@ -188,11 +189,11 @@ def test_old_logs_go_every_night_without_review(student):
     Notification.objects.filter(pk=stale.pk).update(created_at=long_ago)
     fresh = Notification.objects.create(recipient=student.user, title="Sent today")
 
-    assert purge(timezone.localdate()) == {"login-attempts": 1, "notifications": 1}
+    assert purge(timezone.localdate()) == {"login-attempts": 1, "notifications": 1, "ai-exchanges": 0}
     assert LoginAttempt.objects.count() == 1
     assert list(Notification.objects.values_list("pk", flat=True)) == [fresh.pk]
     assert AuditLog.objects.filter(action="purged").count() == 2
-    assert retention_purge() == {"login-attempts": 0, "notifications": 0}
+    assert retention_purge() == {"login-attempts": 0, "notifications": 0, "ai-exchanges": 0}
 
 
 @pytest.mark.django_db

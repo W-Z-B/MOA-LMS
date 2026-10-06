@@ -19,10 +19,10 @@ const person = (roles: string[], is_superuser = false, person_kind: Me["person_k
 describe("pages by role", () => {
   it("gives everyone Home, To do, their courses, their data, their account and notification settings, and staff their development", () => {
     const own = ["Home", "To do", "My courses", "Messages", "Calendar", "Discussion", "My data", "My account", "Notification settings", "Downloaded"];
-    expect(pagesFor(person(["student"], false, "student")).map((p) => p.label)).toEqual(own);
-    expect(pagesFor(person([], false, null)).map((p) => p.label)).toEqual(own);
-    expect(pagesFor(person(["lecturer"])).map((p) => p.label)).toEqual([...own, "Staff development"]);
-    expect(pagesFor(person([])).map((p) => p.label)).toEqual([...own, "Staff development"]);
+    expect(pagesFor(person(["student"], false, "student")).map((p) => p.label)).toEqual([...own, "Help"]);
+    expect(pagesFor(person([], false, null)).map((p) => p.label)).toEqual([...own, "Help"]);
+    expect(pagesFor(person(["lecturer"])).map((p) => p.label)).toEqual([...own, "Staff development", "Help"]);
+    expect(pagesFor(person([])).map((p) => p.label)).toEqual([...own, "Staff development", "Help"]);
   });
 
   it("gives Admin to those the console has a section for, and says what every page is for", () => {
@@ -30,7 +30,7 @@ describe("pages by role", () => {
     expect(pagesFor(person(["administrator"], false, null))).toEqual(PAGES);
     expect(pagesFor(person([], true))).toEqual(PAGES);
     expect(pagesFor(person(["auditor"], false, null)).map((p) => p.label)).toContain("Admin");
-    expect(pagesFor(person(["dpo"], false, null)).map((p) => p.label)).toEqual(["Home", "To do", "My courses", "Messages", "Calendar", "Discussion", "My data", "My account", "Notification settings", "Downloaded", "Admin"]);
+    expect(pagesFor(person(["dpo"], false, null)).map((p) => p.label)).toEqual(["Home", "To do", "My courses", "Messages", "Calendar", "Discussion", "My data", "My account", "Notification settings", "Downloaded", "Admin", "Help"]);
     expect(pagesFor(person(["lecturer"])).map((p) => p.label)).not.toContain("Admin");
     expect(PAGES.every((p) => p.desc.length > 0)).toBe(true);
   });
