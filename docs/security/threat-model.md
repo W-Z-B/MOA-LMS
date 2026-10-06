@@ -49,7 +49,7 @@ numbered in the ASVS review, version 1.1 ("ASVS fix 3").
 | Administrator | Everything, including the admin site, the retention schedule and the breach register; authenticator code required |
 | Auditor | Read-only on every site and the audit log; no authenticator code |
 | Data Protection Officer | The privacy notice, people's whole records for requests on paper, the breach register; no authenticator code |
-| SRMS and HRMS | Service keys with scope `sites:read` into the LMS; the LMS holds keys to their `academics:read`, `marks:write`, `staff:read`, `org:read`, `training:write` scopes |
+| SRMS and HRMS | Service keys with scope `sites:read` into the LMS; the LMS holds keys to their `academics:read`, `marks:write`, `attendance:write`, `staff:read`, `org:read`, `training:write`, `training:read` scopes |
 | Outside tools (LTI) | Registered by a course administrator; receive signed launches for the people who open them, may post scores to their own gradebook columns and, if allowed, read class lists; run by third parties, possibly abroad |
 | The AI model | An Ollama server GSA runs, at `AI_OLLAMA_URL`; receives prompts made of course material and a question; off by default |
 | Browser push services | Google, Mozilla, Apple and Microsoft relay push notices to devices; they see an encrypted payload, its timing and the device's address |
