@@ -1,0 +1,290 @@
+/* Assignments, marking, rubrics and the gradebook (features 9, 11 to 13, 16 to 18). Built on the tokens and
+   the shared classes of index.css; nothing here may make a page wider than a 360px phone. */
+
+.tab-actions {
+  margin-bottom: 12px;
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 4px 0 0;
+}
+.chips:empty {
+  display: none;
+}
+.kind-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+}
+.kind-choices label.inline {
+  min-height: 44px;
+}
+.small-heading {
+  font-size: 15px;
+  margin: 8px 0 0;
+}
+dl.facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 8px 16px;
+  margin: 0;
+}
+dl.facts dt {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+dl.facts dd {
+  margin: 0;
+}
+label.integrity {
+  align-items: flex-start;
+  font-weight: 500;
+  background: var(--stripe);
+  padding: 10px 12px;
+  border-radius: var(--radius-control);
+}
+label.integrity input {
+  margin-top: 3px;
+  flex: none;
+}
+.mark-box {
+  border-left: 3px solid var(--accent);
+  background: var(--tint);
+  padding: 10px 14px;
+  border-radius: 0 var(--radius-control) var(--radius-control) 0;
+}
+.mark-box p {
+  margin: 4px 0;
+}
+.mark-result {
+  font-size: 16px;
+}
+.receipt {
+  border: 1px solid var(--rule);
+  border-top: 4px solid var(--accent);
+  border-radius: var(--radius-control);
+  padding: 10px 14px;
+  background: var(--card);
+}
+.receipt h4 {
+  margin: 0 0 4px;
+}
+.receipt .code {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+  overflow-wrap: anywhere;
+}
+details.history,
+details.rubric-view,
+details.class-tools {
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-control);
+  padding: 0 12px;
+  background: var(--card);
+}
+details.history > summary,
+details.rubric-view > summary,
+details.class-tools > summary {
+  cursor: pointer;
+  font-weight: 600;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+details[open] > summary {
+  margin-bottom: 8px;
+}
+details.class-tools {
+  margin-bottom: 14px;
+  padding-bottom: 4px;
+}
+.file-link {
+  display: inline-block;
+  margin-right: 12px;
+  padding: 10px 0;
+  overflow-wrap: anywhere;
+}
+.feedback-files audio {
+  display: block;
+  width: 100%;
+  max-width: 360px;
+  margin-top: 4px;
+}
+
+/* A rubric as students read it, and the marker's levels. */
+.criterion {
+  border-top: 1px solid var(--rule-soft);
+  padding-top: 8px;
+}
+.criterion p {
+  margin: 2px 0;
+}
+ul.levels {
+  list-style: none;
+  padding: 0;
+  margin: 6px 0 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 6px;
+}
+.level {
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-control);
+  padding: 6px 8px;
+  font-size: 13px;
+  display: flex;
+  gap: 6px;
+}
+.level.chosen,
+.level-choice.chosen {
+  border-color: var(--accent);
+  background: var(--tint);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.level .points {
+  font-weight: 700;
+}
+.rubric-marker {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.level-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+label.level-choice {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 8px;
+  font-weight: 500;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-control);
+  padding: 10px;
+  min-height: 44px;
+  cursor: pointer;
+}
+label.level-choice input {
+  margin-top: 3px;
+  flex: none;
+}
+
+/* The marking screen: the work beside the mark; on a phone the work comes first, the mark below it. */
+.marking-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.marking-nav select {
+  width: 100%;
+}
+.marking-nav .grow {
+  flex: 1 1 220px;
+}
+.marking-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 380px);
+  gap: 16px;
+  align-items: start;
+}
+.work,
+.mark-panel {
+  background: var(--card);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-card);
+  padding: 14px 16px;
+  min-width: 0;
+}
+.mark-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.mark-panel h2 {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.mark-panel p {
+  margin: 0;
+}
+.answer {
+  white-space: pre-wrap;
+  background: var(--paper);
+  border-radius: var(--radius-control);
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  overflow-wrap: anywhere;
+}
+.viewer object {
+  display: block;
+  width: 100%;
+  height: 70vh;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-control);
+}
+.viewer img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-control);
+}
+.viewer .actions {
+  margin-top: 8px;
+}
+.filled {
+  font-weight: 600;
+}
+.refused-row td {
+  color: var(--danger);
+}
+
+/* The gradebook and the working of a total. */
+.gradebook th button.link {
+  text-transform: none;
+  letter-spacing: 0;
+}
+.gradebook td.student {
+  white-space: nowrap;
+}
+.gradebook .state {
+  color: var(--muted);
+  font-size: 12px;
+}
+.working-total {
+  font-size: 22px;
+  font-weight: 700;
+}
+.category-row {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: end;
+}
+
+@media (max-width: 760px) {
+  .marking-split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .viewer object {
+    height: 60vh;
+  }
+  .category-row {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .category-row .name {
+    grid-column: 1 / -1;
+  }
+}
+@media print {
+  .marking-nav,
+  .class-tools {
+    display: none !important;
+  }
+}

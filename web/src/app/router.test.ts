@@ -17,8 +17,8 @@ const person = (roles: string[], is_superuser = false, person_kind: Me["person_k
 });
 
 describe("pages by role", () => {
-  it("gives everyone Home, To do, their courses, their data and their account, and staff their development", () => {
-    const own = ["Home", "To do", "My courses", "Messages", "Calendar", "Discussion", "My data", "My account"];
+  it("gives everyone Home, To do, their courses, their data, their account and notification settings, and staff their development", () => {
+    const own = ["Home", "To do", "My courses", "Messages", "Calendar", "Discussion", "My data", "My account", "Notification settings"];
     expect(pagesFor(person(["student"], false, "student")).map((p) => p.label)).toEqual(own);
     expect(pagesFor(person([], false, null)).map((p) => p.label)).toEqual(own);
     expect(pagesFor(person(["lecturer"])).map((p) => p.label)).toEqual([...own, "Staff development"]);
@@ -30,7 +30,7 @@ describe("pages by role", () => {
     expect(pagesFor(person(["administrator"], false, null))).toEqual(PAGES);
     expect(pagesFor(person([], true))).toEqual(PAGES);
     expect(pagesFor(person(["auditor"], false, null)).map((p) => p.label)).toContain("Admin");
-    expect(pagesFor(person(["dpo"], false, null)).map((p) => p.label)).toEqual(["Home", "To do", "My courses", "Messages", "Calendar", "Discussion", "My data", "My account", "Admin"]);
+    expect(pagesFor(person(["dpo"], false, null)).map((p) => p.label)).toEqual(["Home", "To do", "My courses", "Messages", "Calendar", "Discussion", "My data", "My account", "Notification settings", "Admin"]);
     expect(pagesFor(person(["lecturer"])).map((p) => p.label)).not.toContain("Admin");
     expect(PAGES.every((p) => p.desc.length > 0)).toBe(true);
   });

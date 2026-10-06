@@ -126,7 +126,25 @@ def test_journey_data_signs_in_and_teaches_one_course(monkeypatch):
     code = pyotp.TOTP(JOURNEY_TOTP).now()
     assert lecturer.post("/api/v1/auth/mfa/verify/", {"code": code}, format="json").json()["mfa_verified"]
     marking = lecturer.get("/api/v1/home/").json()["teaching"]["to_mark"]
-    assert [row["title"] for row in marking] == ["Crop calendar for a kitchen garden: 1 to mark"]
+    # AGR101's hand-in waits longest, so it comes first; then the marking journeys' course (AGR205).
+    assert [row["title"] for row in marking] == [
+        "Crop calendar for a kitchen garden: 1 to mark",
+        "Soil profile report: 2 to mark",
+        "Soil texture test: 2 to mark",
+    ]
+
+    # The marking journeys' course: a report handed in as a PDF a day late, with a rubric and a penalty.
+    soils = CourseSite.objects.get(code="AGR205-2026-27-S1-MRP")
+    report = Assignment.objects.get(site=soils, title="Soil profile report")
+    assert report.rubric.criteria.count() == 2 and report.late_penalty == "per_day"
+    rows = lecturer.get(f"/api/v1/assignments/{report.id}/submissions/").json()
+    assert [(r["student_no"], r["is_late"], len(r["files"])) for r in rows] == [
+        ("S2026911", True, 1),
+        ("S2026912", True, 1),
+    ]
+    shown = lecturer.get(rows[0]["files"][0]["download_url"] + "?inline=1")
+    assert shown.status_code == 200 and shown["Content-Type"] == "application/pdf"
+    assert b"".join(shown.streaming_content).startswith(b"%PDF")
 
 
 @pytest.mark.django_db

@@ -39,6 +39,13 @@ export default defineConfig({
         "src/features/home/**",
         "src/features/todo/**",
         "src/features/courses/MyCoursesScreen.tsx",
+        // Assignments, marking, rubrics, the gradebook, accommodations and notification settings (wave 3).
+        "src/features/assignments/**",
+        "src/features/marking/**",
+        "src/features/rubrics/**",
+        "src/features/gradebook/**",
+        "src/features/accommodations/**",
+        "src/features/notifications/**",
         // Teaching content, the page editor, course setup and course administration (items 2.12 to 2.20).
         "src/features/content/**",
         "src/features/course-admin/**",

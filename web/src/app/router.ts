@@ -50,6 +50,11 @@ export const PAGES: readonly Page[] = [
   // --- end talk ---
   { path: "/my-data", label: "My data", desc: "What the LMS holds about you, and corrections" },
   { path: "/account", label: "My account", desc: "Password, sign-in email and signed-in devices" },
+  // --- marking ---
+  { path: "/notification-settings", label: "Notification settings", desc: "What comes by email, and the daily summary" },
+  { path: "/rubrics", label: "Rubric library", desc: "The GSA rubrics every course may copy", roles: ADMIN_ROLES },
+  { path: "/accommodations", label: "Accommodations", desc: "Extra time and other arrangements for students", roles: ADMIN_ROLES },
+  // --- end marking ---
   // --- staff development and the console ---
   {
     path: "/learning",
@@ -98,6 +103,21 @@ export function siteAddress(path: string): { id: number; tab: SiteTab } | null {
   return { id: Number(match[1]), tab };
 }
 
+// --- marking ---
+/** Pages inside a course site beyond its tabs: #/sites/4/assignments/12/marking/55 and #/sites/4/rubrics. */
+export type MarkingAddress =
+  | { kind: "marking"; siteId: number; assignmentId: number; submissionId: number | null }
+  | { kind: "site-rubrics"; siteId: number };
+
+export function markingAddress(path: string): MarkingAddress | null {
+  const bare = path.split("?")[0];
+  const marking = bare.match(/^\/sites\/(\d+)\/assignments\/(\d+)\/marking(?:\/(\d+))?\/?$/);
+  if (marking)
+    return { kind: "marking", siteId: Number(marking[1]), assignmentId: Number(marking[2]), submissionId: marking[3] ? Number(marking[3]) : null };
+  const rubrics = bare.match(/^\/sites\/(\d+)\/rubrics\/?$/);
+  return rubrics ? { kind: "site-rubrics", siteId: Number(rubrics[1]) } : null;
+}
+// --- end marking ---
 // --- content (items 2.12 to 2.20) ---
 
 /**

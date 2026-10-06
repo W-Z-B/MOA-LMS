@@ -18,6 +18,7 @@ import { SetPasswordScreen } from "./features/auth/SetPasswordScreen";
 import { MyCoursesScreen } from "./features/courses/MyCoursesScreen";
 import { SiteScreen } from "./features/courses/SiteScreen";
 import { HomeScreen } from "./features/home/HomeScreen";
+import { markingScreen } from "./features/marking/routes";
 import { learningAddress } from "./features/learning/address";
 import { LearningScreen } from "./features/learning/LearningScreen";
 import { ComingSoon } from "./features/placeholder/ComingSoon";
@@ -124,10 +125,13 @@ export default function App() {
   const forum = forumAddress(path);
   const messages = messageAddress(path);
   const campus = usesCampusSwitch(me) ? campusCode : null;
+  // Marking, rubrics, accommodations and notification settings have addresses of their own.
+  const marking = markingScreen(path, navigate);
   let screen;
   // Everyone opens on their own Home (item 2.07): what waits for them, and the pages their role uses.
   if (path === "/") screen = <HomeScreen me={me} onNavigate={navigate} />;
   else if (path === "/to-do") screen = <ToDoScreen onNavigate={navigate} />;
+  else if (marking) screen = marking;
   else if (content?.view === "setup") screen = later(<CourseSetupScreen siteId={content.siteId} />);
   else if (content?.view === "page") screen = later(<PageScreen key={content.itemId} siteId={content.siteId} itemId={content.itemId} />);
   else if (content?.view === "edit")

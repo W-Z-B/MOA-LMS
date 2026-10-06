@@ -5,6 +5,9 @@ The coursework total is worked out item by item. Each assignment, quiz and pract
 "pending" (handed in but not yet marked, or, for the student's own view, not yet released) or "not_due"
 (nothing handed in yet and still open); only graded and zero items count.
 
+For teaching staff, an anonymously marked assignment whose marks are not yet released is pending for every
+student who handed it in, whatever its marks: counting them would reveal them (item 3.16).
+
 With no gradebook categories the total is the weighted mean of the counted items, exactly as before
 categories existed. With categories, each category's percentage is the weighted mean of its counted items
 less the lowest it drops, and the total is the weighted mean of the categories that have something
@@ -18,7 +21,7 @@ from decimal import ROUND_HALF_UP, Decimal
 
 from django.utils import timezone
 
-from assessments.models import GradeCategory, Submission
+from assessments.models import GradeCategory, SrmsTransfer, Submission
 from assessments.rules import due_for, penalised
 from courses.models import Membership
 
@@ -88,8 +91,14 @@ def _assignment_items(site, person, released_only, now) -> list[Item]:
             "raw_mark": None,
             "penalty": None,
             "final_mark": None,
+            "anonymous": False,
         }
-        if mark is not None and (mark.is_released or not released_only):
+        if not released_only and assignment.names_hidden and submission is not None:
+            # Anonymous marking (3.16): until the marks are released, a staff total that counted them would
+            # tell markers who earned which mark. The item waits, as "pending (anonymous marking)".
+            fraction, state = None, "pending"
+            detail["anonymous"] = True
+        elif mark is not None and (mark.is_released or not released_only):
             shown = penalised(submission, mark.mark, due)
             detail.update(raw_mark=str(shown.raw), penalty=str(shown.penalty), final_mark=str(shown.final))
             fraction, state = shown.final / assignment.max_mark, "graded"
@@ -270,6 +279,14 @@ def gradebook(site, *, only_person=None, released_only: bool = False) -> dict:
                 else None,
             }
         working = coursework_working(site, person, released_only=released_only)
+        others = {
+            kind: {
+                str(i["id"]): {"state": i["state"], "percent": i["percent"]}
+                for i in working["items"]
+                if i["kind"] == kind
+            }
+            for kind in ("practical", "forum")
+        }
         rows.append(
             {
                 "person_id": person.id,
@@ -277,8 +294,11 @@ def gradebook(site, *, only_person=None, released_only: bool = False) -> dict:
                 "name": person.full_name,
                 "marks": marks,
                 "quizzes": quiz_marks,
+                "practicals": others["practical"],
+                "forums": others["forum"],
                 "categories": {str(c["id"]): c["percent"] for c in working["categories"] if c["id"]},
                 "coursework_percent": working["coursework_percent"],
+                "srms": _srms_state(site, person),
             }
         )
     return {
@@ -308,5 +328,30 @@ def gradebook(site, *, only_person=None, released_only: bool = False) -> dict:
             }
             for q in quizzes
         ],
+        "practicals": [
+            {"id": t.id, "title": t.title, "weight": str(t.weight), "category": t.grade_category_id}
+            for t in site.practical_tasks.filter(is_published=True, weight__gt=0)
+        ],
+        "forums": [
+            {"id": f.id, "title": f.title, "weight": str(f.weight), "category": f.grade_category_id}
+            for f in site.forums.filter(is_published=True, forum_type="graded", weight__gt=0)
+        ],
         "rows": rows,
+    }
+
+
+def _srms_state(site, person) -> dict | None:
+    """What the SRMS last answered for the student's coursework on the site; marks it holds are locked
+    (item 3.18), shown on the gradebook and the marks."""
+    from assessments.rules import srms_lock
+
+    latest = SrmsTransfer.objects.filter(site=site, student=person).order_by("-sent_at", "-id").first()
+    if latest is None:
+        return None
+    lock = srms_lock(site, person)
+    return {
+        "outcome": latest.outcome,
+        "percent": str(latest.percent),
+        "sent_at": latest.sent_at.isoformat(),
+        "locked_since": lock.sent_at.isoformat() if lock else None,
     }

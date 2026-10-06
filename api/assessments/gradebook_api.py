@@ -98,6 +98,10 @@ class WorkingItemSerializer(serializers.Serializer):
     raw_mark = serializers.CharField(required=False, allow_null=True)
     penalty = serializers.CharField(required=False, allow_null=True)
     final_mark = serializers.CharField(required=False, allow_null=True)
+    anonymous = serializers.BooleanField(
+        required=False,
+        help_text="Assignments only: pending because marking is anonymous and the marks are not released",
+    )
 
 
 class WorkingCategorySerializer(serializers.Serializer):
@@ -161,10 +165,16 @@ class _Echo:
         return value
 
 
+def _state_words(item) -> str:
+    if item.get("anonymous"):
+        return "pending (anonymous marking)"
+    return STATE_WORDS[item["state"]]
+
+
 def _working_text(items) -> str:
     parts = []
     for item in items:
-        state = STATE_WORDS[item["state"]]
+        state = _state_words(item)
         result = f" {item['percent']}%" if item["percent"] is not None and item["state"] != "zero" else ""
         penalty = f", late penalty {item['penalty']}" if item.get("penalty") not in (None, "0.00") else ""
         parts.append(f"{item['title']}: {state}{result}{penalty}")
@@ -218,7 +228,7 @@ def export(request, pk: int):
             for a in book["assignments"]:
                 item = by_key.get(("assignment", a["id"]))
                 cell = row["marks"][str(a["id"])]
-                cells.append(cell["mark"] if cell["mark"] is not None else STATE_WORDS.get(item["state"], ""))
+                cells.append(cell["mark"] if cell["mark"] is not None else _state_words(item))
             for q in book["quizzes"]:
                 cells.append(row["quizzes"][str(q["id"])]["percent"] or "")
             for t in practicals:
