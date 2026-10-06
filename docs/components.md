@@ -11,6 +11,7 @@ numbers those of the Implementation Checklist. The interface is described in ful
 | Announcements | `api/courses`, `api/notifications` | 21 | Announcement, Notification | `/api/v1/announcements/`, `/notifications/` | Each announcement notifies the site's students |
 | Assignments and submissions | `api/assessments` | 9 | Assignment, Submission | `/api/v1/assignments/`, `/assignments/{id}/submit/`, `/submissions/{id}/download/` | Weights, opening and due dates, late flag, closed when late work is not allowed; text or one file; a marked submission cannot be replaced |
 | Marking and gradebook | `api/assessments` | 17, 18 | Mark | `/api/v1/submissions/{id}/mark/`, `/sites/{id}/gradebook/` | Feedback and release control; students see their own released marks only; weighted coursework percentage (rule below) |
+| Quizzes | `api/quizzes`, `web/src/features/quizzes` | 10 | QuestionBank, QuestionCategory, Question, QuestionVersion, Quiz, QuizSlot, QuizOverride, Attempt, AttemptAnswer | `/api/v1/question-banks/`, `/questions/` (with `import/`, `export/`), `/quizzes/`, `/quiz-slots/`, `/quiz-overrides/`, `/quiz-attempts/`; the site tab `#/sites/{id}/quizzes` | Built in, as [ADR 0005](adr/0005-quizzes-built-in.md) decides: course and department banks with categories, tags and versions; ten question types; Moodle XML, GIFT and QTI import with a report of what was skipped; fixed or random questions; time limits from the server, per-student extra time; answers saved as given through the offline queue; essays and files marked by a person; release by review options; statistics. Question text is cleaned on the server for display (courses.richtext). The screens load when the tab is first opened |
 | Ecosystem integration | `api/integration` | 1, 18, 38 | ServiceClient, CampusRef | `/api/v1/integration/sites/` (Api-Key), `/reference/campuses/`; commands `sync_ecosystem`, `create_service_client` | Pulls sites and class lists from the SRMS nightly; pushes coursework to the SRMS and completions to the HRMS |
 | Completions | `api/courses` | 20, 38 | Completion | via `sync_ecosystem --push-training` | Recorded today only by the demonstration data; automatic completion is item 5.03 |
 | Sign-in and roles | `api/iam` | 41 | Role, RoleScope, TotpDevice, LoginAttempt | `/api/v1/auth/*` | Session sign-in; authenticator code for administrators and course administrators; lockout |
@@ -44,6 +45,6 @@ staff's totals (the working, the gradebook, the export and the push to the SRMS)
 
 ## Not built yet
 
-Quizzes ([ADR 0005](adr/0005-quizzes-built-in.md)), rubrics, practical and competency assessment, forums and
+Rubrics, practical and competency assessment, forums and
 messages, calendar, attendance ([ADR 0008](adr/0008-attendance-in-the-lms.md)), certificates,
 packaged content, analytics and the rest of the checklist's phases 2 to 7.

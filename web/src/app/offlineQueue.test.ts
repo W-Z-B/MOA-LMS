@@ -9,8 +9,10 @@ import {
   outcomeOf,
   pending,
   pendingCount,
+  queueOwner,
   saveQuizAnswer,
   sendPracticalWrite,
+  setQueueOwner,
   startAutoFlush,
   submitAssignmentText,
   subscribe,
@@ -133,6 +135,47 @@ describe("offline queue (item 4.02)", () => {
     expect(isNetworkError(new TypeError("Failed to fetch"))).toBe(true);
     expect(isNetworkError(new Error("400"))).toBe(false);
     localStorage.setItem("gsa-lms.offline-queue", "{not json");
+    expect(pendingCount()).toBe(0);
+  });
+});
+
+describe("a shared phone: each person's waiting writes are theirs alone", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("never sends one person's waiting work under another's session, and sends it when its owner returns", async () => {
+    fakeServer({ "POST /assignments/3/submit/": offline });
+    await submitAssignmentText(3, "Soil report", "Asha's answer"); // person 1 (the test setup), no signal
+    expect(pendingCount()).toBe(1);
+
+    setQueueOwner(2); // Asha signs out; Ravi signs in on the same phone
+    const server = fakeServer({ "POST /assignments/3/submit/": { status: 201, body: { id: 9 } } });
+    await expect(flush()).resolves.toEqual({ sent: 0, rejected: 0 });
+    expect(server.fetchMock).not.toHaveBeenCalled();
+    expect(pending()).toEqual([]); // Ravi does not see Asha's work either
+
+    setQueueOwner(1); // Asha signs in again: her answer goes, under her own session
+    await vi.waitFor(() => expect(server.calls).toHaveLength(1));
+    expect(server.calls[0].body).toEqual(expect.objectContaining({ text: "Asha's answer" }));
+    await vi.waitFor(() => expect(pendingCount()).toBe(0));
+  });
+
+  it("keeps nothing for nobody: with no one signed in, a write cannot be kept", () => {
+    setQueueOwner(null);
+    expect(queueOwner()).toBeNull();
+    expect(pendingCount()).toBe(0);
+    expect(() => enqueue({ kind: "assignment", method: "POST", path: "/assignments/3/submit/", body: {}, label: "x" })).toThrow(
+      "Sign in again",
+    );
+  });
+
+  it("drops a write kept before writes had owners, rather than give it to whoever signs in", async () => {
+    localStorage.setItem(
+      "gsa-lms.offline-queue",
+      JSON.stringify([{ id: "old", kind: "assignment", method: "POST", path: "/assignments/3/submit/", body: {}, label: "Old", createdAt: "" }]),
+    );
+    const server = fakeServer({});
+    await flush();
+    expect(server.fetchMock).not.toHaveBeenCalled();
     expect(pendingCount()).toBe(0);
   });
 });

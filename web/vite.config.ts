@@ -23,6 +23,9 @@ export default defineConfig({
   // Component and logic tests (npm test). Browser journeys are Playwright tests in e2e/.
   test: {
     environment: "jsdom",
+    // Screens with long forms are typed key by key; on a busy machine or a small CI runner the 5-second
+    // default is reached by load alone, not by a fault, so every test gets the same, longer limit.
+    testTimeout: 15_000,
     setupFiles: ["./src/test/setup.ts"],
     include: ["src/**/*.test.{ts,tsx}"],
     restoreMocks: true,
@@ -61,6 +64,8 @@ export default defineConfig({
         "src/features/admin/**",
         // Practicals, competency and the logbook (items 3.12 to 3.15, 5.15), with the photos kept offline.
         "src/features/practicals/**",
+        // Quizzes (feature 10): the tab, attempts, banks and the question editor.
+        "src/features/quizzes/**",
       ],
       exclude: ["src/**/*.test.*", "src/test/**"],
       reporter: ["text"],

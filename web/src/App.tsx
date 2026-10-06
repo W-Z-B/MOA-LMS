@@ -1,4 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useState, type ReactNode } from "react";
+import { setQueueOwner } from "./app/offlineQueue";
 import { SIGNED_OUT_EVENT, get } from "./api/client";
 import { ADMIN_ROLES, hasAnyRole, type Me } from "./api/types";
 import { usesCampusSwitch } from "./app/people";
@@ -54,6 +55,9 @@ export default function App() {
   const [signedOutReason, setSignedOutReason] = useState<string | null>(null);
   const [knownUsername, setKnownUsername] = useState("");
   // Item 1.18: the privacy notice in force is read before anything else, once per version.
+  // Writes kept on the device are sent only for the person signed in now (shared phones).
+  const signedIn = me && !(me.mfa_required && !me.mfa_verified) ? me.id : null;
+  useEffect(() => setQueueOwner(signedIn), [signedIn]);
   const noticeRead = useCallback(() => setMe((m) => (m ? { ...m, privacy_notice_due: null } : m)), []);
 
   useEffect(() => {

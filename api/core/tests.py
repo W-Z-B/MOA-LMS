@@ -81,6 +81,11 @@ def test_journey_data_signs_in_and_teaches_one_course(monkeypatch):
     assert task.is_published and task.weight == 0 and task.criteria.count() == 3
     assert task.criteria.get(is_critical=True).performance_criteria.get().code == "PC1.1.1"
     assert SiteFramework.objects.get(site=site).framework.units.count() == 1
+    # The quiz journeys write their questions in the course's bank (feature 10).
+    from quizzes.models import QuestionBank
+
+    bank = QuestionBank.objects.get(site=site)
+    assert [c.name for c in bank.categories.all()] == ["Week 1: What a crop needs"]
 
     client = APIClient()
     response = client.post(

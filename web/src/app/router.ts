@@ -85,6 +85,7 @@ export const SITE_TABS = [
   "content",
   "assignments",
   "gradebook",
+  "quizzes",
   "announcements",
   "discussion",
   "classes",
@@ -177,3 +178,32 @@ export function classAddress(path: string): { session: number; code: boolean } |
   return match ? { session: Number(match[1]), code: Boolean(match[2]) } : null;
 }
 // --- end talk ---
+
+// --- quizzes ---
+/**
+ * Inside a site's Quizzes tab (feature 10), every view has an address too:
+ * #/sites/4/quizzes                       the quizzes of the site
+ * #/sites/4/quizzes/banks                 question banks (teaching staff)
+ * #/sites/4/quizzes/12                    one quiz; teaching staff also /settings, /questions, /students,
+ *                                         /marking, /results and /statistics
+ * #/sites/4/quizzes/12/attempts/30        an attempt: answering it, or its review
+ */
+export const QUIZ_SECTIONS = ["settings", "questions", "students", "marking", "results", "statistics"] as const;
+export type QuizSection = (typeof QUIZ_SECTIONS)[number];
+
+export type QuizView =
+  | { view: "list" }
+  | { view: "banks" }
+  | { view: "quiz"; quizId: number; section: QuizSection }
+  | { view: "attempt"; quizId: number; attemptId: number };
+
+export function quizAddress(path: string): QuizView {
+  const rest = path.split("?")[0].match(/^\/sites\/\d+\/quizzes(?:\/(.*))?$/)?.[1] ?? "";
+  if (rest === "banks") return { view: "banks" };
+  const attempt = rest.match(/^(\d+)\/attempts\/(\d+)$/);
+  if (attempt) return { view: "attempt", quizId: Number(attempt[1]), attemptId: Number(attempt[2]) };
+  const quiz = rest.match(/^(\d+)(?:\/([a-z]+))?$/);
+  if (quiz) return { view: "quiz", quizId: Number(quiz[1]), section: QUIZ_SECTIONS.find((s) => s === quiz[2]) ?? "settings" };
+  return { view: "list" };
+}
+// --- end quizzes ---

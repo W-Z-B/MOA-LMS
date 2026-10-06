@@ -13,6 +13,9 @@ import { AssignmentsTab, GradebookTab } from "../marking/lazy";
 const PracticalsTab = lazy(() => import("../practicals/PracticalsTab").then((m) => ({ default: m.PracticalsTab })));
 const LogbookTab = lazy(() => import("../practicals/LogbookTab").then((m) => ({ default: m.LogbookTab })));
 
+// The quiz screens load when the Quizzes tab is first opened, so they add nothing to the shell (page weight).
+const QuizzesTab = lazy(() => import("../quizzes/QuizzesTab").then((m) => ({ default: m.QuizzesTab })));
+
 interface Props {
   siteId: number;
   /** The tab named in the address (item 2.10), so each can be shared: #/sites/4/assignments. */
@@ -23,6 +26,7 @@ interface Props {
 const TAB_LABEL: Record<SiteTab, string> = {
   content: "Content",
   assignments: "Assignments",
+  quizzes: "Quizzes",
   gradebook: "Gradebook",
   announcements: "Announcements",
   discussion: "Discussion",
@@ -96,6 +100,7 @@ export function SiteScreen({ siteId, tab, onTab }: Props) {
       {tab === "content" && <ContentTab data={data} teaching={teaching} onChanged={load} />}
       <Suspense fallback={<p className="loading">Opening…</p>}>
         {tab === "assignments" && <AssignmentsTab siteId={siteId} teaching={teaching} />}
+        {tab === "quizzes" && <QuizzesTab siteId={siteId} teaching={teaching} />}
         {tab === "gradebook" && <GradebookTab site={data.site} teaching={teaching} />}
       </Suspense>
       {tab === "announcements" && <AnnouncementsTab data={data} teaching={teaching} onChanged={load} />}

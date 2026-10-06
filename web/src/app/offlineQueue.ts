@@ -11,6 +11,10 @@
  * Items live in localStorage (per device, per browser) and are replayed in order when the connection
  * returns. A file cannot be kept here: work with a file attached needs a connection. The page shows each
  * write as "waiting to send", then "sent" (or why the server would not take it).
+ *
+ * Each write belongs to the person who made it. Phones are shared on campus and on the farm, so a write is
+ * sent, listed or counted only while its owner is the one signed in: what one person left waiting is never
+ * sent under someone else's session, and waits on the device until its owner signs in again.
  */
 
 import { useEffect, useState } from "react";
@@ -31,6 +35,8 @@ export interface QueuedWrite {
   label: string;
   /** Sent as the Idempotency-Key header, the same on every try. */
   idempotencyKey?: string;
+  /** The account that made it (Me.id): only that person's session sends it. */
+  owner: number;
   createdAt: string;
 }
 
@@ -45,14 +51,34 @@ const KEY = "gsa-lms.offline-queue";
 const listeners = new Set<() => void>();
 /** What happened to each write sent from the queue in this visit, for the "sent" mark beside it. */
 const outcomes = new Map<string, Outcome>();
+/** Who is signed in on this device now (set by the app once sign-in is complete), or null. */
+let owner: number | null = null;
 
-function read(): QueuedWrite[] {
+function readAll(): QueuedWrite[] {
   try {
-    return JSON.parse(localStorage.getItem(KEY) ?? "[]");
+    const items: QueuedWrite[] = JSON.parse(localStorage.getItem(KEY) ?? "[]");
+    // A write with no owner cannot be given to anyone safely, so it is not kept.
+    return items.filter((q) => typeof q.owner === "number");
   } catch {
     return [];
   }
 }
+
+/** The signed-in person's own writes; nobody else's. */
+const read = (): QueuedWrite[] => (owner === null ? [] : readAll().filter((q) => q.owner === owner));
+
+/**
+ * Who is signed in now: their writes are listed and sent, and anyone else's stay on the device unsent. The
+ * app calls it when sign-in completes (with the account id) and on sign-out (with null).
+ */
+export function setQueueOwner(id: number | null) {
+  if (owner === id) return;
+  owner = id;
+  notify();
+  if (id !== null) void flush();
+}
+
+export const queueOwner = () => owner;
 
 function write(items: QueuedWrite[]) {
   try {
@@ -82,11 +108,13 @@ function request(item: Pick<QueuedWrite, "method" | "path" | "body" | "idempoten
  * Keep a write to send later. A later write to the same address replaces one still waiting, so a quiz
  * answer changed twice without signal is sent once, as last given.
  */
-export function enqueue(item: Omit<QueuedWrite, "id" | "createdAt"> & { id?: string }): QueuedWrite {
-  const items = read();
-  const same = item.method === "PUT" ? items.find((q) => q.method === "PUT" && q.path === item.path) : undefined;
+export function enqueue(item: Omit<QueuedWrite, "id" | "createdAt" | "owner"> & { id?: string }): QueuedWrite {
+  if (owner === null) throw new Error("Sign in again to save this.");
+  const items = readAll();
+  const same =
+    item.method === "PUT" ? items.find((q) => q.owner === owner && q.method === "PUT" && q.path === item.path) : undefined;
   // The replaced write keeps its id, so the "waiting to send" mark beside it stays where it is.
-  const queued: QueuedWrite = { ...item, id: same?.id ?? item.id ?? newId(), createdAt: new Date().toISOString() };
+  const queued: QueuedWrite = { ...item, owner, id: same?.id ?? item.id ?? newId(), createdAt: new Date().toISOString() };
   write([...items.filter((q) => q !== same), queued]);
   return queued;
 }
@@ -97,7 +125,7 @@ export type Sent<T> = { queued: false; result: T } | { queued: true; item: Queue
  * Send now if there is a connection; keep it for later if there is not. A refusal from the server (a
  * deadline passed, a mark already given) is not queued: it is thrown, for the page to show.
  */
-export async function sendOrQueue<T>(item: Omit<QueuedWrite, "id" | "createdAt">): Promise<Sent<T>> {
+export async function sendOrQueue<T>(item: Omit<QueuedWrite, "id" | "createdAt" | "owner">): Promise<Sent<T>> {
   const prepared = { ...item, idempotencyKey: KEYED.includes(item.kind) ? (item.idempotencyKey ?? newId()) : undefined };
   if (typeof navigator !== "undefined" && navigator.onLine === false) return { queued: true, item: enqueue(prepared) };
   try {
@@ -150,7 +178,8 @@ let flushing = false;
 /** Replay queued writes in order. Stops at the first network failure; drops writes the server refuses. */
 export async function flush(): Promise<FlushResult> {
   const result: FlushResult = { sent: 0, rejected: 0 };
-  if (flushing || !navigator.onLine) return result;
+  if (flushing || !navigator.onLine || owner === null) return result;
+  const sender = owner;
   flushing = true;
   try {
     let items = read();
@@ -166,8 +195,10 @@ export async function flush(): Promise<FlushResult> {
         outcomes.set(item.id, { state: "refused", detail: err instanceof ApiError ? err.detail : "Not accepted." });
         result.rejected += 1;
       }
-      items = read().filter((q) => q.id !== item.id);
-      write(items);
+      write(readAll().filter((q) => q.id !== item.id));
+      // Someone signed out, or another person signed in, while this was sending: stop with their writes.
+      if (owner !== sender) break;
+      items = read();
     }
   } finally {
     flushing = false;

@@ -24,7 +24,7 @@ const contents: SiteContents = {
   modules: [],
   announcements: [],
 };
-function open(tab: "content", routes: Record<string, unknown> = {}) {
+function open(tab: "content" | "quizzes", routes: Record<string, unknown> = {}) {
   fakeServer({
     "GET /sites/9/contents/": { body: contents },
     ...(routes as Record<string, { body?: unknown }>),
@@ -48,5 +48,10 @@ describe("a course site in the frame (items 2.07 and 2.10)", () => {
     expect(screen.getByRole("tab", { name: "Content" })).toHaveAttribute("aria-selected", "true");
     await userEvent.click(screen.getByRole("tab", { name: "Gradebook" }));
     expect(onTab).toHaveBeenCalledWith("gradebook");
+  });
+
+  it("loads the Quizzes tab when it is opened (feature 10)", async () => {
+    open("quizzes", { "GET /quizzes/": { body: { count: 0, next: null, previous: null, results: [] } } });
+    expect(await screen.findByText("No quizzes yet.")).toBeInTheDocument();
   });
 });

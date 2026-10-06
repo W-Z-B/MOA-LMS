@@ -12,6 +12,9 @@ classes (two running now) and two lab groups.
 
 For the practicals journeys (items 3.12 to 3.15) it adds a practical task with its checklist and a competency
 framework the course follows.
+
+For the quiz journeys (feature 10) it adds the course's question bank with one category, where the
+journeys write their questions.
 The accounts share the password in DEMO_USER_PASSWORD. Teaching staff need an authenticator code (ADR 0013),
 so the lecturer's authenticator is enrolled from DEMO_TOTP_SECRET, a fictional secret the journeys also hold
 to compute the code. The draft privacy notice is published, so the journeys read and acknowledge it as
@@ -60,6 +63,7 @@ from practicals.models import (
 )
 from practicals.serializers import FrameworkImportSerializer
 from privacy.models import PrivacyNotice
+from quizzes.models import QuestionBank, QuestionCategory
 from rubrics.models import Rubric
 from rubrics.services import replace_criteria
 from staffdev.completion import record_completion
@@ -199,6 +203,7 @@ class Command(BaseCommand):
             self._to_copy(Membership.objects.get(site=site, role="lecturer").person)
             self._talk(site)
             self._practicals(site)
+            self._question_bank(site)
             PrivacyNotice.objects.filter(published_at__isnull=True).update(published_at=timezone.now())
             self._administrator(password, secret)
             certificate = self._staff_development()
@@ -565,6 +570,13 @@ class Command(BaseCommand):
                 pass_score=3,
             )
             PracticalCriterion.objects.create(task=task, position=3, text="Tools cleaned and stored")
+
+    @staticmethod
+    def _question_bank(site: CourseSite) -> None:
+        """An empty bank for the course, with one category: the quiz journeys (feature 10) write a question
+        in it, build a quiz and publish it. No quiz is seeded, so nothing new is due on the Homes."""
+        bank, _ = QuestionBank.objects.get_or_create(site=site, name="Crop production questions")
+        QuestionCategory.objects.get_or_create(bank=bank, name="Week 1: What a crop needs")
 
     @staticmethod
     def _person(username, kind, external_id, first, last, role, password) -> PersonRef:

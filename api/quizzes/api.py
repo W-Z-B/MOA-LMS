@@ -5,6 +5,7 @@ on the sites they belong to and only their own attempts; right answers, marks an
 when the quiz's review options and the lecturer's release allow. Refusals use the {code, detail} shape.
 """
 
+import re
 from decimal import Decimal
 
 from django.db import transaction
@@ -23,6 +24,7 @@ from rest_framework.routers import DefaultRouter
 
 from audit.services import record, snapshot
 from core import uploads
+from courses import richtext
 from courses.access import can_teach, person_of, site_role, visible_sites
 from courses.api import TeachingViewSet
 from courses.models import Membership
@@ -180,6 +182,7 @@ class QuestionCategoryViewSet(BankGuardMixin, viewsets.ModelViewSet):
 class QuestionVersionSerializer(serializers.ModelSerializer):
     in_use = serializers.SerializerMethodField()
     image_url = serializers.SerializerMethodField()
+    text_html = serializers.SerializerMethodField()
 
     class Meta:
         model = QuestionVersion
@@ -187,6 +190,7 @@ class QuestionVersionSerializer(serializers.ModelSerializer):
             "id",
             "number",
             "text",
+            "text_html",
             "data",
             "default_mark",
             "general_feedback",
@@ -200,6 +204,10 @@ class QuestionVersionSerializer(serializers.ModelSerializer):
 
     def get_image_url(self, obj) -> str | None:
         return f"/api/v1/question-versions/{obj.id}/image/" if obj.image else None
+
+    def get_text_html(self, obj) -> str:
+        """The text as cleaned HTML, for showing; "text" is the text as written, for editing."""
+        return rich(obj.text)
 
 
 class QuestionSerializer(serializers.ModelSerializer):
@@ -912,6 +920,49 @@ def _q(value):
     return None if value is None else str(value.quantize(services.TWO_PLACES))
 
 
+def rich(text: str) -> str:
+    """Question text as safe HTML for the page. Moodle and QTI imports bring HTML: it is cleaned against the
+    same allow-list as course pages (courses.richtext). Text typed without tags becomes paragraphs."""
+    return clean(text) if HTML_TAG.search(text or "") else richtext.text_to_html(text)
+
+
+def clean(html: str) -> str:
+    """courses.richtext.clean, then the images: one whose address was not kept (an imported file that is not
+    on the LMS) shows nothing and is dropped; one without alternative text is marked as decoration."""
+
+    def image(match):
+        attributes = match.group(1)
+        if " src=" not in f" {attributes}":
+            return ""
+        return match.group(0) if " alt=" in f" {attributes}" else f'<img alt=""{attributes}>'
+
+    return IMG_TAG.sub(image, richtext.clean(html))
+
+
+HTML_TAG = re.compile(r"<[a-zA-Z/!]")
+IMG_TAG = re.compile(r"<img((?:\s[^>]*?)?)\s*/?>")
+
+# The parts of a question's settings that are shown to people as text: cleaned like the question itself.
+_SHOWN = {
+    schemas.MULTICHOICE: [("choices", ("text", "feedback"))],
+    schemas.ORDERING: [("items", ("text",))],
+    # A student sees prompts; teaching staff see the pairs themselves.
+    schemas.MATCHING: [("prompts", ("text",)), ("pairs", ("prompt",))],
+}
+
+
+def shown_data(qtype: str, data: dict) -> dict:
+    """A copy of the settings sent for display, with every piece of imported HTML in it cleaned."""
+    shown = dict(data)
+    for key, fields in _SHOWN.get(qtype, []):
+        if isinstance(shown.get(key), list):
+            shown[key] = [
+                {**row, **{f: clean(row[f]) for f in fields if isinstance(row.get(f), str)}}
+                for row in shown[key]
+            ]
+    return shown
+
+
 def attempt_payload(attempt: Attempt, request, now=None) -> dict:
     """An attempt as its viewer may see it. Students never get fractions, right answers, zone labels or
     feedback before the quiz's review options (and, for marks, the release) allow."""
@@ -939,9 +990,12 @@ def attempt_payload(attempt: Attempt, request, now=None) -> dict:
             "position": answer.position,
             "page": answer.page,
             "qtype": qtype,
-            "text": version.text,
+            # Cleaned HTML, safe to place in the page as it is (rich() above).
+            "text": rich(version.text),
             "image_url": f"/api/v1/question-versions/{version.id}/image/" if version.image else None,
-            "data": version.data if teacher else schemas.public_data(qtype, version.data, answer.layout),
+            "data": shown_data(
+                qtype, version.data if teacher else schemas.public_data(qtype, version.data, answer.layout)
+            ),
             "max_mark": str(answer.max_mark),
             "response": answer.response,
             "file_url": f"/api/v1/quiz-attempts/{attempt.id}/answers/{answer.position}/file/"
@@ -961,8 +1015,8 @@ def attempt_payload(attempt: Attempt, request, now=None) -> dict:
                 else "incorrect"
             )
         if finished and show_feedback:
-            item["feedback"] = answer.auto_feedback
-            item["general_feedback"] = version.general_feedback
+            item["feedback"] = clean(answer.auto_feedback)
+            item["general_feedback"] = clean(version.general_feedback)
             item["comment"] = answer.comment
         if finished and show_correct:
             item["right_answer"] = marking.correct_response(qtype, version.data)
