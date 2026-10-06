@@ -51,6 +51,10 @@ INSTALLED_APPS = [
     "privacy",
     "quizzes",
     "practicals",
+    "forums",
+    "messaging",
+    "attendance",
+    "calendars",
 ]
 
 MIDDLEWARE = [
@@ -223,6 +227,16 @@ INTEGRATION_TIMEOUT_SECONDS = int(env("INTEGRATION_TIMEOUT_SECONDS", "15"))
 
 # Privacy (items 1.18, 1.19): days within which a correction request is to be answered.
 PRIVACY_RESPONSE_DAYS = int(env("PRIVACY_RESPONSE_DAYS", "30"))
+
+# Conversation (items 4.08 to 4.11). Authors may change or remove their own forum post for this long.
+FORUM_EDIT_MINUTES = int(env("FORUM_EDIT_MINUTES", "30"))
+# Private messages between students: off unless GSA asks for them (feature 23, gap G13).
+MESSAGING_STUDENT_TO_STUDENT = env_bool("MESSAGING_STUDENT_TO_STUDENT", False)
+
+# Attendance (item 4.15, decision D6): how long a check-in code shown in the room is valid, and when a
+# student checking in after the start counts as late.
+ATTENDANCE_CODE_SECONDS = int(env("ATTENDANCE_CODE_SECONDS", "60"))
+ATTENDANCE_LATE_AFTER_MINUTES = int(env("ATTENDANCE_LATE_AFTER_MINUTES", "10"))
 
 # To do (items 2.07 to 2.09): days after which work to mark, and a decision, are marked overdue.
 MARKING_DAYS = int(env("MARKING_DAYS", "14"))
