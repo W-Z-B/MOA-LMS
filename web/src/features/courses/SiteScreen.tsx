@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { Suspense, lazy, useCallback, useEffect, useState, type FormEvent } from "react";
 import { errorMessage, get, patch, post } from "../../api/client";
 import { canTeach, type Assignment, type Gradebook, type Paginated, type SiteContents, type Submission } from "../../api/types";
 import { dmyTime } from "../../app/format";
@@ -10,6 +10,10 @@ import { ClassesTab } from "../attendance/ClassesTab";
 import { DiscussionTab } from "../forums/DiscussionTab";
 import { GroupsTab } from "../groups/GroupsTab";
 import { ContentTab } from "../content/ContentTab";
+
+// Practicals and the logbook load only when their tab is opened (items 3.12 to 3.15).
+const PracticalsTab = lazy(() => import("../practicals/PracticalsTab").then((m) => ({ default: m.PracticalsTab })));
+const LogbookTab = lazy(() => import("../practicals/LogbookTab").then((m) => ({ default: m.LogbookTab })));
 
 interface Props {
   siteId: number;
@@ -26,6 +30,8 @@ const TAB_LABEL: Record<SiteTab, string> = {
   discussion: "Discussion",
   classes: "Classes",
   groups: "Groups",
+  practicals: "Practicals",
+  logbook: "Logbook",
 };
 
 /**
@@ -96,6 +102,10 @@ export function SiteScreen({ siteId, tab, onTab }: Props) {
       {tab === "discussion" && <DiscussionTab siteId={siteId} teaching={teaching} />}
       {tab === "classes" && <ClassesTab siteId={siteId} teaching={teaching} />}
       {tab === "groups" && <GroupsTab siteId={siteId} teaching={teaching} />}
+      <Suspense fallback={<p className="loading">Loading…</p>}>
+        {tab === "practicals" && <PracticalsTab siteId={siteId} teaching={teaching} />}
+        {tab === "logbook" && <LogbookTab siteId={siteId} teaching={teaching} />}
+      </Suspense>
     </>
   );
 }

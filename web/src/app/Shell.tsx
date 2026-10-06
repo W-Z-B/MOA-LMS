@@ -124,6 +124,8 @@ export function Shell({ me, path, onNavigate, onLogout, campusCode, onCampusChan
 
   async function signOut() {
     await post("/auth/logout/").catch(() => undefined);
+    // No class list kept for the field stays on the phone (ADR 0011).
+    await import("../features/practicals/fieldCopy").then((m) => m.clearFieldCopies()).catch(() => undefined);
     onLogout();
   }
 

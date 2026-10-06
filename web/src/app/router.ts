@@ -76,7 +76,18 @@ export function pageOf(path: string): Page | undefined {
 }
 
 /** The tabs of a course site, each with an address of its own. */
-export const SITE_TABS = ["content", "assignments", "gradebook", "announcements", "discussion", "classes", "groups"] as const;
+export const SITE_TABS = [
+  "content",
+  "assignments",
+  "gradebook",
+  "announcements",
+  "discussion",
+  "classes",
+  "groups",
+  // --- practicals --- (items 3.12 to 3.15): each has addresses below it, #/sites/4/practicals/12/observe
+  "practicals",
+  "logbook",
+] as const;
 export type SiteTab = (typeof SITE_TABS)[number];
 
 /** #/sites/4 or #/sites/4/gradebook: the site and its tab. A tab the screen does not have opens Content. */
