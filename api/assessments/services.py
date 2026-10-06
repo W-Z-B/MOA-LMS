@@ -163,6 +163,16 @@ def _forum_items(site, person, released_only) -> list[Item]:
     ]
 
 
+def _tool_items(site, person) -> list[Item]:
+    """Gradebook columns that outside tools post scores to (item 6.07), where they carry a weight."""
+    from lti.services import coursework_line_items
+
+    return [
+        Item("tool", li.id, li.label, li.grade_category_id, li.weight, fraction, state)
+        for li, fraction, state in coursework_line_items(site, person)
+    ]
+
+
 def coursework_working(site, person, *, released_only: bool = False, now=None) -> dict:
     """The coursework total and how it was worked out: every item with its state, and every category."""
     now = now or timezone.now()
@@ -171,6 +181,7 @@ def coursework_working(site, person, *, released_only: bool = False, now=None) -
         + _quiz_items(site, person, released_only, now)
         + _practical_items(site, person, released_only, now)
         + _forum_items(site, person, released_only)
+        + _tool_items(site, person)
     )
     loaded = preload.current(site)
     categories = loaded.categories if loaded else list(GradeCategory.objects.filter(site=site))
@@ -244,6 +255,8 @@ def public_working(site, person, *, released_only: bool) -> dict:
 
 def gradebook(site, *, only_person=None, released_only: bool = False) -> dict:
     from assessments.rules import label_for
+    from lti.services import gradebook_cells as tool_cells
+    from lti.services import line_items as tool_line_items
     from quizzes.services import finish_expired_attempts, quiz_grade
 
     assignments = list(site.assignments.filter(is_published=True))
@@ -308,6 +321,7 @@ def gradebook(site, *, only_person=None, released_only: bool = False) -> dict:
                     "quizzes": quiz_marks,
                     "practicals": others["practical"],
                     "forums": others["forum"],
+                    "tools": tool_cells(site, person),
                     "categories": {str(c["id"]): c["percent"] for c in working["categories"] if c["id"]},
                     "coursework_percent": working["coursework_percent"],
                     "srms": _srms_state(site, person),
@@ -347,6 +361,16 @@ def gradebook(site, *, only_person=None, released_only: bool = False) -> dict:
         "forums": [
             {"id": f.id, "title": f.title, "weight": str(f.weight), "category": f.grade_category_id}
             for f in site.forums.filter(is_published=True, forum_type="graded", weight__gt=0)
+        ],
+        "tools": [
+            {
+                "id": li.id,
+                "title": li.label,
+                "tool": li.tool.name,
+                "weight": str(li.weight),
+                "category": li.grade_category_id,
+            }
+            for li in tool_line_items(site)
         ],
         "rows": rows,
     }

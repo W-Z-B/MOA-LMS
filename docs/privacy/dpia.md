@@ -163,6 +163,10 @@ What the LMS records is kept to what teaching and security need (`what-we-record
 - The audit entry of a disposal names which work was destroyed, never its content or its mark.
 - No decision about a student is made by the system alone; early alerts, when built, follow visible rules
   shown with their evidence to a person (ADR 0007).
+- Course analytics and progress (items 6.01, 6.02) are worked out from what is already recorded; only the
+  first opening of each item is kept. Early alerts (item 6.05) follow visible rules with thresholds a course
+  administrator sets, carry their evidence, and are decided by a person; the student never sees a label.
+- Reports that leave a course hide totals about fewer than five people (item 6.06).
 
 Two points are not yet proportionate and are on the action list (section 10): photographs keep the location
 the phone wrote into the file, and `what-we-record.md` and the privacy notice do not yet mention
@@ -220,8 +224,46 @@ destroyed by archiving. The submissions and marks in it then follow their own ru
 | Devices signed in, offline-write keys | A device record ends with its session; offline-write keys 30 days | **Proposed; no rule yet** |
 | Privacy notice acknowledgements, correction requests | As long as the account | With the account |
 | Access review sign-offs, breach register | 7 years, with the audit log | |
-| Backups | **Period set in item 7.09**; destroyed records stay in backups until those expire | Being built |
+| Backups | 14 daily, 8 weekly and 12 monthly copies, encrypted, on the host and off site (item 7.09); a record destroyed by the schedule stays in the backups until the last copy holding it is rotated out, at most 12 months | Built (`scripts/backup.sh`) |
+| AI exchanges (when the study helper was asked and whether it answered; lecturers' drafts) | 1 year, as sign-in attempts | Removed every night at 04:00 (rule `ai-exchanges`); a student's question and the answer are never kept |
+| Scores posted by outside tools | With the marks | |
 | Fictional demonstration data | Never on a database with real records | `seed_demo` and `seed_journeys` refuse to run without `--fictional` |
+
+## 7a. Outside tools (LTI 1.3, item 6.07): a note for this assessment
+
+Outside tools are run by third parties, usually outside Guyana, so anything sent to one is a disclosure and
+possibly a transfer. The LMS keeps it to the least a tool needs:
+
+- **Always sent at a launch:** an identifier for the person that is random and different for every tool (not
+  the student or employee number, not the username); the person's role on the course (learner, instructor,
+  teaching assistant or administrator); the course's code and title; the item's title.
+- **Sent only when a course administrator switches it on for that tool:** the person's name; the person's
+  email address. Both switches are **off by default**, are audited when changed, and are shown to teaching
+  staff beside each tool ("What the tool receives").
+- **Class lists** (Names and Role Provisioning) go only to a tool allowed to read them, with the same
+  identifiers and the same name and email rule; each reading is audited.
+- **Scores** come back from the tool for students of the course only, are audited per student, and count in
+  the coursework only where the lecturer gives the column a weight.
+- **Before a tool is registered** GSA should record, per tool: its maker and where it stores data; the
+  contract or terms that make the maker a processor; whether names or emails are truly needed; and, for a tool
+  used by students under 18, why it is suitable. Until then leave both data-sharing switches off.
+
+## 7b. AI assistance (items 6.11, 6.12, decision D5): a note for this assessment
+
+- **Off by default** (`AI_ENABLED=False`), and then per course, off until its teaching staff switch it on.
+- **Where it runs:** only a model GSA hosts itself, reached through Ollama's HTTP API at an address GSA sets
+  (`AI_OLLAMA_URL`). No outside AI service is implemented; adding one is a new decision with its own
+  assessment (ADR 0007).
+- **Lecturer drafts** use the lecturer's own material (a page, a Word or PowerPoint file, a picture), never
+  student data. Every draft is reviewed and edited by the lecturer before it is saved; the save is marked
+  "AI-drafted" in the audit log.
+- **The study helper** is sent the student's question and passages of the course's own published material
+  that the student may see; nothing else about the student (no name, number or marks). It refuses when the
+  material holds nothing relevant, shows its sources, and is switched off while the student has a quiz attempt
+  in progress or a quiz or assignment open on that course. The question and the answer are not stored; only
+  the time, the person, whether it was answered and which items were used, for 1 year.
+- **No decision about a student** is made by the model (ADR 0007): it drafts for lecturers and answers study
+  questions only.
 
 ## 8. Risks and measures
 
@@ -244,11 +286,13 @@ review against OWASP ASVS Level 2 (`docs/security/asvs-l2.md`).
 | Activity data used to monitor students or staff | Possible | Moderate | Only sign-ins, downloads, submissions, check-ins and attempt events recorded; no time on page; stated in the notice | Low |
 | Data left on a shared phone | Likely | Moderate | Only the person's own work waits offline; the field class list is cleared on sign-out. To clear it on time-out too, and stop browsers keeping API answers (ASVS fixes 3 and 7) | Low once fixed |
 | Work kept longer than needed | Likely until confirmed | Moderate | Retention schedule with reviewed disposal; nightly purge of logs; rules to add for messages, attempts, evidence and attendance | Low once GSA confirms the periods |
-| Records lost or unavailable | Possible | Significant | Encrypted daily backups with an off-site copy and a timed restore drill (item 7.09, being built); hosting in Guyana (item 7.04) | Low once built |
+| Records lost or unavailable | Possible | Significant | Encrypted daily backups with an off-site copy and a timed restore drill (item 7.09, `scripts/backup.sh`; drill timed at under 2 minutes on test data); hosting in Guyana (item 7.04) | Low once built |
 | Data leaves Guyana | Possible | Moderate | Hosting in Guyana; staging fictional; no outside AI; email to carry links until its hosting is known | Low once GSA answers section 9 |
 | A role kept after someone leaves or stops teaching | Possible | Moderate | Accounts closed when the SRMS or HRMS marks a person inactive; access review each term. Role changes to be audited (ASVS fix 2) | Low |
 | A breach not handled in time | Possible | Significant | Breach register with alerts; the DPO named in the system; monitoring and alerts (item 7.10) | Medium until GSA names the DPO and the procedure is written |
 | Data of minors handled like adults' | Likely | Moderate | Same protections for all; parent or guardian requests through the Registry; minors flagged in breaches | Medium until GSA decides section 4's open points |
+| An outside tool learns more about people than it needs | Possible | Moderate | Opaque identifier per tool; names and emails off by default, per tool; launches and class-list readings audited (section 7a) | Low while the switches stay off; Medium for a tool given names or emails |
+| AI used on student data, or its answers taken as fact | Possible | Moderate | Off by default; a model GSA hosts; the helper answers only from course material with sources, and refuses otherwise; off during assessments; drafts always reviewed (section 7b) | Low |
 
 No high residual risk remains once the actions in section 10 are done. The summary consulted does not
 describe a duty to consult the Commissioner before processing; the legal adviser should confirm whether one

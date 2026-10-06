@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { Me, Notification, SearchHits, WaitingItem } from "../api/types";
@@ -131,13 +131,15 @@ describe("the frame", () => {
       "My data",
       "My account",
       "Notification settings",
+      "Help",
     ]);
     await user.click(within(menu).getByRole("link", { name: /My data/ }));
     expect(props.onNavigate).toHaveBeenCalledWith("/my-data");
     expect(screen.queryByRole("dialog", { name: "Your account" })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Signed in as Natasha Khan" }));
     await user.click(screen.getByRole("button", { name: "Sign out" }));
-    expect(props.onLogout).toHaveBeenCalled();
+    // Signing out waits for the server and clears what the field screens kept on the phone first.
+    await waitFor(() => expect(props.onLogout).toHaveBeenCalled());
   });
 
   it("closes a menu with Esc or a click outside it", async () => {
@@ -229,6 +231,7 @@ describe("search", () => {
       "My data",
       "My account",
       "Notification settings",
+      "Help",
     ]);
   });
 

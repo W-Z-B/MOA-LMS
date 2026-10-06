@@ -10,6 +10,7 @@ from assessments import preload
 from assessments.services import coursework_percent
 from courses.models import CourseSite, Membership
 from courses.site_templates import apply_template
+from insights.srms import record_offering
 from integration.client import call, pages
 from people.models import PersonRef
 
@@ -63,6 +64,7 @@ def sync_sites(*, current_only: bool = True) -> dict:
                 "coursework_weight": offering["coursework_weight"],
             },
         )
+        record_offering(site, offering)  # its course and programmes, for outcomes and reports (3.11, 6.03)
         counts["sites"] += 1
         if created:
             apply_template(site)  # the GSA standard layout for a new, empty site (item 2.17)

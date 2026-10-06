@@ -8,6 +8,7 @@ and, for a student, work due soon and logbook entries handed back. Something tha
 limit, or work past its due date, is marked overdue.
 Staff development adds requests to join a course for those who decide them, required training falling
 due, and, for administrators, people still to be invited to an account (items 1.22, 5.02, 5.05).
+Help requests waiting for an answer go to course administrators and administrators (item 7.17).
 """
 
 from datetime import datetime
@@ -308,6 +309,26 @@ def _required_training(person) -> list[dict]:
     return items
 
 
+def _help_requests(user) -> list[dict]:
+    """Help requests waiting for an answer, for those who answer them (helpdesk.api, item 7.17)."""
+    from helpdesk.models import HelpRequest
+
+    if not has_role(user, *SITE_ADMIN_ROLES):
+        return []
+    waiting = HelpRequest.objects.filter(status=HelpRequest.Status.OPEN).exclude(asked_by=user)
+    return [
+        _item(
+            "help_request",
+            "Help request to answer",
+            _shorten(h.subject),
+            h.created_at,
+            f"/help/requests/{h.pk}",
+            limit=2,
+        )
+        for h in waiting.order_by("created_at")[:50]
+    ]
+
+
 def _accounts(user) -> list[dict]:
     """People with no account who have not been invited to choose a password, for administrators (1.22)."""
     from iam.accounts import uninvited
@@ -340,6 +361,7 @@ def to_do_for(user) -> list[dict]:
         *_enrolments(user),
         *_required_training(person),
         *_accounts(user),
+        *_help_requests(user),
     ]
     return sorted(items, key=lambda item: item["due_at"] or item["since"])
 
@@ -363,6 +385,7 @@ class ToDoItemSerializer(serializers.Serializer):
             "enrolment",
             "required_training",
             "accounts",
+            "help_request",
         ]
     )
     kind_name = serializers.CharField(help_text="What it is, in words: 'Work to mark', 'Work due'")

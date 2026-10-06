@@ -75,6 +75,15 @@ RULES = [
         True,
         TO_CONFIRM + "; archiving keeps a read-only export and destroys nothing (item 7.12)",
     ),
+    (
+        "ai-exchanges",
+        "AI help: when it was asked, by whom, and lecturers' drafts (never a student's question)",
+        12,
+        "when it was asked",
+        "delete",
+        True,
+        "As sign-in attempts and other activity logs (items 6.11, 6.12); " + TO_CONFIRM,
+    ),
 ]
 SUBMISSION_RULES = ("submitted-work", "marks-evidence")
 
@@ -236,6 +245,10 @@ def purge(today: date | None = None) -> dict[str, int]:
                 count = Notification.objects.filter(created_at__lt=cut).delete()[0]
             elif rule.code == "course-sites":
                 continue  # archived, not deleted, by the term life-cycle (terms.lifecycle)
+            elif rule.code == "ai-exchanges":
+                from assist.models import Exchange
+
+                count = Exchange.objects.filter(at__lt=cut).delete()[0]
             else:  # pragma: no cover - a rule the code does not know is left alone
                 continue
             removed[rule.code] = count

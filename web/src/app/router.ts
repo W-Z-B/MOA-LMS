@@ -64,6 +64,9 @@ export const PAGES: readonly Page[] = [
     under: ["/staff-development", "/certificates"],
   },
   { path: "/admin", label: "Admin", desc: "Accounts, audit log, integration runs, privacy, access review and course administration", roles: [...new Set([...CONSOLE_ROLES, ...ADMIN_ROLES])] },
+  // --- help (item 7.17) ---
+  { path: "/help", label: "Help", desc: "How to do each task, step by step, and asking for help" },
+  // --- end help ---
 ];
 
 /** The pages this person may open. */
@@ -93,6 +96,12 @@ export const SITE_TABS = [
   // --- practicals --- (items 3.12 to 3.15): each has addresses below it, #/sites/4/practicals/12/observe
   "practicals",
   "logbook",
+  // --- insight --- (items 6.01, 6.02, 3.11, 6.05): Insights for teaching staff, My progress for students
+  "insights",
+  "progress",
+  // --- tools and AI help --- (items 6.07, 6.11, 6.12): AI help is shown only where it may be used
+  "tools",
+  "ai",
 ] as const;
 export type SiteTab = (typeof SITE_TABS)[number];
 
@@ -213,3 +222,50 @@ export function quizAddress(path: string): QuizView {
   return { view: "list" };
 }
 // --- end quizzes ---
+
+// --- help (item 7.17) ---
+/**
+ * Help has addresses of its own: #/help lists the help for each role, #/help/student the student's help and
+ * #/help/student/hand-in one task in it. #/help?topic=quizzes&from=/sites/4/quizzes is the Help link at the
+ * top of a page: it opens the reader's own help at that topic. #/help/ask?from=... asks for help from a
+ * page, and #/help/requests (or #/help/requests/12) lists help requests.
+ */
+export type HelpView =
+  | { view: "index" }
+  | { view: "role"; role: string; task: string | null }
+  | { view: "topic"; topic: string; from: string }
+  | { view: "ask"; from: string }
+  | { view: "requests"; id: number | null };
+
+export function helpAddress(path: string): HelpView | null {
+  const [bare, query = ""] = path.split(/\?(.*)/s);
+  const match = bare.match(/^\/help(?:\/([a-z-]+)(?:\/([a-z0-9-]+))?)?\/?$/);
+  if (!match) return null;
+  const params = new URLSearchParams(query);
+  const from = params.get("from") ?? "";
+  const [, first, second] = match;
+  if (!first) {
+    const topic = params.get("topic");
+    return topic ? { view: "topic", topic, from } : { view: "index" };
+  }
+  if (first === "ask") return { view: "ask", from };
+  if (first === "requests") return second && /^\d+$/.test(second) ? { view: "requests", id: Number(second) } : { view: "requests", id: null };
+  return { view: "role", role: first, task: second ?? null };
+}
+// --- end help ---
+
+// --- insight ---
+/** The parts of a site's Insights tab: #/sites/4/insights, /insights/progress, /insights/outcomes, /insights/alerts. */
+export const INSIGHTS_SECTIONS = ["overview", "progress", "outcomes", "alerts"] as const;
+export type InsightsSection = (typeof INSIGHTS_SECTIONS)[number];
+
+export function insightsSection(path: string): InsightsSection {
+  const part = path.split("?")[0].match(/^\/sites\/\d+\/insights\/([a-z]+)\/?$/)?.[1];
+  return INSIGHTS_SECTIONS.find((s) => s === part) ?? "overview";
+}
+// --- end insight ---
+
+// --- tools and AI help ---
+/** #/admin/tools: the outside tools course administrators register (item 6.07). */
+export const isToolsAdmin = (path: string) => path.split("?")[0] === "/admin/tools";
+// --- end tools and AI help ---

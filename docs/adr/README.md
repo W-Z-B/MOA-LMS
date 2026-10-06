@@ -29,12 +29,13 @@ the recommended answer"; GSA may revise any of them by a new record.
 | [0017](0017-competency-records.md) | Competency records beside marks | D8 | Proposed, open |
 | [0018](0018-text-and-whatsapp-notices.md) | Text messages and WhatsApp for urgent notices only | D12 | Proposed, open |
 | [0019](0019-required-training.md) | The HRMS says which staff must take which training | D13 | Proposed, open |
+| [0020](0020-reports-by-role-grant.md) | Who reads the reports that leave a course: heads of department by unit, the Registrar by campus | | Proposed; built this way, GSA to confirm |
 
 ## Open decisions with no record yet
 
 | Decision | Question | Why there is no record |
 |---|---|---|
-| D9 | GSA's outstanding answers: what is used today, courses and lecturers per campus, the coursework and examination split, competency-based programmes, attendance rules, devices and connectivity, a data protection contact, hosting | An information request to GSA (item 0.14), not a design choice. No real learner data is loaded until it is answered. |
+| D9 | GSA's outstanding answers: what is used today, courses and lecturers per campus, the coursework and examination split, competency-based programmes, attendance rules, devices and connectivity, a data protection contact, hosting | An information request to GSA (item 0.14), not a design choice: GSA-LMS-Information-Request.md, kept with the planning documents, version 1.0 of 6 October 2026, reply requested by 27 October 2026. No real learner data is loaded until it is answered. |
 | D11 | Branch protection and the issue board | A repository setting for the owner (item 0.22); the gates in [ADR 0009](0009-quality-tooling.md) bind only once it is on. |
 
 To accept a proposed record, change its status line to "Accepted", with the date and who decided, in a pull

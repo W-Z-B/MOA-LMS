@@ -32,6 +32,8 @@ urlpatterns = [
     path("api/v1/", include("messaging.api")),
     path("api/v1/", include("attendance.api")),
     path("api/v1/", include("calendars.api")),
+    path("api/v1/", include("helpdesk.api")),
+    path("api/v1/", include("insights.api")),
     path("api/v1/", include("audit.urls")),
     path("api/v1/", include("core.urls")),
     path("api/v1/privacy/", include("privacy.urls")),
@@ -41,6 +43,11 @@ urlpatterns = [
     path("api/v1/", include("certificates.api")),
     path("api/v1/", include(terms_router.urls)),
     path("api/v1/site-archives/<int:pk>/download/", download_archive, name="site-archive-download"),
+    # Outside tools (item 6.07): registering and placing them, and the LTI 1.3 addresses tools use.
+    path("api/v1/", include("lti.api")),
+    path("api/lti/", include("lti.views")),
+    # AI assistance within decision D5 (items 6.11, 6.12): off unless GSA switches it on.
+    path("api/v1/", include("assist.api")),
     # The public certificate check as a page of its own, without sign-in or script (item 5.09).
     path("api/check-certificate/", check_page, name="certificate-check-page"),
     path("api/v1/reference/", include((reference_urls, "reference"))),

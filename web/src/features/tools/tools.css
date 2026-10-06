@@ -1,0 +1,44 @@
+/* Outside tools (item 6.07) and AI help (items 6.11, 6.12). */
+.tools section,
+.ai-help section {
+  margin-bottom: 1.5rem;
+}
+.tool-list {
+  display: grid;
+  gap: 0.75rem;
+}
+.tool-list .actions {
+  margin-top: 0.5rem;
+}
+.receives ul,
+.sources {
+  margin: 0.25rem 0 0;
+  padding-left: 1.25rem;
+}
+.tool-details {
+  display: grid;
+  grid-template-columns: minmax(0, 12rem) minmax(0, 1fr);
+  gap: 0.25rem 1rem;
+  margin: 0;
+}
+.tool-details dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.draft-card textarea {
+  min-height: 4.5rem;
+}
+.draft-choice {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.5rem;
+  align-items: center;
+}
+.ai-answer {
+  white-space: pre-wrap;
+}
+@media (max-width: 600px) {
+  .tool-details {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

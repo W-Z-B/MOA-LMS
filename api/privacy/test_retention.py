@@ -62,6 +62,7 @@ def test_the_schedule_is_seeded_as_proposals_to_be_confirmed(seeded):
         "forum-posts": (36, False, None),
         "audit-log": (84, False, None),
         "login-attempts": (12, True, None),
+        "ai-exchanges": (12, True, None),  # items 6.11, 6.12
         "notifications": (24, True, None),
         "course-sites": (12, True, None),
     }
@@ -189,11 +190,11 @@ def test_old_logs_go_every_night_without_review(student):
     Notification.objects.filter(pk=stale.pk).update(created_at=long_ago)
     fresh = Notification.objects.create(recipient=student.user, title="Sent today")
 
-    assert purge(timezone.localdate()) == {"login-attempts": 1, "notifications": 1}
+    assert purge(timezone.localdate()) == {"login-attempts": 1, "notifications": 1, "ai-exchanges": 0}
     assert LoginAttempt.objects.count() == 1
     assert list(Notification.objects.values_list("pk", flat=True)) == [fresh.pk]
     assert AuditLog.objects.filter(action="purged").count() == 2
-    assert retention_purge() == {"login-attempts": 0, "notifications": 0}
+    assert retention_purge() == {"login-attempts": 0, "notifications": 0, "ai-exchanges": 0}
 
 
 @pytest.mark.django_db

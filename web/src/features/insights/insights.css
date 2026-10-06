@@ -1,0 +1,113 @@
+/* Insight screens (items 3.11, 6.01 to 6.06): built from the shared tokens. */
+.insights .sub-tabs,
+.reports .sub-tabs {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 16px;
+  flex-wrap: wrap;
+}
+.insights .sub-tabs .tab,
+.reports .sub-tabs .tab {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  text-decoration: none;
+}
+.insights .rows.flush > li,
+.reports .rows.flush > li {
+  padding: 12px 0;
+  overflow-wrap: anywhere;
+}
+.insights .rows.flush > li:first-child {
+  border-top: 0;
+}
+.insights h2 {
+  margin-top: 24px;
+}
+.insights td .chip {
+  margin-left: 8px;
+}
+.progress-detail .figures {
+  margin: 0 0 12px;
+}
+.progress-detail .figures > div {
+  padding: 12px 14px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-card);
+  background: var(--card);
+}
+.progress-detail dt {
+  font-size: 13px;
+  color: var(--muted);
+}
+.progress-detail dd {
+  margin: 2px 0 0;
+  font-size: 20px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.progress-detail progress {
+  display: block;
+  width: 100%;
+  height: 8px;
+  margin-top: 6px;
+  accent-color: var(--accent);
+}
+.student-panel {
+  margin-top: 16px;
+}
+.student-panel .panel-head {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.alert-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 10px;
+}
+.alert-list p {
+  margin: 6px 0;
+}
+.evidence li {
+  margin: 2px 0;
+}
+.outcome-text {
+  margin: 0 0 6px;
+}
+.outcome-text .chip {
+  margin-left: 8px;
+}
+.link-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+.link-form select {
+  flex: 1 1 220px;
+  min-width: 0;
+  max-width: 100%;
+}
+td.standing-not-yet {
+  color: var(--amber-text);
+  font-weight: 600;
+}
+.reports .filters {
+  flex-wrap: wrap;
+}
+.reports .totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin: 8px 0;
+}
+.rule-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px 16px;
+}
+.rule-form label {
+  flex: 0 1 160px;
+}

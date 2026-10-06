@@ -17,3 +17,5 @@ django-cors-headers>=4.4,<5
 nh3>=0.2.18,<1
 # Metrics for monitoring (item 7.10): /api/metrics in the Prometheus text format. Apache 2.0.
 prometheus-client>=0.21,<1
+# LTI 1.3 (item 6.07): signing and checking the JSON Web Tokens exchanged with outside tools. MIT.
+pyjwt>=2.9,<3
