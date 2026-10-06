@@ -202,7 +202,7 @@ describe("asking for help", () => {
 describe("help requests", () => {
   it("lets a course administrator read a request, open its page and answer it", async () => {
     const { calls } = fakeServer({
-      "GET /help-requests/?status=open": [{ body: [request()] }, { body: [] }],
+      "GET /help-requests/?status=open": [{ body: [request({ client_sent_at: "2026-10-05T11:00:00Z" })] }, { body: [] }],
       "GET /help-requests/?status=answered": { body: [request({ status: "answered", answer: "It opens on Monday.", answered_by_name: "Natasha Khan", answered_at: "2026-10-05T14:00:00Z" })] },
       "POST /help-requests/12/answer/": { body: request({ status: "answered" }) },
     });
@@ -211,6 +211,7 @@ describe("help requests", () => {
     const card = (await screen.findByRole("heading", { name: "Cannot find my quiz" })).closest("li")!;
     expect(card).toHaveClass("focus");
     expect(within(card).getByText(/From Kezia Persaud/)).toBeInTheDocument();
+    expect(within(card).getByText(/Written on the phone on/)).toBeInTheDocument();
     expect(within(card).getByRole("link", { name: "Open the page they were on" })).toHaveAttribute("href", "#/sites/4/quizzes");
     const send = within(card).getByRole("button", { name: "Send the answer" });
     expect(send).toBeDisabled();

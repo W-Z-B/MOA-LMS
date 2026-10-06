@@ -10,6 +10,10 @@ type Show = "open" | "answered" | "mine";
 const QUERY: Record<Show, string> = { open: "?status=open", answered: "?status=answered", mine: "?mine=1" };
 const SHOW: Record<Show, string> = { open: "Waiting", answered: "Answered", mine: "Mine" };
 
+/** Written on a phone without signal and sent later: more than two minutes between writing and arriving. */
+const waited = (row: HelpRequest) =>
+  row.client_sent_at !== null && new Date(row.created_at).getTime() - new Date(row.client_sent_at).getTime() > 120_000;
+
 interface Props {
   me: Me;
   /** A request to bring into view, from a notification or To do: #/help/requests/12. */
@@ -97,6 +101,7 @@ export function HelpRequests({ me, focus, onNavigate }: Props) {
             <p className="muted small">
               {row.mine ? "You asked" : `From ${row.asked_by_name ?? "someone no longer here"}`} on {dmyTime(row.created_at)}
               {row.status === "open" ? " · Waiting for an answer" : " · Answered"}
+              {waited(row) && ` · Written on the phone on ${dmyTime(row.client_sent_at!)}`}
             </p>
             <p className="help-message">{row.message}</p>
             {row.page && (
