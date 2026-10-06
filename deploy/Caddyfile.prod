@@ -1,6 +1,19 @@
+{
+	servers {
+		# A client has 15 seconds to send a request's headers and keeps an idle connection for 2 minutes.
+		# No limit is set on reading a body: a lecture video of up to 1.1 GB over a slow line may take a long
+		# time, and request_body below caps its size instead (docs/runbook.md, "Long uploads").
+		timeouts {
+			read_header 15s
+			idle 2m
+		}
+	}
+}
+
 {$DOMAIN} {
 	encode zstd gzip
 	# Public host: automatic Let's Encrypt. Isolated LAN: use "tls internal" or a GSA CA certificate.
+	# A name such as localhost (the local smoke test) gets Caddy's internal certificate by itself.
 
 	# Nothing the application accepts is larger (course files are at most 50 MB, core/uploads.py), except a
 	# lecture video, put up once at this one address (UPLOAD_LIMIT_VIDEO_MB, 1024 MB by default; item 4.06).
@@ -17,6 +30,18 @@
 	handle /api/metrics* {
 		respond 404
 	}
+	# A lecture video: once all of it has arrived, the API stores it before answering, which for 1 GB on a
+	# busy disk can take minutes. Only this address waits up to 15 minutes for the answer; everything else
+	# waits 60 seconds (gunicorn's threads do not cut a slow request: api/config/gunicorn.py).
+	handle /api/v1/videos/ {
+		reverse_proxy api:8000 {
+			header_up X-Real-IP {client_ip}
+			transport http {
+				keepalive 60s
+				response_header_timeout 15m
+			}
+		}
+	}
 	# X-Real-IP carries the address Caddy itself saw, replacing anything the client sent (core/net.py).
 	handle /api/* {
 		reverse_proxy api:8000 {
@@ -25,21 +50,24 @@
 			# sent down a connection the API has just closed (a 502 seen in the load test, item 7.08).
 			transport http {
 				keepalive 60s
+				response_header_timeout 60s
 			}
 		}
 	}
 	handle /admin/* {
 		reverse_proxy api:8000 {
 			header_up X-Real-IP {client_ip}
-			# Close idle connections before gunicorn does (its keep-alive is 75 s), so a request is never
-			# sent down a connection the API has just closed (a 502 seen in the load test, item 7.08).
 			transport http {
 				keepalive 60s
+				response_header_timeout 60s
 			}
 		}
 	}
+	# The admin site's style sheets and scripts, gathered into the image (collectstatic) and copied into
+	# this volume by the "static" service of deploy/compose.prod.yml.
 	handle /static/* {
-		reverse_proxy api:8000
+		root * /srv
+		file_server
 	}
 	handle {
 		root * /srv/web

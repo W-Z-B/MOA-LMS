@@ -1,31 +1,105 @@
-# Production overrides. Usage:
-#   docker compose -f compose.yml -f deploy/compose.prod.yml up -d
+# Production overrides (docs/runbook.md, "Install"). Usage, from the repository root:
+#   docker compose -f compose.yml -f deploy/compose.prod.yml up -d --build
+#
+# What this changes from the development stack (compose.yml):
+# - the API runs gunicorn (api/config/gunicorn.py), never the development server, from an image without
+#   development tools, with no source folder mounted over the image's code;
+# - the job worker (procrastinate) runs from the same image, with the scheduled jobs (core/schedule.py);
+# - the web app is a built bundle, and the admin site's files are copied out of the API image, both into
+#   volumes Caddy serves; Node and the Vite server are not used;
+# - Caddy uses deploy/Caddyfile.prod and publishes 80 and 443 (HTTP_PORT and HTTPS_PORT to change them);
+# - every long-running service restarts by itself and has a health check; the containers' own files are
+#   read-only where the program allows it, with only the volumes and a small /tmp writable; the API, the
+#   worker and the static copy run as the unprivileged user "app"; no service gains privileges;
+# - secrets come only from the env file (.env, mode 600): nothing secret is written here;
+# - logs are rotated by Docker (10 MB, 5 files a service) so they cannot fill the disk.
+# Files are in the "files" volume and database dumps in "backups" (scripts/backup.sh).
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+x-hardened: &hardened
+  read_only: true
+  security_opt: ["no-new-privileges:true"]
+  logging: *logging
+
 services:
   api:
+    <<: *hardened
     build:
       context: ./api
       args:
         INSTALL_DEV: "0" # runtime packages only
-    # Worker processes and threads in each (item 7.08, docs/performance.md): threads overlap the waits on the
-    # database; processes use the cores. About two processes a core suits the host.
-    command: >-
-      gunicorn -c config/gunicorn.py config.wsgi:application --bind 0.0.0.0:8000 --timeout 60
-      --workers ${WEB_CONCURRENCY:-4} --threads ${GUNICORN_THREADS:-4}
+    image: gsa-lms-api
+    command: ["gunicorn", "-c", "config/gunicorn.py", "config.wsgi:application"]
     environment:
+      DJANGO_DEBUG: "0" # whatever .env says
       # Each gunicorn worker counts its requests here; /api/metrics adds them up (item 7.10).
       PROMETHEUS_MULTIPROC_DIR: /tmp/lms-metrics
-    volumes:
+    # Only the file store and a scratch area for uploads on their way in (a lecture video may be 1 GB, so
+    # /tmp is a volume, not memory). The image's code is never replaced by a folder from the host.
+    volumes: !override
       - files:/srv/files
+      - api_tmp:/tmp
+    tmpfs:
+      - /dev/shm:size=64m # gunicorn's worker heartbeats
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://localhost:8000/api/health/', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
     restart: unless-stopped
 
   worker:
-    volumes:
+    <<: *hardened
+    build:
+      context: ./api
+      args:
+        INSTALL_DEV: "0"
+    image: gsa-lms-api # the API's image
+    environment:
+      DJANGO_DEBUG: "0"
+    volumes: !override
       - files:/srv/files
+      - worker_tmp:/tmp # FFmpeg's working copies of a lecture video
+    depends_on:
+      db:
+        condition: service_healthy
+      api:
+        condition: service_started
+    # Procrastinate's own check: the worker's database connection works.
+    healthcheck:
+      test: ["CMD", "python", "manage.py", "procrastinate", "healthchecks"]
+      interval: 60s
+      timeout: 30s
+      start_period: 30s
+      retries: 3
+    # A job under way (a video conversion) is given time to finish before the worker is stopped.
+    stop_grace_period: 2m
     restart: unless-stopped
+
+  static:
+    # The admin site's style sheets and scripts, copied from the API image into the volume Caddy serves at
+    # /static/. Runs once at each start, then exits.
+    <<: *hardened
+    build:
+      context: ./api
+      args:
+        INSTALL_DEV: "0"
+    image: gsa-lms-api
+    command: ["sh", "-c", "find /srv/static -mindepth 1 -delete && cp -r /app/staticfiles/. /srv/static/"]
+    volumes:
+      - static:/srv/static
+    restart: "no"
 
   web:
     # Static bundle built by web/Dockerfile and copied into the volume Caddy serves; the dev server and
     # Node are not used in production.
+    <<: *hardened
     build:
       context: ./web
     image: gsa-lms-web
@@ -38,23 +112,53 @@ services:
     restart: "no"
 
   caddy:
-    # Starts once the bundle is in place, so the first request never meets an empty volume.
+    <<: *hardened
+    # Starts once the bundle and the admin's files are in place, so the first request never meets an empty
+    # volume.
     depends_on:
       web:
         condition: service_completed_successfully
-    volumes:
+      static:
+        condition: service_completed_successfully
+      api:
+        condition: service_healthy
+    ports: !override
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+      - "${HTTPS_PORT:-443}:443/udp" # HTTP/3
+    volumes: !override
       - ./deploy/Caddyfile.prod:/etc/caddy/Caddyfile:ro
       - web_dist:/srv/web:ro
+      - static:/srv/static:ro
       - caddy_data:/data
       - caddy_config:/config
+    tmpfs:
+      - /tmp
+    # Caddy needs only to bind ports 80 and 443.
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:2019/config/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
     restart: unless-stopped
 
   db:
-    restart: unless-stopped
-    volumes:
+    <<: *hardened
+    # PostgreSQL writes only to its data volume, its socket directory and /tmp.
+    tmpfs:
+      - /var/run/postgresql
+      - /tmp
+    volumes: !override
       - pgdata:/var/lib/postgresql/data
       - backups:/backups
+    shm_size: 256m
+    restart: unless-stopped
 
 volumes:
   web_dist:
+  static:
   backups:
+  api_tmp:
+  worker_tmp:
