@@ -339,7 +339,9 @@ class PackageViewSet(
             attempts = attempts.filter(is_preview=False)
         else:
             attempts = attempts.filter(user=request.user, is_preview=False)
-        return Response(PackageAttemptSerializer(attempts.order_by("person__last_name", "number"), many=True).data)
+        return Response(
+            PackageAttemptSerializer(attempts.order_by("person__last_name", "number"), many=True).data
+        )
 
 
 class CommitResultSerializer(serializers.Serializer):
