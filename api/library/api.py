@@ -114,7 +114,12 @@ class LibraryItemSerializer(serializers.ModelSerializer):
     def get_may_change(self, obj) -> bool:
         request = self.context.get("request")
         return bool(request) and (
-            obj.created_by_id == request.user.id or may_shelve(request.user, obj.department_code)
+            obj.created_by_id == request.user.id
+            or (
+                has_role(request.user, *SITE_ADMIN_ROLES)
+                if not obj.department_code
+                else may_shelve(request.user, obj.department_code)
+            )
         )
 
     def validate(self, attrs):
@@ -246,6 +251,14 @@ class LibraryItemViewSet(viewsets.ModelViewSet):
     def _require_shelf(self, department_code: str, item: LibraryItem | None = None) -> None:
         if item is not None and item.created_by_id == self.request.user.id:
             return
+        if (
+            item is not None
+            and not item.department_code
+            and not has_role(self.request.user, *SITE_ADMIN_ROLES)
+        ):
+            # Anyone who teaches adds to the whole School's shelf; only who added it, or a course
+            # administrator, changes or removes it there.
+            raise PermissionDenied("Only who added it, or a course administrator, changes this item.")
         if not may_shelve(self.request.user, department_code):
             raise PermissionDenied(
                 "Only course administrators and that department's lecturers manage its shelf of the library."
@@ -432,7 +445,9 @@ class SharedBankSerializer(serializers.Serializer):
 
 
 class ShareBankSerializer(serializers.Serializer):
-    bank = serializers.PrimaryKeyRelatedField(queryset=QuestionBank.objects.filter(site__isnull=False))
+    # A course's bank, settled first (item 1.15): one on a course the caller cannot open reads as unknown, one
+    # on a course they do not teach on is refused, before the rest of the form is read.
+    bank = TaughtRecord(QuestionBank, "site")
     department_code = serializers.CharField(max_length=20)
     name = serializers.CharField(max_length=160, required=False, allow_blank=True)
     licence = serializers.ChoiceField(choices=ContentItem.Licence.choices)

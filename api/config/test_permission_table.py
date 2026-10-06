@@ -539,6 +539,39 @@ TABLE: dict[str, Access] = {
     "DELETE /api/v1/videos/{item}/captions/{language}/": SITE_TEACHERS + HIDDEN,
     "GET /api/v1/videos/{item}/captions/{language}/cues/": SITE_READERS + HIDDEN,
     "PUT /api/v1/videos/{item}/captions/{language}/cues/": SITE_TEACHERS + HIDDEN,
+    # --- packaged content: SCORM and H5P, the statement store (items 5.12, 5.13, 6.09) -------------------
+    "GET /api/v1/packages/": SITE_READERS,
+    "POST /api/v1/packages/": SITE_TEACHERS + HIDDEN,
+    "GET /api/v1/packages/{pk}/": SITE_READERS + HIDDEN,
+    "PATCH /api/v1/packages/{pk}/": SITE_TEACHERS + HIDDEN,
+    "GET /api/v1/packages/{pk}/attempts/": SITE_READERS + HIDDEN,  # rows: see ROWS
+    "POST /api/v1/packages/{pk}/launch/": SITE_MEMBERS + HIDDEN,  # teaching staff in preview; not the auditor
+    "POST /api/v1/package-attempts/{pk}/commit/": OWN + HIDDEN,  # as the learner whose attempt it is
+    "GET /api/v1/xapi/statements/": STAFF + ADMINS,  # the statements of the courses one teaches
+    "POST /api/v1/xapi/statements/": SIGNED_IN,  # only into one's own attempt, named by its registration
+    # The player's files, by a signed address valid for a few hours: the address is the credential.
+    "GET /api/play/{token}/": PUBLIC,
+    "GET /api/play/{token}/{entry}": PUBLIC,
+    # --- the shared content library (item 5.14) -----------------------------------------------------------
+    # For anyone who teaches, and the course administrators; not students, the auditor or the DPO.
+    "GET /api/v1/library/items/": STAFF + ADMINS,
+    "POST /api/v1/library/items/": STAFF + ADMINS,  # to the whole School's shelf: anyone who teaches
+    "GET /api/v1/library/items/{pk}/": STAFF + ADMINS,
+    "PATCH /api/v1/library/items/{pk}/": ADMINS,  # the world's was added by the course administrator
+    "DELETE /api/v1/library/items/{pk}/": ADMINS,
+    "GET /api/v1/library/items/{pk}/download/": STAFF + ADMINS,
+    "POST /api/v1/library/items/{pk}/use/": SITE_TEACHERS + HIDDEN,  # into a module of a course one teaches
+    "POST /api/v1/library/items/share/": SITE_TEACHERS + HIDDEN,  # an item of a course one teaches
+    "GET /api/v1/library/banks/": STAFF + ADMINS,
+    "POST /api/v1/library/banks/share/": SITE_TEACHERS + HIDDEN,  # a bank of a course one teaches
+    # --- course interchange (item 6.08) -------------------------------------------------------------------
+    "GET /api/v1/sites/{pk}/export-cartridge/": SITE_TEACHERS + HIDDEN,
+    "POST /api/v1/sites/{pk}/import-content/": SITE_TEACHERS + HIDDEN,
+    # --- Open Badges (item 5.10) ----------------------------------------------------------------------------
+    "GET /api/v1/certificates/{pk}/badge/": STUDENT + OVERSEERS + HIDDEN,  # as the certificate itself
+    "POST /api/v1/certificates/check-badge/": PUBLIC,  # anyone checks a badge they were shown
+    "GET /api/badges/issuer.json": PUBLIC,
+    "GET /api/badges/jwks.json": PUBLIC,
     # --- help requests (item 7.17) ------------------------------------------------------------------------
     "GET /api/v1/help-requests/": OWN + ADMINS,  # the world's request is the student's
     "POST /api/v1/help-requests/": SIGNED_IN,
@@ -611,6 +644,9 @@ TABLE: dict[str, Access] = {
 
 # The world record each {pk} names, by the path segment before it.
 SEGMENT_OBJECTS = {
+    "packages": "package",
+    "package-attempts": "package_attempt",
+    "items": "library_item",
     "help-requests": "help_request",
     "tools": "tool",
     "tool-placements": "placement",
@@ -682,6 +718,8 @@ SEGMENT_OBJECTS = {
 }
 # A {name} that says what it is, whatever segment precedes it.
 NAMED_OBJECTS = {
+    "play:token": "play_token",  # a {name} after a given segment, before the name alone
+    "entry": "play_entry",
     "item": "video_item",
     "site": "sd_site",
     "code": "receipt",
@@ -778,15 +816,26 @@ BODY: dict[str, dict] = {
         "title": Literal("Lecture 2"),
         "licence": Literal("gsa_own"),
     },
+    "POST /api/v1/packages/": {"module": "module", "licence": Literal("gsa_own")},
+    "POST /api/v1/library/items/{pk}/use/": {"module": "module"},
+    "POST /api/v1/library/items/share/": {"item": "item"},
+    "POST /api/v1/library/banks/share/": {"bank": "bank"},
 }
 
-# Writes sent as a form, not JSON (what a tool sends; a video upload), so that they reach their own checks.
-FORM = {"POST /api/lti/deep-links/", "POST /api/lti/token/", "POST /api/v1/videos/"}
+# Writes sent as a form, not JSON (what a tool sends; an upload), so that they reach their own checks.
+FORM = {
+    "POST /api/lti/deep-links/",
+    "POST /api/lti/token/",
+    "POST /api/v1/videos/",
+    "POST /api/v1/packages/",
+    "POST /api/v1/sites/{pk}/import-content/",
+}
 
 # Lists inside a record that show some of their rows only to some roles: the world record that must not be
 # listed to a role outside the Access, although that role may open the list.
 ROWS: dict[str, tuple[str, Access]] = {
     "GET /api/v1/quizzes/{pk}/attempts/": ("attempt", OWNER),
+    "GET /api/v1/packages/{pk}/attempts/": ("package_attempt", OWNER),
 }
 
 # A list whose rows name the world record by another field than "id".
@@ -794,6 +843,10 @@ LIST_FIELD = {"GET /api/v1/staff-development/catalogue/": "site"}
 
 # Plain Django views (not the REST framework's) declare no methods the resolver can read: list them here.
 PLAIN_VIEW_METHODS = {
+    "/api/play/{token}/": ("get",),
+    "/api/play/{token}/{entry}": ("get",),
+    "/api/badges/issuer.json": ("get",),
+    "/api/badges/jwks.json": ("get",),
     "/api/health/": ("get",),
     "/api/metrics": ("get",),
     "/api/check-certificate/": ("get", "post"),
@@ -1250,7 +1303,45 @@ def build_world() -> dict:
     )
     CaptionTrack.objects.create(video=video, language="en", text="WEBVTT\n\n00:00.000 --> 00:01.000\nSoil\n")
 
+    # Packaged content (items 5.12 to 5.14, 6.09): an H5P exercise with the student's attempt, and an item on
+    # the whole School's shelf of the library, put there by the course administrator.
+    import io
+    import zipfile
+
+    from library.models import LibraryItem
+    from packages import play
+    from packages.models import ContentPackage, PackageAttempt
+
+    zipped = io.BytesIO()
+    with zipfile.ZipFile(zipped, "w") as archive:
+        archive.writestr("h5p.json", '{"title": "Soil texture", "mainLibrary": "H5P.MultiChoice"}')
+        archive.writestr("content/content.json", '{"question": "Which is loam?"}')
+    package_item = ContentItem.objects.create(
+        module=module,
+        title="Soil texture",
+        kind="package",
+        is_published=True,
+        file=ContentFile(zipped.getvalue(), name="soil.h5p"),
+    )
+    package = ContentPackage.objects.create(
+        item=package_item, standard="h5p", scos=[{"id": "h5p", "title": "Soil texture", "href": ""}]
+    )
+    package_attempt = PackageAttempt.objects.create(package=package, person=student, user=student.user)
+    library_item = LibraryItem.objects.create(
+        kind="file",
+        title="Integrated pest management",
+        file=ContentFile(b"%PDF-1.4 guide", name="guide.pdf"),
+        original_name="guide.pdf",
+        licence="gsa_own",
+        created_by=users["course_admin"],
+    )
+
     world = {
+        "package": package.id,
+        "package_attempt": package_attempt.id,
+        "play_token": play.token_for(package_attempt),
+        "play_entry": "content/content.json",
+        "library_item": library_item.id,
         "video_item": video_item.id,
         "language": "en",
         "quality": "low",
@@ -1375,6 +1466,7 @@ def _ai_on(settings):
     check. The model's address answers nothing at once: a request that gets that far is answered 503."""
     settings.AI_ENABLED, settings.AI_MODEL, settings.AI_TIMEOUT_SECONDS = True, "permission-table", 1
     settings.AI_OLLAMA_URL = "http://127.0.0.1:9"
+    settings.OPEN_BADGES_ENABLED = True  # off by default: on, a certificate's badge reaches its own checks
 
 
 @pytest.fixture(scope="module")
@@ -1402,7 +1494,12 @@ def path_for(route: str, world: dict) -> str:
     def fill(match):
         name = match.group(1)
         before = route[: match.start()].rstrip("/").rsplit("/", 1)[-1]
-        key = NAMED_OBJECTS.get(name) or SEGMENT_OBJECTS.get(before) or name
+        key = (
+            NAMED_OBJECTS.get(f"{before}:{name}")
+            or NAMED_OBJECTS.get(name)
+            or SEGMENT_OBJECTS.get(before)
+            or name
+        )
         if key not in world:
             raise AssertionError(
                 f"{route}: no world record for {{{name}}} after '{before}' (SEGMENT_OBJECTS)"
