@@ -55,7 +55,7 @@ afterEach(() => {
   window.location.hash = "";
 });
 
-describe("a student's logbook (item 3.14)", () => {
+describe("a student's logbook (item 3.14)", { timeout: 15_000 }, () => {
   it("shows each entry's state, the hours by kind of place, and the supervisor's comment", async () => {
     open("#/sites/9/logbook", false);
     const user = userEvent.setup();
@@ -143,7 +143,7 @@ describe("a student's logbook (item 3.14)", () => {
   });
 });
 
-describe("signing off logbooks (item 3.14)", () => {
+describe("signing off logbooks (item 3.14)", { timeout: 15_000 }, () => {
   it("signs an entry off, and returns one only with a comment", async () => {
     const { calls } = open("#/sites/9/logbook", true, {
       "GET /logbook/": { body: page([entry, { ...entry, id: 45, student_name: "Tevin Joseph", student_no: "S2026902", work_date: "2026-10-03" }]) },

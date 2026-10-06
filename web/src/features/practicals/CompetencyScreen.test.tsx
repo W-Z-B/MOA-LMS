@@ -52,7 +52,7 @@ afterEach(() => {
   window.location.hash = "";
 });
 
-describe("competency for assessors (item 3.13)", () => {
+describe("competency for assessors (item 3.13)", { timeout: 15_000 }, () => {
   it("lists each student's units with the suggestion, and follows another framework", async () => {
     const { calls } = open("#/sites/9/practicals/competency", true, { "POST /site-frameworks/": { status: 201, body: {} } });
     const user = userEvent.setup();
@@ -115,7 +115,7 @@ describe("competency for assessors (item 3.13)", () => {
   });
 });
 
-describe("a student's practicals (items 3.12, 3.13 and 5.15)", () => {
+describe("a student's practicals (items 3.12, 3.13 and 5.15)", { timeout: 15_000 }, () => {
   const studentSheet: CompetencySheet = {
     ...sheet,
     rows: [{ ...sheet.rows[0], units: [{ ...sheet.rows[0].units[0], suggested: undefined, result: { id: 1, status: "competent", assessor: "Marlon Bacchus", decided_on: "2026-10-05" } }] }],

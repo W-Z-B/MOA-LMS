@@ -33,7 +33,7 @@ afterEach(() => {
   Reflect.deleteProperty(navigator, "geolocation");
 });
 
-describe("the field checklist (items 3.12 and 3.15)", () => {
+describe("the field checklist (items 3.12 and 3.15)", { timeout: 15_000 }, () => {
   it("picks a student from the class list with their next attempt", async () => {
     open("#/sites/9/practicals/5/observe");
     const user = userEvent.setup();

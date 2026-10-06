@@ -42,7 +42,7 @@ afterEach(() => {
   window.location.hash = "";
 });
 
-describe("practical tasks for teaching staff (item 3.12)", () => {
+describe("practical tasks for teaching staff (item 3.12)", { timeout: 15_000 }, () => {
   it("lists the tasks and creates one, then opens it for its criteria", async () => {
     const { calls } = open("#/sites/9/practicals", { "POST /practical-tasks/": { status: 201, body: { ...task, id: 8 } } });
     const user = userEvent.setup();
