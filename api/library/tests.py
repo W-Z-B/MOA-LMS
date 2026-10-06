@@ -251,3 +251,20 @@ def test_sharing_a_bank_settles_the_course_first(teacher, site, make_person, cli
     unknown = outsider.post("/api/v1/library/banks/share/", {"bank": bank.id}, format="json")
     assert unknown.status_code == 400 and "does not exist" in str(unknown.json()["bank"])
     assert not SharedBank.objects.exists()
+
+
+@pytest.mark.django_db
+def test_the_auditor_reads_the_library_and_changes_nothing(teacher, agronomy, make_user, client_for, module):
+    """Item 1.02: the auditor reads everything, read-only (docs/security/asvs-l2.md)."""
+    made = teacher.post(URL, oer(department_code=agronomy), format="multipart").json()
+    auditor = client_for(make_user("audit.reader", "auditor"))
+    assert [row["id"] for row in auditor.get(URL).json()["results"]] == [made["id"]]
+    assert auditor.get(f"{URL}{made['id']}/").json()["may_change"] is False
+    assert auditor.get(f"{URL}{made['id']}/download/").status_code == 200
+    assert auditor.get("/api/v1/library/banks/").status_code == 200
+    assert auditor.post(URL, oer(), format="multipart").status_code == 403
+    assert auditor.patch(f"{URL}{made['id']}/", {"title": "Changed"}, format="json").status_code == 403
+    assert auditor.delete(f"{URL}{made['id']}/").status_code == 403
+    used = auditor.post(f"{URL}{made['id']}/use/", {"module": module.id}, format="json")
+    assert used.status_code == 403
+    assert LibraryItem.objects.get(pk=made["id"]).title == "Integrated pest management"

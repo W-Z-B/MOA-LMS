@@ -1,7 +1,8 @@
 """The shared content library (item 5.14).
 
 Who may do what:
-- browse, read and use the library: anyone who teaches a course, and course administrators;
+- browse, read and use the library: anyone who teaches a course, and course administrators; the auditor
+  browses and reads it, and changes nothing (item 1.02);
 - add to a department's shelf, or change and remove what is there: course administrators, and lecturers
   whose lecturer role is scoped to that department (as for department question banks);
 - add to the whole School's shelf: anyone who teaches; the person who added an item may always change it.
@@ -19,6 +20,7 @@ from rest_framework import serializers, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
+from rest_framework.permissions import SAFE_METHODS
 from rest_framework.response import Response
 
 from audit.services import record, snapshot
@@ -38,6 +40,13 @@ from quizzes.models import Question, QuestionBank, QuestionVersion
 
 def may_browse(user) -> bool:
     return has_role(user, *SITE_ADMIN_ROLES, Role.LECTURER) or taught_sites(user).exists()
+
+
+def may_open(request) -> bool:
+    """Whether the caller may use this part of the library: those who browse it, and the auditor to read."""
+    if may_browse(request.user):
+        return True
+    return request.method in SAFE_METHODS and has_role(request.user, Role.AUDITOR)
 
 
 def may_shelve(user, department_code: str) -> bool:
@@ -226,7 +235,7 @@ class LibraryItemViewSet(viewsets.ModelViewSet):
 
     def initial(self, request, *args, **kwargs):
         super().initial(request, *args, **kwargs)
-        if not may_browse(request.user):
+        if not may_open(request):
             raise PermissionDenied("The content library is for teaching staff.")
 
     def get_queryset(self):
@@ -489,7 +498,7 @@ class SharedBankViewSet(viewsets.ViewSet):
 
     def initial(self, request, *args, **kwargs):
         super().initial(request, *args, **kwargs)
-        if not may_browse(request.user):
+        if not may_open(request):
             raise PermissionDenied("The content library is for teaching staff.")
 
     @extend_schema(
