@@ -70,6 +70,22 @@ def test_lecturers_must_verify_an_authenticator_code_too(lecturer, site):
 
 
 @pytest.mark.django_db
+@pytest.mark.parametrize("role", ["auditor", "dpo"])
+def test_the_auditor_and_the_data_protection_officer_must_verify_a_code(make_user, site, role):
+    """They read sensitive records: every site and the audit log, anyone's whole record (ASVS 4.3.3)."""
+    reader = make_user(f"{role}.one", role)
+    client = APIClient()
+    login = client.post(
+        "/api/v1/auth/login/", {"username": f"{role}.one", "password": PASSWORD}, format="json"
+    )
+    assert login.json()["mfa_required"] is True and login.json()["mfa_verified"] is False
+    for address in ("/api/v1/sites/", "/api/v1/audit/"):
+        assert client.get(address).json()["code"] == "mfa_required"
+    assert verify(client, reader).status_code == 200
+    assert client.get("/api/v1/sites/").status_code == 200
+
+
+@pytest.mark.django_db
 def test_teaching_on_a_site_needs_a_code_whatever_the_system_roles(make_person, site):
     from courses.models import Membership
 
