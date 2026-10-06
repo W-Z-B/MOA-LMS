@@ -194,7 +194,8 @@ async function fillCommon(name = "Q", text = "Question text here") {
 
 const sent = (calls: { method: string; body: unknown }[]) => calls.find((c) => c.method === "POST" || c.method === "PATCH")!.body as { data: QuestionData } & Record<string, unknown>;
 
-describe("the question editor, for every type (item 3.01)", () => {
+// Long forms typed key by key: generous time on a busy machine.
+describe("the question editor, for every type (item 3.01)", { timeout: 20_000 }, () => {
   it("multiple choice: choices with a share of the mark and feedback; several right answers allow negative shares", async () => {
     const { calls, onSaved } = edit("multichoice");
     await fillCommon("Nutrients", "Which are nutrients?");

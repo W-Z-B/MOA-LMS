@@ -16,6 +16,9 @@ export default defineConfig({
   build: {
     outDir: "dist",
     sourcemap: false,
+    // Fonts are always files: the Content-Security-Policy (font-src 'self') refuses fonts in data: addresses,
+    // which Vite would otherwise make of KaTeX's smallest fonts.
+    assetsInlineLimit: (file) => (/\.(woff2?|ttf)$/.test(file) ? false : undefined),
   },
   // Component and logic tests (npm test). Browser journeys are Playwright tests in e2e/.
   test: {
@@ -36,6 +39,28 @@ export default defineConfig({
         "src/features/home/**",
         "src/features/todo/**",
         "src/features/courses/MyCoursesScreen.tsx",
+        // Assignments, marking, rubrics, the gradebook, accommodations and notification settings (wave 3).
+        "src/features/assignments/**",
+        "src/features/marking/**",
+        "src/features/rubrics/**",
+        "src/features/gradebook/**",
+        "src/features/accommodations/**",
+        "src/features/notifications/**",
+        // Teaching content, the page editor, course setup and course administration (items 2.12 to 2.20).
+        "src/features/content/**",
+        "src/features/course-admin/**",
+        // Forums, messages, groups, classes and the calendar (items 4.08 to 4.15, 2.32).
+        "src/features/forums/**",
+        "src/features/messages/**",
+        "src/features/groups/**",
+        "src/features/attendance/**",
+        "src/features/calendar/**",
+        // --- accounts, staff development and the console ---
+        "src/features/account/**",
+        "src/features/learning/**",
+        "src/features/admin/**",
+        // Practicals, competency and the logbook (items 3.12 to 3.15, 5.15), with the photos kept offline.
+        "src/features/practicals/**",
         // Quizzes (feature 10): the tab, attempts, banks and the question editor.
         "src/features/quizzes/**",
       ],

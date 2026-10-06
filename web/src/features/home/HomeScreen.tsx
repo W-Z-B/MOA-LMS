@@ -169,8 +169,8 @@ export function HomeScreen({ me, onNavigate }: Props) {
     shortcuts = [
       { title: "Course sites", sub: sites ? plural(sites.total, "site", "sites") : "Every course site", to: "/courses" },
       toDo,
-      ...(hasAnyRole(me, ADMIN_ROLES) ? [{ title: "Admin", sub: "Site creation and ecosystem sync", to: "/admin" }] : []),
-      { title: "My account", sub: "Authenticator and signed-in devices", to: "/account" },
+      ...(hasAnyRole(me, ADMIN_ROLES) ? [{ title: "Admin", sub: "Accounts, audit log, privacy and course administration", to: "/admin" }] : []),
+      { title: "My account", sub: "Password, sign-in email and devices", to: "/account" },
     ];
   } else {
     shortcuts = [

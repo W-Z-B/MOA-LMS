@@ -4,8 +4,11 @@ Access to a course site is decided by membership of that site (courses.Membershi
 cover system-wide duties only. Campuses are referenced by the codes the HRMS owns.
 """
 
+from datetime import timedelta
+
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
 
 from core.fields import EncryptedTextField
 from core.models import TimeStampedModel
@@ -137,3 +140,37 @@ class PasswordResetRequest(models.Model):
 
     def __str__(self) -> str:
         return f"Password link asked for at {self.at:%Y-%m-%d %H:%M}"
+
+
+class EmailChange(models.Model):
+    """A change of sign-in email address, waiting for the link sent to the new address (item 1.10, ported
+    from the HRMS's item 1.42).
+
+    The address is where links to choose a password go, so a change takes effect only when the person
+    proves they can read mail sent to the new one. Only a fingerprint of the link's token is kept.
+    """
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="email_changes")
+    old_email = models.EmailField(blank=True)
+    new_email = models.EmailField()
+    token_hash = models.CharField(max_length=64, unique=True)
+    asked_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    asked_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    confirmed_at = models.DateTimeField(null=True, blank=True)
+    cancelled_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-asked_at"]
+
+    @property
+    def expires_at(self):
+        return self.asked_at + timedelta(hours=settings.EMAIL_CHANGE_HOURS)
+
+    @property
+    def pending(self) -> bool:
+        return self.confirmed_at is None and self.cancelled_at is None and timezone.now() < self.expires_at
+
+    def __str__(self) -> str:
+        return f"{self.user} to {self.new_email}"

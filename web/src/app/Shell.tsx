@@ -6,6 +6,7 @@ import { Breadcrumbs } from "./Breadcrumbs";
 import { CampusSwitch } from "./CampusSwitch";
 import { Crest } from "./Crest";
 import { FrameContext, usePhone, type Frame } from "./frame";
+import { MessagesLink } from "../features/messages/MessagesLink";
 import { NotificationsBell } from "./NotificationsBell";
 import { usesCampusSwitch } from "./people";
 import { SearchPalette } from "./SearchPalette";
@@ -123,6 +124,8 @@ export function Shell({ me, path, onNavigate, onLogout, campusCode, onCampusChan
 
   async function signOut() {
     await post("/auth/logout/").catch(() => undefined);
+    // No class list kept for the field stays on the phone (ADR 0011).
+    await import("../features/practicals/fieldCopy").then((m) => m.clearFieldCopies()).catch(() => undefined);
     onLogout();
   }
 
@@ -161,6 +164,7 @@ export function Shell({ me, path, onNavigate, onLogout, campusCode, onCampusChan
                 {count}
               </a>
             )}
+            <MessagesLink path={path} onNavigate={go} />
             <NotificationsBell
               open={menu === "bell"}
               phone={phone}

@@ -130,6 +130,7 @@ describe("the frame", () => {
       "My courses",
       "My data",
       "My account",
+      "Notification settings",
     ]);
     await user.click(within(menu).getByRole("link", { name: /My data/ }));
     expect(props.onNavigate).toHaveBeenCalledWith("/my-data");
@@ -222,8 +223,12 @@ describe("search", () => {
     expect(within(pages).getAllByRole("option").map((o) => o.querySelector(".search-title")?.textContent)).toEqual([
       "To do",
       "My courses",
+      "Messages",
+      "Calendar",
+      "Discussion",
       "My data",
       "My account",
+      "Notification settings",
     ]);
   });
 

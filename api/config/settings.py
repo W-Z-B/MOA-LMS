@@ -243,6 +243,8 @@ PASSWORD_RESET_MINUTES = int(env("PASSWORD_RESET_MINUTES", "60"))
 PASSWORD_RESET_TIMEOUT = max(INVITATION_DAYS * 24 * 3600, PASSWORD_RESET_MINUTES * 60)
 PASSWORD_RESETS_PER_ADDRESS = int(env("PASSWORD_RESETS_PER_ADDRESS", "5"))
 PASSWORD_RESETS_PER_ACCOUNT = 3
+# A new sign-in email address is used only once the link sent to it is followed within this time (item 1.10).
+EMAIL_CHANGE_HOURS = int(env("EMAIL_CHANGE_HOURS", "48"))
 
 # Integration runs (item 1.23): a call that cannot reach the sibling system is tried this many times,
 # waiting INTEGRATION_RETRY_SECONDS, then twice that, between tries.

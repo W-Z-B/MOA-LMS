@@ -1,10 +1,15 @@
 import { useCallback, useEffect, useState } from "react";
 import { errorMessage, get, post, remove } from "../../api/client";
 import type { SignedInSession } from "../../api/types";
+import { EmailSection } from "./EmailSection";
+import { PasswordSection } from "./PasswordSection";
 
 const when = (iso: string) => new Date(iso).toLocaleString("en-GB");
 
-/** Where the person is signed in, with a way to end any session they do not recognise. */
+/**
+ * Where the person is signed in, with a way to end any session they do not recognise; their password and their
+ * sign-in email address (items 1.10, 1.22).
+ */
 export function AccountScreen() {
   const [sessions, setSessions] = useState<SignedInSession[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -105,6 +110,8 @@ export function AccountScreen() {
           </div>
         )}
       </section>
+      <PasswordSection onChanged={load} />
+      <EmailSection />
     </>
   );
 }

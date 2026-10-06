@@ -734,6 +734,7 @@ class PostReportRequestSerializer(serializers.Serializer):
 class PostReportSerializer(serializers.ModelSerializer):
     site = serializers.IntegerField(source="post.thread.forum.site_id", read_only=True)
     thread = serializers.IntegerField(source="post.thread_id", read_only=True)
+    forum = serializers.IntegerField(source="post.thread.forum_id", read_only=True)
 
     class Meta:
         model = PostReport
@@ -741,6 +742,7 @@ class PostReportSerializer(serializers.ModelSerializer):
             "id",
             "post",
             "thread",
+            "forum",
             "site",
             "reason",
             "status",

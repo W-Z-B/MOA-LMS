@@ -863,7 +863,9 @@ class LogbookViewSet(IdempotentWrites, viewsets.ModelViewSet):
             entry.updated_by = request.user
             entry.save()
             after = snapshot(entry)
-            after["client_recorded_at"] = data.validated_data.get("client_recorded_at")
+            # The phone's time, as text: the audit log keeps JSON, and a datetime is not JSON.
+            phone_time = data.validated_data.get("client_recorded_at")
+            after["client_recorded_at"] = phone_time.isoformat() if phone_time else None
             record(request, "sign" if signing else "return", entry, before=before, after=after)
         _notify(
             entry.student,

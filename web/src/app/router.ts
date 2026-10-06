@@ -5,6 +5,7 @@
 
 import { useEffect, useState } from "react";
 import { ADMIN_ROLES, hasAnyRole, type Me } from "../api/types";
+import { CONSOLE_ROLES, usesLearning } from "../api/types-staff";
 
 const read = () => window.location.hash.replace(/^#/, "") || "/";
 
@@ -25,6 +26,8 @@ export interface Page {
   desc: string;
   /** Who may open it; everyone when absent. */
   roles?: readonly string[];
+  /** Who may open it, when that is more than a role: staff development is for members of staff. */
+  for?: (me: Me) => boolean;
   /** Addresses that belong to this page too, for the breadcrumb: a course site is under My courses. */
   under?: readonly string[];
   /** A placeholder for a later release: it has an address, but search does not offer it yet. */
@@ -40,13 +43,32 @@ export const PAGES: readonly Page[] = [
   { path: "/", label: "Home", desc: "Your work and your shortcuts" },
   { path: "/to-do", label: "To do", desc: "Work due, work to mark and requests waiting for you" },
   { path: "/courses", label: "My courses", desc: "Your course sites: content, assignments and marks", under: ["/sites"] },
+  // --- talk: forums, messages and the calendar (items 4.08 to 4.11, 2.32) ---
+  { path: "/messages", label: "Messages", desc: "Conversations with your teaching staff, and notices" },
+  { path: "/calendar", label: "Calendar", desc: "Due dates, classes and releases, and a feed for your phone" },
+  { path: "/forums", label: "Discussion", desc: "The forums of your courses" },
+  // --- end talk ---
   { path: "/my-data", label: "My data", desc: "What the LMS holds about you, and corrections" },
-  { path: "/account", label: "My account", desc: "Authenticator and signed-in devices" },
-  { path: "/admin", label: "Admin", desc: "Site creation and ecosystem sync", roles: ADMIN_ROLES, later: true },
+  { path: "/account", label: "My account", desc: "Password, sign-in email and signed-in devices" },
+  // --- marking ---
+  { path: "/notification-settings", label: "Notification settings", desc: "What comes by email, and the daily summary" },
+  { path: "/rubrics", label: "Rubric library", desc: "The GSA rubrics every course may copy", roles: ADMIN_ROLES },
+  { path: "/accommodations", label: "Accommodations", desc: "Extra time and other arrangements for students", roles: ADMIN_ROLES },
+  // --- end marking ---
+  // --- staff development and the console ---
+  {
+    path: "/learning",
+    label: "Staff development",
+    desc: "Courses to join, learning paths, required training and certificates",
+    for: usesLearning,
+    under: ["/staff-development", "/certificates"],
+  },
+  { path: "/admin", label: "Admin", desc: "Accounts, audit log, integration runs, privacy, access review and course administration", roles: [...new Set([...CONSOLE_ROLES, ...ADMIN_ROLES])] },
 ];
 
 /** The pages this person may open. */
-export const pagesFor = (me: Me) => PAGES.filter((page) => !page.roles || hasAnyRole(me, page.roles));
+export const pagesFor = (me: Me) =>
+  PAGES.filter((page) => (!page.roles || hasAnyRole(me, page.roles)) && (!page.for || page.for(me)));
 
 /** The page an address belongs to: the longest page path (or path it stands for) the address starts with. */
 export function pageOf(path: string): Page | undefined {
@@ -59,7 +81,19 @@ export function pageOf(path: string): Page | undefined {
 }
 
 /** The tabs of a course site, each with an address of its own. */
-export const SITE_TABS = ["content", "assignments", "quizzes", "gradebook", "announcements"] as const;
+export const SITE_TABS = [
+  "content",
+  "assignments",
+  "gradebook",
+  "quizzes",
+  "announcements",
+  "discussion",
+  "classes",
+  "groups",
+  // --- practicals --- (items 3.12 to 3.15): each has addresses below it, #/sites/4/practicals/12/observe
+  "practicals",
+  "logbook",
+] as const;
 export type SiteTab = (typeof SITE_TABS)[number];
 
 /** #/sites/4 or #/sites/4/gradebook: the site and its tab. A tab the screen does not have opens Content. */
@@ -69,6 +103,81 @@ export function siteAddress(path: string): { id: number; tab: SiteTab } | null {
   const tab = SITE_TABS.find((t) => t === match[2]) ?? "content";
   return { id: Number(match[1]), tab };
 }
+
+// --- marking ---
+/** Pages inside a course site beyond its tabs: #/sites/4/assignments/12/marking/55 and #/sites/4/rubrics. */
+export type MarkingAddress =
+  | { kind: "marking"; siteId: number; assignmentId: number; submissionId: number | null }
+  | { kind: "site-rubrics"; siteId: number };
+
+export function markingAddress(path: string): MarkingAddress | null {
+  const bare = path.split("?")[0];
+  const marking = bare.match(/^\/sites\/(\d+)\/assignments\/(\d+)\/marking(?:\/(\d+))?\/?$/);
+  if (marking)
+    return { kind: "marking", siteId: Number(marking[1]), assignmentId: Number(marking[2]), submissionId: marking[3] ? Number(marking[3]) : null };
+  const rubrics = bare.match(/^\/sites\/(\d+)\/rubrics\/?$/);
+  return rubrics ? { kind: "site-rubrics", siteId: Number(rubrics[1]) } : null;
+}
+// --- end marking ---
+// --- content (items 2.12 to 2.20) ---
+
+/**
+ * Addresses under a course site for its pages and its setup: #/sites/4/setup, #/sites/4/pages/12 (a page as
+ * students read it), #/sites/4/pages/12/edit, and #/sites/4/pages/new?module=7 for a new page in a module.
+ */
+export type ContentRoute =
+  | { view: "setup"; siteId: number }
+  | { view: "page"; siteId: number; itemId: number }
+  | { view: "edit"; siteId: number; itemId: number | null; moduleId: number | null };
+
+export function contentAddress(path: string): ContentRoute | null {
+  const [bare, query = ""] = path.split("?");
+  const setup = bare.match(/^\/sites\/(\d+)\/setup$/);
+  if (setup) return { view: "setup", siteId: Number(setup[1]) };
+  const page = bare.match(/^\/sites\/(\d+)\/pages\/(\d+|new)(\/edit)?$/);
+  if (!page) return null;
+  const siteId = Number(page[1]);
+  if (page[2] === "new") {
+    const module = new URLSearchParams(query).get("module");
+    return { view: "edit", siteId, itemId: null, moduleId: module && /^\d+$/.test(module) ? Number(module) : null };
+  }
+  const itemId = Number(page[2]);
+  return page[3] ? { view: "edit", siteId, itemId, moduleId: null } : { view: "page", siteId, itemId };
+}
+
+/** The parts of Admin with screens of their own: #/admin/templates, #/admin/takedowns, #/admin/storage. */
+export type AdminPart = "home" | "templates" | "takedowns" | "storage";
+
+export function adminAddress(path: string): AdminPart | null {
+  const match = path.split("?")[0].match(/^\/admin(?:\/([a-z-]+))?$/);
+  if (!match) return null;
+  const part = match[1] ?? "home";
+  return part === "templates" || part === "takedowns" || part === "storage" || part === "home" ? part : null;
+}
+// --- end content ---
+
+// --- talk: addresses inside forums, messages and a site's classes (items 4.08 to 4.15) ---
+
+/** #/forums/3 or #/forums/3/threads/7: a forum, and a thread in it. #/forums alone lists every forum. */
+export function forumAddress(path: string): { forum: number | null; thread: number | null } | null {
+  const match = path.split("?")[0].match(/^\/forums(?:\/(\d+)(?:\/threads\/(\d+))?)?\/?$/);
+  if (!match) return null;
+  return { forum: match[1] ? Number(match[1]) : null, thread: match[2] ? Number(match[2]) : null };
+}
+
+/** #/messages or #/messages/12: the conversations, and one of them. */
+export function messageAddress(path: string): { conversation: number | null } | null {
+  const match = path.split("?")[0].match(/^\/messages(?:\/(\d+))?\/?$/);
+  if (!match) return null;
+  return { conversation: match[1] ? Number(match[1]) : null };
+}
+
+/** #/sites/4/classes/9 opens one class; #/sites/4/classes/9/code shows its check-in code in the room. */
+export function classAddress(path: string): { session: number; code: boolean } | null {
+  const match = path.split("?")[0].match(/^\/sites\/\d+\/classes\/(\d+)(\/code)?\/?$/);
+  return match ? { session: Number(match[1]), code: Boolean(match[2]) } : null;
+}
+// --- end talk ---
 
 // --- quizzes ---
 /**
