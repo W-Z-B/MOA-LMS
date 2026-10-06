@@ -65,6 +65,15 @@ RULES = [
     ),
     ("login-attempts", "Sign-in attempts", 12, "the attempt", "delete", True, TO_CONFIRM),
     ("notifications", "Notifications, read or not", 24, "when they were sent", "delete", True, TO_CONFIRM),
+    (
+        "ai-exchanges",
+        "AI help: when it was asked, by whom, and lecturers' drafts (never a student's question)",
+        12,
+        "when it was asked",
+        "delete",
+        True,
+        "As sign-in attempts and other activity logs (items 6.11, 6.12); " + TO_CONFIRM,
+    ),
 ]
 SUBMISSION_RULES = ("submitted-work", "marks-evidence")
 
@@ -210,6 +219,10 @@ def purge(today: date | None = None) -> dict[str, int]:
                 count += EmailChange.objects.filter(asked_at__lt=cut).delete()[0]  # sign-in email changes
             elif rule.code == "notifications":
                 count = Notification.objects.filter(created_at__lt=cut).delete()[0]
+            elif rule.code == "ai-exchanges":
+                from assist.models import Exchange
+
+                count = Exchange.objects.filter(at__lt=cut).delete()[0]
             else:  # pragma: no cover - a rule the code does not know is left alone
                 continue
             removed[rule.code] = count
