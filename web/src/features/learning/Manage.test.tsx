@@ -22,6 +22,8 @@ const rule = (over: Partial<Rule> = {}): Rule => ({
   is_active: true,
   notes: "",
   assigned: 4,
+  source: "lms",
+  editable: true,
   ...over,
 });
 
@@ -81,6 +83,31 @@ describe("required training (item 5.05)", () => {
       renewal_months: 12,
       notes: "",
     });
+  });
+
+  it("shows who keeps each requirement, and changes only those kept in the LMS (decision D13)", async () => {
+    const server = fakeServer({
+      "GET /staff-development/required/": [
+        page([rule(), rule({ id: 2, site_title: "First aid", source: "hrms", editable: false })]),
+        page([rule({ is_active: false }), rule({ id: 2, site_title: "First aid", source: "hrms", editable: false })]),
+      ],
+      "GET /staff-development/required/overdue/": page([]),
+      "GET /staff-development/catalogue/": page([course()]),
+      "PATCH /staff-development/required/1/": { body: rule({ is_active: false }) },
+    });
+    render(<RequiredTraining me={courseAdmin} />);
+    const list = await screen.findByRole("list", { name: "Requirements" });
+    const [ours, theirs] = within(list).getAllByRole("listitem");
+    expect(ours).toHaveTextContent("Kept in the LMS");
+    expect(theirs).toHaveTextContent("From the HRMS");
+    expect(theirs).toHaveTextContent("Kept in the HRMS: change it there.");
+    expect(within(theirs).queryByRole("button", { name: /^Stop requiring/ })).not.toBeInTheDocument();
+    expect(within(theirs).getByRole("button", { name: "Assign now: First aid" })).toBeInTheDocument();
+    await userEvent.click(within(ours).getByRole("button", { name: "Stop requiring: Safe use of farm machinery" }));
+    expect(await screen.findByText("Safe use of farm machinery: no longer required.")).toBeInTheDocument();
+    expect(server.calls.find((c) => c.method === "PATCH")?.body).toEqual({ is_active: false });
+    const again = await screen.findByRole("list", { name: "Requirements" });
+    expect(within(again).getByRole("button", { name: "Require again: Safe use of farm machinery" })).toBeInTheDocument();
   });
 
   it("lets the auditor read it, without changing anything", async () => {

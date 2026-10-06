@@ -10,6 +10,7 @@ const KINDS: [string, string][] = [
   ["training_push", "Training completions to the HRMS"],
   ["marks_push", "Coursework totals to the SRMS"],
   ["staff_sync", "Staff records from the HRMS"],
+  ["requirement_sync", "Required training from the HRMS"],
 ];
 
 /** Integration runs (item 1.23): each push to and pull from the HRMS and the SRMS, newest first, with every row refused. */
