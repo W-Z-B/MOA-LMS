@@ -22,7 +22,8 @@ from quizzes import schemas
 
 MAX_IMPORT_BYTES = 5 * 1024 * 1024
 MAX_ZIP_MEMBERS = 500
-MAX_ZIP_UNCOMPRESSED = 20 * 1024 * 1024
+MAX_ZIP_UNCOMPRESSED = 20 * 1024 * 1024  # the XML documents in it
+MAX_ZIP_ENTRIES = 2000  # every entry, pictures included (core.archives)
 FORMATS = ("moodle_xml", "gift", "qti")
 EXPORT_FORMATS = ("moodle_xml", "gift")
 
@@ -882,11 +883,21 @@ def parse_qti(content: bytes | str, filename: str = "") -> ParseResult:
 
 
 def _zip_documents(content: bytes) -> list[tuple[str, str]]:
+    from django.conf import settings
+
+    from core import archives
+
     try:
         archive = zipfile.ZipFile(io.BytesIO(content))
     except zipfile.BadZipFile as error:
         raise FormatError("The zip package cannot be opened.") from error
-    members = [m for m in archive.infolist() if m.filename.lower().endswith(".xml") and not m.is_dir()]
+    try:  # the package as a whole (pictures too), as for SCORM packages: count, size, zip bombs
+        infos = archives.checked(
+            archive, max_entries=MAX_ZIP_ENTRIES, max_bytes=settings.PACKAGE_MAX_UNPACKED_MB * archives.MB
+        )
+    except archives.ArchiveRefused as refused:
+        raise FormatError(str(refused)) from refused
+    members = [m for m in infos if m.filename.lower().endswith(".xml") and not m.is_dir()]
     if len(members) > MAX_ZIP_MEMBERS:
         raise FormatError(f"The package holds more than {MAX_ZIP_MEMBERS} files.")
     if sum(m.file_size for m in members) > MAX_ZIP_UNCOMPRESSED:
