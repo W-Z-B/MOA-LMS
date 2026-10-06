@@ -34,6 +34,8 @@ class Preload:
     transfers: dict = field(default_factory=lambda: defaultdict(list))  # person -> SRMS transfers by time
     line_items: list | None = None  # outside tools' gradebook columns (lti), None when not loaded
     scores: dict = field(default_factory=dict)  # (line item, person) -> score
+    packages: list | None = None  # weighted, published SCORM and H5P packages, None when not loaded
+    package_attempts: dict = field(default_factory=lambda: defaultdict(list))  # (package, person) -> attempts
 
 
 def current(site) -> Preload | None:
@@ -115,6 +117,17 @@ def preloaded(site, people=None):
     loaded.line_items = list(LineItem.objects.filter(site=site).select_related("tool").order_by("id"))
     for s in Score.objects.filter(line_item__site=site, person_id__in=people):
         loaded.scores[(s.line_item_id, s.person_id)] = s
+    from packages.models import ContentPackage, PackageAttempt
+
+    loaded.packages = list(
+        ContentPackage.objects.filter(
+            item__module__site=site, item__is_published=True, weight__gt=0
+        ).select_related("item")
+    )
+    for a in PackageAttempt.objects.filter(
+        package__in=loaded.packages, person_id__in=people, is_preview=False
+    ).order_by("number"):
+        loaded.package_attempts[(a.package_id, a.person_id)].append(a)
     token = _current.set(loaded)
     try:
         yield loaded
