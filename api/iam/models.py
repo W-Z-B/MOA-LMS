@@ -67,6 +67,11 @@ class TotpDevice(TimeStampedModel):
     )
     secret = EncryptedTextField()
     confirmed_at = models.DateTimeField(null=True, blank=True)
+    last_used_step = models.BigIntegerField(
+        null=True,
+        blank=True,
+        help_text="The 30-second step of the last code accepted: a code is used once (ASVS 2.8.4)",
+    )
 
     @property
     def is_confirmed(self) -> bool:

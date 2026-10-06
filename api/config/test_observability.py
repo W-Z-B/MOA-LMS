@@ -174,3 +174,44 @@ def test_metrics_add_up_gunicorn_processes(monkeypatch, tmp_path):
     monkeypatch.setenv("PROMETHEUS_MULTIPROC_DIR", str(tmp_path))
     assert isinstance(observability._counters(), CollectorRegistry)
     assert observability._counters() is not observability.REGISTRY
+
+
+@pytest.mark.django_db
+def test_api_answers_are_never_cached(student, client_for):
+    """ASVS 8.2.1, 14.4.2."""
+    answer = client_for(student.user).get("/api/v1/auth/me/")
+    assert answer["Cache-Control"] == "no-store"
+    assert Client().get("/api/health/")["Cache-Control"] == "no-store"
+
+
+def test_an_unhandled_error_answers_with_a_reference_not_the_error():
+    """ASVS 7.4.1: the {code, detail} shape with the request's id, which finds the error in the log."""
+    token = observability.request_id.set("ref123")
+    try:
+        answer = observability.server_error(None)
+    finally:
+        observability.request_id.reset(token)
+    body = json.loads(answer.content)
+    assert answer.status_code == 500 and body["code"] == "server_error" and body["reference"] == "ref123"
+    assert "ref123" in body["detail"]
+
+
+def test_a_sibling_systems_next_page_elsewhere_is_not_followed(monkeypatch, settings):
+    """ASVS 5.2.6, 12.6.1: the service key goes only to the system it belongs to."""
+    from integration import client
+
+    answers = {
+        "https://srms.example/api/x/": {"results": [1], "next": "/api/x/?page=2"},
+        "/api/x/?page=2": {"results": [2], "next": "https://evil.example/steal"},
+    }
+    monkeypatch.setattr(
+        client,
+        "call",
+        lambda base, key, path, params=None: answers[
+            path if path.startswith("/api/x/?") else base + path[1:]
+        ],
+    )
+    rows = client.pages("https://srms.example/", "key", "/api/x/")
+    assert next(rows) == 1 and next(rows) == 2
+    with pytest.raises(client.IntegrationError, match="another system"):
+        next(rows)

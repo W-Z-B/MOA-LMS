@@ -56,3 +56,6 @@ urlpatterns = [
 ]
 
 # Course files and submissions are never served from MEDIA_URL; downloads go through authenticated endpoints.
+
+# A failure the code did not handle answers in the {code, detail} shape with a reference (ASVS 7.4.1).
+handler500 = "config.observability.server_error"

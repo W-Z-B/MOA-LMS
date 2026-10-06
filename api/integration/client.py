@@ -42,13 +42,19 @@ def call(base_url: str, key: str, path: str, *, params: dict | None = None, data
 
 
 def pages(base_url: str, key: str, path: str, *, params: dict | None = None):
-    """Yield every row of a paginated list endpoint."""
+    """Yield every row of a paginated list endpoint. A "next" link is followed only when it
+    points back at the same system: the service key is never sent anywhere else (ASVS 5.2.6, 12.6.1)."""
     payload = call(base_url, key, path, params=params)
+    origin = urllib.parse.urlsplit(base_url)
     while True:
         yield from payload.get("results", [])
-        if not payload.get("next"):
+        following = payload.get("next")
+        if not following:
             return
-        payload = call(base_url, key, payload["next"])
+        target = urllib.parse.urlsplit(following)
+        if target.netloc and (target.scheme, target.netloc) != (origin.scheme, origin.netloc):
+            raise IntegrationError(f"The next page is on another system ({target.netloc}); not followed.")
+        payload = call(base_url, key, following)
 
 
 def unreachable(exc: IntegrationError) -> bool:

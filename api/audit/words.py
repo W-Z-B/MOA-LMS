@@ -62,6 +62,14 @@ ACTIONS = {
     "logout": "Signed out",
     "mfa_verified": "Authenticator code accepted",
     "mfa_failed": "Authenticator code refused",
+    "login_failed": "Sign-in refused (wrong password)",
+    "role_given": "Role given",
+    "role_changed": "Role changed",
+    "role_taken": "Role taken away",
+    "authenticator_reset": "Authenticator removed, to be set up again",
+    "locked_out": "Account held back after repeated failures",
+    "closed": "Closed at the end of term",
+    "archived": "Archived",
     "access_review_signed": "Access review signed off",
     "audit_exported": "Audit log exported",
     "audit_checked": "Audit log checked",
@@ -132,6 +140,8 @@ ACTIONS = {
 # Account events: in the audit viewer and in the sign-ins of a person's record, not among their actions.
 ACCOUNT_EVENTS = (
     "login",
+    "login_failed",
+    "locked_out",
     "logout",
     "mfa_verified",
     "mfa_failed",

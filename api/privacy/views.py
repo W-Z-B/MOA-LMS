@@ -22,6 +22,7 @@ from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 
 from audit.services import record
+from core.net import client_ip
 from core.serializers import ErrorSerializer
 from iam.models import Role
 from iam.permissions import RolePermission
@@ -40,11 +41,6 @@ RECORD_FOR_REQUEST = (Role.ADMINISTRATOR, Role.DPO)
 
 def _name(user) -> str | None:
     return (user.get_full_name() or user.get_username()) if user else None
-
-
-def _client_ip(request) -> str | None:
-    forwarded = request.META.get("HTTP_X_FORWARDED_FOR", "")
-    return forwarded.split(",")[0].strip() or request.META.get("REMOTE_ADDR") or None
 
 
 class NoticeSerializer(serializers.ModelSerializer):
@@ -160,7 +156,7 @@ def acknowledge_view(request):
     try:
         with transaction.atomic():
             NoticeAcknowledgement.objects.create(
-                notice=notice, user=request.user, source_ip=_client_ip(request)
+                notice=notice, user=request.user, source_ip=client_ip(request)
             )
             record(request, "notice_acknowledged", notice, after={"version": notice.version})
     except IntegrityError:

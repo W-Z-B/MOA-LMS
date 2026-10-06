@@ -239,3 +239,33 @@ def metrics(request):
     return HttpResponse(
         generate_latest(_counters()) + generate_latest(state), content_type=CONTENT_TYPE_LATEST
     )
+
+
+class NoStoreMiddleware:
+    """API answers carry personal data: no browser or proxy may keep a copy (ASVS 8.2.1, 14.4.2). An answer
+    that sets its own caching (the calendar feed) keeps it."""
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        response = self.get_response(request)
+        if request.path.startswith("/api/") and not response.has_header("Cache-Control"):
+            response["Cache-Control"] = "no-store"
+        return response
+
+
+def server_error(request, *args, **kwargs):
+    """A failure the code did not handle (handler500): the {code, detail} shape, with the request's id as a
+    reference that finds the error and its group in the log, and nothing of the error itself (ASVS 7.4.1)."""
+    from django.http import JsonResponse
+
+    reference = request_id.get()
+    return JsonResponse(
+        {
+            "code": "server_error",
+            "detail": f"Something went wrong on our side. If it happens again, quote reference {reference}.",
+            "reference": reference,
+        },
+        status=500,
+    )

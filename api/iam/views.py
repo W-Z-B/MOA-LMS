@@ -2,11 +2,13 @@
 signed-in devices, and passwords: a link to choose one on a new account or when forgotten (item 1.22), and a
 change by the signed-in person."""
 
+import hmac
+import time
 from datetime import timedelta
 
 import pyotp
 from django.conf import settings
-from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
+from django.contrib.auth import authenticate, get_user_model, login, logout, update_session_auth_hash
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
@@ -138,6 +140,13 @@ def login_view(request):
     user = authenticate(request, username=username, password=data.validated_data["password"])
     LoginAttempt.objects.create(username=username, source_ip=address, success=user is not None)
     if user is None:
+        # In the chained audit log too: the attempt log is purged after a year (ASVS 7.2.1). Against the
+        # account when there is one; a name matching no account is never written (it may be a password).
+        known = get_user_model().objects.filter(username=username).first()
+        if known is not None:
+            record(request, "login_failed", known)
+            if account_locked(username):
+                record(request, "locked_out", known, after={"by": "passwords"})
         return Response(
             {"code": "invalid_credentials", "detail": "Username or password is incorrect."}, status=401
         )
@@ -184,9 +193,46 @@ def mfa_enrol(request):
     return Response({"provisioning_uri": uri})
 
 
+def _matching_step(secret: str, code: str) -> int | None:
+    """The 30-second step whose code this is, allowing one step either way for the phone's clock."""
+    totp, now = pyotp.TOTP(secret), time.time()
+    for offset in (0, -1, 1):
+        moment = now + offset * totp.interval
+        if hmac.compare_digest(totp.at(moment), str(code)):
+            return int(moment // totp.interval)
+    return None
+
+
+def _too_many_codes(request, user):
+    """Too many wrong codes: the session ends and the account waits out the lockout (ASVS 2.2.1)."""
+    record(request, "locked_out", user, after={"by": "authenticator codes"})
+    logout(request)
+    return Response(
+        {
+            "code": "locked_out",
+            "detail": f"Too many wrong codes. Sign in again in {settings.LOGIN_LOCKOUT_MINUTES} minutes.",
+        },
+        status=status.HTTP_423_LOCKED,
+    )
+
+
+def _tell(user, title: str, done: str) -> None:
+    """A notice, by email too, that something changed on the account (ASVS 2.2.3, 2.5.5)."""
+    from notifications.models import Notification
+    from notifications.services import notify
+
+    notify(
+        [user],
+        title=title,
+        body=f"{done} If it was not you, tell an administrator at once: your account may be in other hands.",
+        link="/account",
+        kind=Notification.Kind.ALERT,
+    )
+
+
 @extend_schema(
     request=CodeSerializer,
-    responses={200: MeSerializer, 400: ErrorSerializer, 409: ErrorSerializer},
+    responses={200: MeSerializer, 400: ErrorSerializer, 409: ErrorSerializer, 423: ErrorSerializer},
     summary="Verify an authenticator code for this session",
 )
 @api_view(["POST"])
@@ -198,12 +244,33 @@ def mfa_verify(request):
     device = TotpDevice.objects.filter(user=request.user).first()
     if device is None:
         return Response({"code": "not_enrolled", "detail": "Enrol a device first."}, status=409)
-    if not pyotp.TOTP(device.secret).verify(data.validated_data["code"], valid_window=1):
-        record(request, "mfa_failed", request.user)
+    user = request.user
+    if account_locked(user.get_username()):
+        return _too_many_codes(request, user)
+    step = _matching_step(device.secret, data.validated_data["code"])
+    reused = (
+        step is not None
+        and settings.MFA_REFUSE_REUSED_CODES
+        and device.last_used_step is not None
+        and step <= device.last_used_step
+    )
+    if step is None or reused:
+        # A wrong or reused code counts towards the lockout, as a wrong password does (ASVS 2.2.1).
+        LoginAttempt.objects.create(username=user.get_username(), source_ip=client_ip(request), success=False)
+        record(request, "mfa_failed", user, after={"reused": reused})
+        if account_locked(user.get_username()):
+            return _too_many_codes(request, user)
+        if reused:
+            detail = "This code has been used already. Wait for the next one."
+            return Response({"code": "code_used", "detail": detail}, status=400)
         return Response({"code": "invalid_code", "detail": "The code is not valid."}, status=400)
-    if not device.is_confirmed:
+    first_use = not device.is_confirmed
+    device.last_used_step = step
+    if first_use:
         device.confirmed_at = timezone.now()
-        device.save(update_fields=["confirmed_at", "updated_at"])
+    device.save(update_fields=["last_used_step", "confirmed_at", "updated_at"])
+    if first_use:
+        _tell(user, "An authenticator was set up on your account", "You set up an authenticator app.")
     request.session[MFA_SESSION_KEY] = True
     record(request, "mfa_verified", request.user)
     return Response(_me_payload(request.user, request.session))
@@ -399,6 +466,7 @@ def set_password_view(request):
         LoginAttempt.objects.create(username=user.get_username(), source_ip=client_ip(request), success=True)
         ended = close_sessions(user)
         record(request, "password_set", user, after={"link": kind, "sessions_ended": ended})
+    _tell(user, "Your password was set", "A new password was chosen through an emailed link.")
     return Response({"username": user.get_username(), "kind": kind})
 
 
@@ -428,4 +496,5 @@ def change_password_view(request):
         update_session_auth_hash(request, user)  # a new session key, so this browser stays signed in
         UserSession.objects.filter(session_key=current).update(session_key=request.session.session_key)
         record(request, "password_changed", user, after={"sessions_ended": ended})
+    _tell(user, "Your password was changed", "Your password was changed while you were signed in.")
     return Response({"ended": ended})

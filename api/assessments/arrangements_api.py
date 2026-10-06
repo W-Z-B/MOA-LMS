@@ -125,6 +125,9 @@ class AccommodationSerializer(serializers.ModelSerializer):
         ],
     )
     student_no = serializers.CharField(source="person.external_id", read_only=True)
+    reason = serializers.CharField(
+        required=False, allow_blank=True, allow_null=True, help_text="Why; seen only by course administrators"
+    )
 
     class Meta:
         model = Accommodation
@@ -148,6 +151,11 @@ class AccommodationSerializer(serializers.ModelSerializer):
         if value > 60:
             raise serializers.ValidationError("At most 60 days.")
         return value
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data["reason"] = data.get("reason") or ""  # encrypted at rest; an empty reason is stored as none
+        return data
 
 
 def _kept(instance) -> dict:

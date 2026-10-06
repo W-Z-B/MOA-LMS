@@ -68,6 +68,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "config.observability.RequestObservabilityMiddleware",  # request id, request log and metrics (7.10)
+    "config.observability.NoStoreMiddleware",  # API answers are never cached (ASVS 8.2.1)
     "django.middleware.security.SecurityMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -348,3 +349,8 @@ AI_TIMEOUT_SECONDS = int(env("AI_TIMEOUT_SECONDS", "60"))
 # The study helper is switched off while a student has an assignment open (not yet handed in, before its due
 # date) on the site, as for quizzes. GSA may decide assignments should not switch it off.
 AI_HELPER_OFF_DURING_ASSIGNMENTS = env_bool("AI_HELPER_OFF_DURING_ASSIGNMENTS", True)
+
+# Authenticator codes (ASVS 2.2.1, 2.8.4): a wrong code counts as a failed sign-in towards the lockout
+# (LOGIN_MAX_FAILURES in LOGIN_LOCKOUT_MINUTES), which then ends the session; and each code is accepted once.
+# MFA_REFUSE_REUSED_CODES may be turned off only on a test stack where two runs share one fictional account.
+MFA_REFUSE_REUSED_CODES = env_bool("MFA_REFUSE_REUSED_CODES", True)

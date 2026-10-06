@@ -164,7 +164,7 @@ def test_who_keeps_the_schedule_and_what_cannot_be_disposed_of_here(
     assert zero.status_code == 400
 
     auditor = client_for(make_user("the.auditor", "auditor"))
-    assert len(auditor.get("/api/v1/privacy/retention-rules/").json()) == 7
+    assert len(auditor.get("/api/v1/privacy/retention-rules/").json()) == 8
     assert auditor.patch(f"/api/v1/privacy/retention-rules/{work.id}/", {"keep_months": 1}).status_code == 403
     assert client_for(course_admin).get("/api/v1/privacy/retention-rules/").status_code == 403
     assert (

@@ -79,6 +79,8 @@ export default function App() {
     const signedOut = (event: Event) => {
       setSignedOutReason((event as CustomEvent<string>).detail);
       setMe(null);
+      // A session that ended by itself (time-out) leaves no class list on the phone either (ASVS 8.2.3).
+      void import("./features/practicals/fieldCopy").then((m) => m.clearFieldCopies()).catch(() => undefined);
     };
     window.addEventListener(SIGNED_OUT_EVENT, signedOut);
     return () => window.removeEventListener(SIGNED_OUT_EVENT, signedOut);
