@@ -53,3 +53,22 @@ source-available) is still right.
   adviser should confirm this reading before go-live.
 - A future component with a weak-copyleft licence needs its own named exception when it is added. The
   push-notice library pywebpush (MPL-2.0) is the one already foreseen ([ADR 0012](0012-new-components.md)).
+
+## Note on the exceptions added for push notices and lecture video, 6 October 2026 (items 4.04, 4.06)
+
+Added as named exceptions in `scripts/licence-policy.json`, each used unmodified as its own package, on the
+recommended answers to decisions D10 ([ADR 0012](0012-new-components.md)) and D3
+([ADR 0015](0015-video-and-captions.md)):
+
+| Package or program | Licence | Why it is there |
+|---|---|---|
+| pywebpush | MPL-2.0 | Push notices to the installed app (item 4.04): encrypts each notice for the one browser that subscribed. |
+| py-vapid | MPL-2.0 | Part of pywebpush: signs each notice with GSA's VAPID key. |
+| certifi | MPL-2.0 | The certificate authorities that requests (through pywebpush) trusts to reach the browsers' push services. |
+| FFmpeg (a program, not a library) | LGPL-2.1-or-later | Lecture video (items 4.06, 4.07): the low, standard and sound-only copies and the poster frame. Built in `api/Dockerfile` from Debian's source with LGPL parts only and OpenH264 (BSD-2-Clause); run by the job worker as a separate process, never linked into the product (point 6). |
+
+Everything else pywebpush brings is permissive (aiohttp, requests, urllib3, http-ece and their own
+dependencies: Apache-2.0, MIT, BSD-3-Clause or PSF-2.0). whisper.cpp, the optional speech recognition for
+captions, is MIT and is not in the image; it is listed under "programs" so every program the product runs is
+named. `scripts/check_licences.py` now also asks FFmpeg, where it is installed, what licence it is under and
+how it was built, and fails if it was configured with GPL, non-free or version-3 parts.
