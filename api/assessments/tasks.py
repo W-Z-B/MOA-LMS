@@ -9,6 +9,8 @@ from datetime import timedelta
 from django.utils import timezone
 from procrastinate.contrib.django import app
 
+from core.schedule import periodic
+
 log = logging.getLogger(__name__)
 WINDOWS = ((24, "24h"), (48, "48h"))  # the nearest window first: inside 24 hours only that one is sent
 
@@ -56,7 +58,7 @@ def send_due_reminders(now=None) -> int:
     return sent
 
 
-@app.periodic(cron="5 * * * *")
+@periodic("5 * * * *")
 @app.task(name="assessments.due_reminders", queue="notifications")
 def due_reminders(timestamp: int | None = None) -> int:
     sent = send_due_reminders()

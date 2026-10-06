@@ -5,11 +5,12 @@ import logging
 from procrastinate.contrib.django import app
 
 from approvals.time_limits import chase
+from core.schedule import periodic
 
 log = logging.getLogger(__name__)
 
 
-@app.periodic(cron="0 7 * * 1-5")
+@periodic("0 7 * * 1-5")
 @app.task(name="approvals.chase_decisions", queue="approvals")
 def chase_decisions(timestamp: int | None = None) -> dict:
     counts = chase()

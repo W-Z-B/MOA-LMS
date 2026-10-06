@@ -8,6 +8,7 @@ from datetime import date
 from django.utils import timezone
 from procrastinate.contrib.django import app
 
+from core.schedule import periodic
 from iam.models import AccessReview, Role
 from iam.review import role_holders, teaching_staff
 from notifications.models import Notification
@@ -64,7 +65,7 @@ def remind_access_review(today: date) -> int:
     )
 
 
-@app.periodic(cron="0 6 * * 1")
+@periodic("0 6 * * 1")
 @app.task(name="iam.access_review_reminder", queue="iam")
 def access_review_reminder(timestamp: int | None = None) -> int:
     sent = remind_access_review(timezone.localdate())
