@@ -1995,3 +1995,14 @@ td input[type="number"] {
     padding: 10px 0;
   }
 }
+
+/* Choices set side by side (notification settings, data-light mode, the kinds an assignment takes): each is
+   a 44px touch target, so none sits too close to the next on a phone (item 4.01). */
+.kind-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+}
+.kind-choices label.inline {
+  min-height: 44px;
+}

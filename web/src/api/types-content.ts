@@ -4,6 +4,7 @@
  */
 
 import type { Announcement, Licence, Site } from "./types";
+import type { VideoInfo } from "./types-media";
 
 /** One problem the accessibility check found in a page (courses.richtext.check). */
 export interface AccessibilityIssue {
@@ -34,7 +35,7 @@ export interface Released {
 export interface Item extends Released {
   id: number;
   module: number;
-  kind: "page" | "file" | "link";
+  kind: "page" | "file" | "link" | "video";
   title: string;
   /** A page's text: HTML cleaned on the server against an allow-list (courses.richtext). */
   body: string;
@@ -54,6 +55,8 @@ export interface Item extends Released {
   accessibility_issues: AccessibilityIssue[] | null;
   /** After a file was saved: the site's storage use. Null otherwise. */
   storage: StorageSummary | null;
+  /** A lecture video's state, qualities, poster and captions (item 4.06); null for every other kind. */
+  video?: VideoInfo | null;
 }
 
 export interface CourseModule extends Released {

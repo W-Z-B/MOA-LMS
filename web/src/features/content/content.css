@@ -434,3 +434,12 @@ img.ProseMirror-separator {
   flex: none;
   margin: 0;
 }
+
+/* Data-light mode (item 4.05): a picture on a page waits behind a button saying what it shows and its size. */
+.held-picture {
+  display: inline-block;
+  margin: 4px 0;
+  max-width: 100%;
+  white-space: normal;
+  text-align: left;
+}

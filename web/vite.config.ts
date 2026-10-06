@@ -66,6 +66,8 @@ export default defineConfig({
         "src/features/practicals/**",
         // Quizzes (feature 10): the tab, attempts, banks and the question editor.
         "src/features/quizzes/**",
+        // Lecture video, captions, offline reading, data-light mode and push notices (items 4.03 to 4.07).
+        "src/features/media/**",
       ],
       exclude: ["src/**/*.test.*", "src/test/**"],
       reporter: ["text"],

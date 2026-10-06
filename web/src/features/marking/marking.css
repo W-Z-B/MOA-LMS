@@ -13,14 +13,6 @@
 .chips:empty {
   display: none;
 }
-.kind-choices {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 16px;
-}
-.kind-choices label.inline {
-  min-height: 44px;
-}
 .small-heading {
   font-size: 15px;
   margin: 8px 0 0;
