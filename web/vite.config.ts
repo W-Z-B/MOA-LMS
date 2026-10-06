@@ -26,13 +26,15 @@ export default defineConfig({
     unstubGlobals: true,
     coverage: {
       provider: "v8",
-      // The client-side rules: API access, routing, sign-in, the course list and notifications. Add each
-      // screen here as it gains tests; whole screens are also covered by the Playwright journeys.
+      // The client-side rules: API access, routing, sign-in, the frame and search (item 2.07), Home and
+      // To do (items 2.07 to 2.09), the offline queue (item 4.02) and the course list. Add each screen here
+      // as it gains tests; whole screens are also covered by the Playwright journeys.
       include: [
         "src/api/**",
-        "src/app/router.ts",
-        "src/app/NotificationsBell.tsx",
+        "src/app/**",
         "src/features/auth/**",
+        "src/features/home/**",
+        "src/features/todo/**",
         "src/features/courses/MyCoursesScreen.tsx",
       ],
       exclude: ["src/**/*.test.*", "src/test/**"],

@@ -2,7 +2,8 @@
 
 seed_demo needs the HRMS and the SRMS to name the people and the classes. The journeys run the LMS on its
 own, so this command creates its own small cast instead: a lecturer and two students with accounts, and one
-course site taught with seed_demo's material (content, an announcement, two assignments, a released mark).
+course site taught with seed_demo's material (content, an announcement, two assignments, a released mark),
+plus what the Homes show: work due this week for Kezia and a hand-in waiting to be marked for the lecturer.
 The accounts share the password in DEMO_USER_PASSWORD. Teaching staff need an authenticator code (ADR 0013),
 so the lecturer's authenticator is enrolled from DEMO_TOTP_SECRET, a fictional secret the journeys also hold
 to compute the code. The draft privacy notice is published, so the journeys read and acknowledge it as
@@ -12,6 +13,7 @@ Idempotent: running it again changes nothing.
 
 import os
 import re
+from datetime import timedelta
 
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
@@ -19,6 +21,7 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 from django.utils import timezone
 
+from assessments.models import Assignment, Submission
 from core.management.commands.seed_demo import Command as SeedDemo
 from courses.models import CourseSite, Membership
 from iam.models import Role, RoleScope, TotpDevice
@@ -77,9 +80,36 @@ class Command(BaseCommand):
                         user=person.user, defaults={"secret": secret, "confirmed_at": timezone.now()}
                     )
             SeedDemo()._teach(site)
+            self._homes(site)
             PrivacyNotice.objects.filter(published_at__isnull=True).update(published_at=timezone.now())
         self.stdout.write(
             self.style.SUCCESS(f"Journey data ready: {len(CAST)} accounts in {site.code} ({site.title}).")
+        )
+
+    @staticmethod
+    def _homes(site: CourseSite) -> None:
+        """What the Homes show beyond seed_demo (items 2.07 to 2.09). _teach marks both students' first
+        assignment, so Kezia gets a short piece due in three days that nobody has handed in, and Tevin has
+        handed in the second assignment, which waits for the lecturer to mark it."""
+        now = timezone.now()
+        Assignment.objects.get_or_create(
+            site=site,
+            title="Field notebook check",
+            defaults={
+                "instructions": "Hand in a photograph of this week's pages of your field notebook.",
+                "opens_at": now - timedelta(days=4),
+                "due_at": now + timedelta(days=3),
+                "max_mark": 10,
+                "weight": 1,
+                "is_published": True,
+            },
+        )
+        tevin = PersonRef.objects.get(kind=PersonRef.Kind.STUDENT, external_id="S2026902")
+        calendar = Assignment.objects.get(site=site, title="Crop calendar for a kitchen garden")
+        Submission.objects.get_or_create(
+            assignment=calendar,
+            student=tevin,
+            defaults={"text": "Demonstration submission.", "submitted_at": now - timedelta(days=1)},
         )
 
     @staticmethod

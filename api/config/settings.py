@@ -223,3 +223,7 @@ INTEGRATION_TIMEOUT_SECONDS = int(env("INTEGRATION_TIMEOUT_SECONDS", "15"))
 
 # Privacy (items 1.18, 1.19): days within which a correction request is to be answered.
 PRIVACY_RESPONSE_DAYS = int(env("PRIVACY_RESPONSE_DAYS", "30"))
+
+# To do (items 2.07 to 2.09): days after which work to mark, and a decision, are marked overdue.
+MARKING_DAYS = int(env("MARKING_DAYS", "14"))
+DECISION_DAYS = int(env("DECISION_DAYS", "7"))

@@ -65,7 +65,7 @@ def test_journey_data_signs_in_and_teaches_one_course(monkeypatch):
     site = CourseSite.objects.get()
     assert site.is_published and site.source == CourseSite.Source.LOCAL
     assert site.memberships.count() == 3
-    assert Assignment.objects.filter(site=site).count() == 2
+    assert Assignment.objects.filter(site=site).count() == 3  # with "Field notebook check", for the Homes
     assert Mark.objects.filter(submission__assignment__site=site, is_released=True).count() == 2
 
     client = APIClient()
@@ -80,6 +80,8 @@ def test_journey_data_signs_in_and_teaches_one_course(monkeypatch):
     assert response.json()["privacy_notice_due"] == 1  # the notice is published, so it is read first
     sites = client.get("/api/v1/sites/").json()["results"]
     assert [(s["title"], s["my_role"]) for s in sites] == [("Introduction to Crop Production", "student")]
+    due = [w["title"] for w in client.get("/api/v1/home/").json()["student"]["due"]]
+    assert due == ["Field notebook check"]  # due this week, not handed in
 
     # The lecturer must give a code, computed from the fictional secret the journeys hold.
     lecturer = APIClient()
@@ -91,3 +93,5 @@ def test_journey_data_signs_in_and_teaches_one_course(monkeypatch):
     assert me["mfa_required"] is True and me["mfa_verified"] is False
     code = pyotp.TOTP(JOURNEY_TOTP).now()
     assert lecturer.post("/api/v1/auth/mfa/verify/", {"code": code}, format="json").json()["mfa_verified"]
+    marking = lecturer.get("/api/v1/home/").json()["teaching"]["to_mark"]
+    assert [row["title"] for row in marking] == ["Crop calendar for a kitchen garden: 1 to mark"]
