@@ -494,3 +494,17 @@ def test_forums_of_a_site_one_cannot_open_are_unknown(make_forum, client_for, ma
     assert stranger.get(f"/api/v1/forums/{forum.id}/").status_code == 404
     assert start(stranger, forum).status_code == 404
     assert stranger.get("/api/v1/forums/").json() == []
+
+
+@pytest.mark.django_db
+def test_the_auditor_reads_a_forum_but_does_not_report_a_post(make_forum, learner, make_user, client_for):
+    """Found by the permission table (item 1.16): the auditor, who only reads, could file a report that hides
+    nothing but goes to every moderator."""
+    forum = make_forum()
+    thread = start(learner, forum).json()
+    post = reply(learner, thread["id"]).json()
+    auditor = client_for(make_user("auditor.forum", "auditor"))
+    assert auditor.get(f"/api/v1/threads/{thread['id']}/").status_code == 200
+    refused = auditor.post(f"/api/v1/posts/{post['id']}/report/", {"reason": "x"}, format="json")
+    assert refused.status_code == 403 and refused.json()["code"] == "permission_denied"
+    assert not PostReport.objects.exists()

@@ -4,7 +4,7 @@ import { SIGNED_OUT_EVENT, get } from "./api/client";
 import { ADMIN_ROLES, hasAnyRole, type Me } from "./api/types";
 import { usesCampusSwitch } from "./app/people";
 import { Shell } from "./app/Shell";
-import { adminAddress, captionsAddress, contentAddress, forumAddress, helpAddress, isToolsAdmin, messageAddress, packageAddress, siteAddress, useHashRoute } from "./app/router";
+import { adminAddress, captionsAddress, contentAddress, forumAddress, helpAddress, isTermsAddress, isToolsAdmin, messageAddress, packageAddress, siteAddress, useHashRoute } from "./app/router";
 import { AccountScreen } from "./features/account/AccountScreen";
 import { CalendarScreen } from "./features/calendar/CalendarScreen";
 import { ForumScreen } from "./features/forums/ForumScreen";
@@ -37,6 +37,9 @@ const CourseSetupScreen = lazy(() => import("./features/content/CourseSetupScree
 const TemplatesScreen = lazy(() => import("./features/course-admin/TemplatesScreen"));
 const TakedownsScreen = lazy(() => import("./features/course-admin/TakedownsScreen"));
 const StorageAllowancesScreen = lazy(() => import("./features/course-admin/StorageAllowancesScreen"));
+// --- terms: the term calendar (item 7.12), fetched when first opened ---
+const TermsScreen = lazy(() => import("./features/terms/TermsScreen"));
+// --- end terms ---
 // --- packaged content, the library and interchange (items 5.12 to 5.14, 6.08): loaded when first opened ---
 const PackageScreen = lazy(() => import("./features/packages/PackageScreen"));
 const TransferScreen = lazy(() => import("./features/packages/TransferScreen"));
@@ -91,6 +94,8 @@ export default function App() {
     const signedOut = (event: Event) => {
       setSignedOutReason((event as CustomEvent<string>).detail);
       setMe(null);
+      // A session that ended by itself (time-out) leaves no class list on the phone either (ASVS 8.2.3).
+      void import("./features/practicals/fieldCopy").then((m) => m.clearFieldCopies()).catch(() => undefined);
     };
     window.addEventListener(SIGNED_OUT_EVENT, signedOut);
     return () => window.removeEventListener(SIGNED_OUT_EVENT, signedOut);
@@ -204,6 +209,16 @@ export default function App() {
   else if (path === "/courses" || path === "/sites") screen = <MyCoursesScreen campusCode={campus} onNavigate={navigate} />;
   else if (path === "/account") screen = <AccountScreen />;
   else if (path.startsWith("/my-data")) screen = <MyDataScreen />;
+  // --- terms: the term calendar (item 7.12) ---
+  else if (isTermsAddress(path))
+    screen = hasAnyRole(me, ADMIN_ROLES) ? (
+      later(<TermsScreen />)
+    ) : (
+      <p role="alert" className="error">
+        The term calendar is for course administrators and administrators.
+      </p>
+    );
+  // --- end terms ---
   // Course administration parts of Admin (items 2.17, 2.19, 2.20); the console below owns #/admin itself.
   else if (admin && admin !== "home" && !hasAnyRole(me, ADMIN_ROLES))
     screen = (

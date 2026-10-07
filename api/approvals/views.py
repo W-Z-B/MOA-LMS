@@ -172,6 +172,19 @@ class DelegationViewSet(mixins.ListModelMixin, mixins.CreateModelMixin, viewsets
             return qs.none()
         return qs.filter(delegator=own) | qs.filter(delegate=own)
 
+    def create(self, request, *args, **kwargs):
+        # Stand-ins are named by members of staff (as the colleague search says), or by a course administrator
+        # for someone else; settled before the form is read, so a student is refused rather than corrected.
+        own = getattr(request.user, "person", None)
+        if not has_role(request.user, Role.COURSE_ADMIN) and (
+            own is None or own.kind != PersonRef.Kind.STAFF
+        ):
+            return Response(
+                {"code": "permission_denied", "detail": "Stand-ins are named by members of staff."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return super().create(request, *args, **kwargs)
+
     @transaction.atomic
     def perform_create(self, serializer):
         delegation = serializer.save(created_by=self.request.user)

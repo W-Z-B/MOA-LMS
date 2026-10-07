@@ -1,0 +1,24 @@
+# Alertmanager (Apache 2.0): where alerts go. An example; set the addresses and the SMTP relay GSA uses.
+# Secrets (the SMTP password) are read from a file kept beside this one, never committed.
+route:
+  receiver: lms-administrators
+  group_by: [alertname]
+  group_wait: 1m
+  repeat_interval: 4h
+  routes:
+    - matchers: [severity="critical"]
+      receiver: lms-administrators
+      repeat_interval: 1h
+    - matchers: [severity="info"]
+      receiver: lms-administrators
+      repeat_interval: 24h
+
+receivers:
+  - name: lms-administrators
+    email_configs:
+      - to: lms-administrators@gsa.example
+        from: lms-alerts@gsa.example
+        smarthost: smtp.gsa.example:587
+        auth_username: lms-alerts@gsa.example
+        auth_password_file: /etc/alertmanager/smtp_password
+        send_resolved: true

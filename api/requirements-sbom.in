@@ -1,0 +1,5 @@
+# The tool that writes the Python software bill of materials for each release (item 7.20): cyclonedx-py,
+# Apache 2.0. Installed only by the release job of CI, in a virtual environment of its own; never in an image.
+# Re-lock after editing:
+#   python -m piptools compile --generate-hashes --strip-extras --allow-unsafe -o requirements-sbom.txt requirements-sbom.in
+cyclonedx-bom==7.5.0

@@ -103,9 +103,10 @@ def test_groupings_are_managed_by_teaching_staff(site, client_for, lecturer, stu
 
 @pytest.mark.django_db
 def test_students_sign_up_to_open_groups_within_the_limits(
-    site, client_for, lecturer, student, other_student
+    site, client_for, lecturer, student, other_student, make_user
 ):
     teacher, learner, classmate = (client_for(p.user) for p in (lecturer, student, other_student))
+    auditor = client_for(make_user("auditor.groups", "auditor"))
     lab_a = SiteGroup.objects.create(site=site, name="Lab A")
     lab_b = SiteGroup.objects.create(site=site, name="Lab B")
     hand = SiteGroup.objects.create(site=site, name="Chosen by the lecturer")
@@ -155,6 +156,10 @@ def test_students_sign_up_to_open_groups_within_the_limits(
     hand.members.add(Membership.objects.get(site=site, person=student))
     assert learner.post(f"/api/v1/groups/{hand.id}/leave/").json()["code"] == "not_self_sign_up"
     assert teacher.post(f"/api/v1/groups/{lab_a.id}/join/").json()["code"] == "not_a_student"
+    # Leaving is refused alike (item 1.16): it was a 409 "not in this group" to the staff and the auditor.
+    for client in (teacher, auditor):
+        refused = client.post(f"/api/v1/groups/{field.id}/leave/")
+        assert refused.status_code == 403 and refused.json()["code"] == "not_a_student"
     assert teacher.delete(f"/api/v1/groups/{lab_b.id}/sign-up/").status_code == 204
     assert teacher.delete(f"/api/v1/groups/{lab_b.id}/sign-up/").status_code == 204
     assert not GroupSignUp.objects.filter(group=lab_b).exists()

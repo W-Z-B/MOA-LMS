@@ -11,6 +11,7 @@ from django.contrib.postgres.fields import ArrayField
 from django.db import models
 from django.db.models import Q
 
+from core.fields import EncryptedTextField
 from core.models import TimeStampedModel
 from core.uploads import feedback_name, submission_name
 
@@ -355,7 +356,8 @@ class Accommodation(TimeStampedModel):
     other_format = models.CharField(
         max_length=300, blank=True, help_text="Another format of material or assessment the student needs"
     )
-    reason = models.TextField(blank=True, help_text="Why; seen only by course administrators")
+    # Often a health matter: encrypted at rest, and masked in the audit log (ASVS 6.1.2).
+    reason = EncryptedTextField(null=True, blank=True, help_text="Why; seen only by course administrators")
     is_active = models.BooleanField(default=True)
 
     def __str__(self) -> str:

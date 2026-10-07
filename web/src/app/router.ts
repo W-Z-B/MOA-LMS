@@ -171,6 +171,12 @@ export function adminAddress(path: string): AdminPart | null {
 }
 // --- end content ---
 
+// --- terms: the term calendar, part of Admin for course administrators (item 7.12) ---
+
+/** #/admin/terms: the term calendar. */
+export const isTermsAddress = (path: string) => path.split("?")[0] === "/admin/terms";
+// --- end terms ---
+
 // --- talk: addresses inside forums, messages and a site's classes (items 4.08 to 4.15) ---
 
 /** #/forums/3 or #/forums/3/threads/7: a forum, and a thread in it. #/forums alone lists every forum. */

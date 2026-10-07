@@ -178,6 +178,10 @@ export interface Site {
   coursework_weight: string;
   my_role: SiteRole;
   members: number;
+  /** The term life-cycle (item 7.12): open, grace, closed (read-only for appeals) or archived. */
+  phase?: "open" | "grace" | "closed" | "archived";
+  /** Why nothing on the site can be changed, once it is closed. */
+  closed_notice?: string | null;
 }
 
 export interface ContentItem {

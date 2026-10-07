@@ -1,0 +1,25 @@
+/* The term calendar (item 7.12): long codes and dates wrap on a phone rather than widen the page. */
+.terms .item-title,
+.terms p,
+.term-sites li {
+  overflow-wrap: anywhere;
+}
+.term-sites {
+  margin-top: 8px;
+}
+.term-sites li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  align-items: baseline;
+  padding: 6px 0;
+  border-top: 1px solid var(--rule);
+}
+.term-sites a {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+.term-form {
+  max-width: 640px;
+}

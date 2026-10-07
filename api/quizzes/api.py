@@ -25,9 +25,9 @@ from rest_framework.routers import DefaultRouter
 from audit.services import record, snapshot
 from core import uploads
 from courses import richtext
-from courses.access import can_teach, person_of, site_role, visible_sites
+from courses.access import TaughtRecord, can_teach, person_of, site_role, visible_sites
 from courses.api import TeachingViewSet
-from courses.models import Membership
+from courses.models import CourseSite, Membership
 from iam.permissions import RolePermission
 from quizzes import formats, marking, schemas, services
 from quizzes.models import (
@@ -522,7 +522,10 @@ class AttemptSummarySerializer(serializers.ModelSerializer):
 
     def _visible(self, obj) -> bool:
         request = self.context.get("request")
-        return bool(request and can_teach(request.user, obj.quiz.site)) or services.student_sees_marks(obj)
+        teacher = self.context.get("teacher")  # worked out once for a whole list (item 7.08)
+        if teacher is None:
+            teacher = bool(request and can_teach(request.user, obj.quiz.site))
+        return teacher or services.student_sees_marks(obj)
 
     def get_score(self, obj) -> str | None:
         return (
@@ -543,6 +546,9 @@ class AttemptSummarySerializer(serializers.ModelSerializer):
 
 
 class QuizSerializer(serializers.ModelSerializer):
+    # The site is settled first: unknown when the caller cannot open it, refused when they do not teach on it
+    # (courses.access.TaughtRecord, item 1.15), before any other field is looked at.
+    site = TaughtRecord(CourseSite)
     max_mark = serializers.SerializerMethodField()
     my_status = serializers.SerializerMethodField()
 
@@ -685,11 +691,13 @@ class QuizViewSet(TeachingViewSet):
         """Teaching staff: every attempt. Students: their own."""
         quiz = self.get_object()
         services.finish_expired_attempts([quiz])
-        rows = quiz.attempts.select_related("student", "quiz")
-        if not can_teach(request.user, quiz.site):
+        rows = quiz.attempts.select_related("student", "quiz__site")
+        teacher = can_teach(request.user, quiz.site)
+        if not teacher:
             person = person_of(request.user)
             rows = rows.filter(student=person) if person else rows.none()
-        return Response(AttemptSummarySerializer(rows, many=True, context={"request": request}).data)
+        context = {"request": request, "teacher": teacher}
+        return Response(AttemptSummarySerializer(rows, many=True, context=context).data)
 
     @extend_schema(responses={200: OpenApiTypes.OBJECT})
     @action(detail=True, methods=["get"])
@@ -755,6 +763,9 @@ class QuizViewSet(TeachingViewSet):
 
 
 class QuizSlotSerializer(serializers.ModelSerializer):
+    # The quiz is settled first, as for the quiz itself (courses.access.TaughtRecord, item 1.15).
+    quiz = TaughtRecord(Quiz, "site")
+
     class Meta:
         model = QuizSlot
         fields = (
@@ -863,6 +874,9 @@ def _locked_response():
 
 
 class QuizOverrideSerializer(serializers.ModelSerializer):
+    # Named by id: a quiz on a site the caller cannot open reads as unknown, one they do not teach is refused,
+    # before any other field is looked at (courses.access.TaughtRecord, item 1.15).
+    quiz = TaughtRecord(Quiz, "site")
     student_no = serializers.CharField(source="student.external_id", read_only=True)
     student_name = serializers.CharField(source="student.full_name", read_only=True)
 

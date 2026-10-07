@@ -223,3 +223,31 @@ def test_a_course_question_bank_is_shared_to_a_department(
         format="json",
     )
     assert "source" in unsourced.json()
+
+
+@pytest.mark.django_db
+def test_only_who_added_it_or_an_administrator_changes_an_item_on_the_schools_shelf(
+    teacher, make_person, client_for, course_admin
+):
+    """Found by the permission table (item 1.16): any lecturer could change or remove an item another had put
+    on the whole School's shelf, which the library's rules give to no one but its author and the course
+    administrators."""
+    made = teacher.post(URL, oer(), format="multipart").json()
+    colleague = client_for(make_person("staff", "E0907", "Kofi", "Adams", "lecturer").user)
+    assert colleague.get(f"{URL}{made['id']}/").json()["may_change"] is False
+    assert colleague.patch(f"{URL}{made['id']}/", {"title": "Mine now"}, format="json").status_code == 403
+    assert colleague.delete(f"{URL}{made['id']}/").status_code == 403
+    assert teacher.patch(f"{URL}{made['id']}/", {"title": "Pest control"}, format="json").status_code == 200
+    assert client_for(course_admin).get(f"{URL}{made['id']}/").json()["may_change"] is True
+    assert client_for(course_admin).delete(f"{URL}{made['id']}/").status_code == 204
+
+
+@pytest.mark.django_db
+def test_sharing_a_bank_settles_the_course_first(teacher, site, make_person, client_for, student):
+    """Item 1.15, found by the permission table (1.16): a lecturer of another course was refused, which told
+    them that the bank existed; it now reads as unknown, as an id that is not there."""
+    bank = QuestionBank.objects.create(site=site, name="AGR101 bank")
+    outsider = client_for(make_person("staff", "E0908", "Kofi", "Adams", "lecturer").user)
+    unknown = outsider.post("/api/v1/library/banks/share/", {"bank": bank.id}, format="json")
+    assert unknown.status_code == 400 and "does not exist" in str(unknown.json()["bank"])
+    assert not SharedBank.objects.exists()

@@ -3,14 +3,18 @@ from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 from certificates.api import check_page, issuer_keys, issuer_profile
+from config.observability import metrics
 from config.views import health
 from iam.permissions import DocsPermission
 from integration.api import integration_urls, reference_urls, run_urls
 from packages.play import play
+from terms.api import download_archive
+from terms.api import router as terms_router
 
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/health/", health, name="health"),
+    path("api/metrics", metrics, name="metrics"),
     path("api/schema/", SpectacularAPIView.as_view(permission_classes=[DocsPermission]), name="schema"),
     path(
         "api/docs/",
@@ -44,6 +48,8 @@ urlpatterns = [
     path("api/v1/approvals/", include("approvals.urls")),
     path("api/v1/staff-development/", include("staffdev.api")),
     path("api/v1/", include("certificates.api")),
+    path("api/v1/", include(terms_router.urls)),
+    path("api/v1/site-archives/<int:pk>/download/", download_archive, name="site-archive-download"),
     # Outside tools (item 6.07): registering and placing them, and the LTI 1.3 addresses tools use.
     path("api/v1/", include("lti.api")),
     path("api/lti/", include("lti.views")),
@@ -63,3 +69,6 @@ urlpatterns = [
 ]
 
 # Course files and submissions are never served from MEDIA_URL; downloads go through authenticated endpoints.
+
+# A failure the code did not handle answers in the {code, detail} shape with a reference (ASVS 7.4.1).
+handler500 = "config.observability.server_error"

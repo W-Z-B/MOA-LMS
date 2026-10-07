@@ -38,3 +38,9 @@ Thumbs.db
 web/coverage/
 web/test-results/
 web/playwright-report/
+
+# monitoring and backup secrets (deploy/monitoring/, scripts/backup.sh)
+deploy/monitoring/metrics_token
+deploy/monitoring/smtp_password
+*.agekey
+age-identity.txt

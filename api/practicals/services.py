@@ -40,19 +40,28 @@ def coursework_tasks(site, student, *, released_only: bool = False, now=None) ->
     """coursework_items with the task and its state, for the working of the total (items 2.28, 2.30):
     (task, fraction, state), state being "graded", "zero" (closed, never observed), "pending" (observed,
     not released for the student's own view) or "not_due" (not yet observed and still open)."""
+    from assessments import preload
+
     now = now or timezone.now()
     items: list[tuple] = []
-    tasks = site.practical_tasks.filter(is_published=True, weight__gt=0)
+    loaded = preload.current(site)
+    tasks = loaded.practical_tasks if loaded else site.practical_tasks.filter(is_published=True, weight__gt=0)
     for task in tasks:
-        observations = task.observations.filter(student=student)
-        counted = observations.filter(is_released=True) if released_only else observations
-        latest = counted.order_by("-attempt").prefetch_related("results__criterion").first()
+        if loaded is not None:  # the whole class read at once (assessments.preload)
+            observed = loaded.observations.get((task.id, student.pk), [])
+            counted = [o for o in observed if o.is_released] if released_only else observed
+            latest, any_observed = (counted[0] if counted else None), bool(observed)
+        else:
+            observations = task.observations.filter(student=student)
+            counted = observations.filter(is_released=True) if released_only else observations
+            latest = counted.order_by("-attempt").prefetch_related("results__criterion").first()
+            any_observed = latest is not None or observations.exists()
         if latest is not None:
             items.append((task, latest.fraction(), "graded"))
-        elif not observations.exists() and task.closes_at is not None and task.closes_at < now:
+        elif not any_observed and task.closes_at is not None and task.closes_at < now:
             items.append((task, Decimal(0), "zero"))
         else:
-            items.append((task, None, "pending" if observations.exists() else "not_due"))
+            items.append((task, None, "pending" if any_observed else "not_due"))
     return items
 
 

@@ -15,6 +15,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 
+from assessments import preload
 from assessments.models import GradeCategory, SrmsTransfer
 from assessments.services import coursework_working, gradebook, public_working
 from audit.services import record, record_event
@@ -218,12 +219,17 @@ def export(request, pk: int):
         after={"site": site.code, "rows": len(book["rows"])},
     )
 
+    with preload.preloaded(site):  # the whole class read at once (item 7.08)
+        works = {
+            row["student_no"]: coursework_working(site, members.get(row["student_no"]))
+            for row in book["rows"]
+        }
+
     def lines():
         writer = csv.writer(_Echo())
         yield "﻿" + writer.writerow([_cell(c) for c in header])
         for row in book["rows"]:
-            person = members.get(row["student_no"])
-            work = coursework_working(site, person)
+            work = works[row["student_no"]]
             by_key = {(i["kind"], i["id"]): i for i in work["items"]}
             cells = [row["student_no"], row["name"]]
             for a in book["assignments"]:

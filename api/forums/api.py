@@ -876,6 +876,8 @@ class PostViewSet(viewsets.GenericViewSet):
     @action(detail=True, methods=["post"])
     def report(self, request, pk=None):
         post = self._post()
+        if site_role(request.user, post.thread.forum.site) == "auditor":
+            raise PermissionDenied("Auditors read forums but do not report posts.")
         if post.deleted_at is not None:
             raise Refused("This post has already been removed.", code="removed")
         data = PostReportRequestSerializer(data=request.data)

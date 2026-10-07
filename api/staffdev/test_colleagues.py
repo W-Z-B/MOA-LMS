@@ -28,3 +28,29 @@ def test_students_and_people_without_a_staff_record_find_nobody(make_person, mak
     refused = client_for(student.user).get(URL, {"q": "joy"})
     assert refused.status_code == 403 and refused.json()["code"] == "permission_denied"
     assert client_for(make_user("no.record")).get(URL, {"q": "joy"}).status_code == 403
+
+
+@pytest.mark.django_db
+def test_only_staff_name_stand_ins(make_person, make_user, client_for, staff):
+    """A student, or an account without a staff record, is refused before the form is read (item 1.16);
+    a student could name a member of staff to decide things in their place."""
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    from approvals.models import Delegation
+
+    url = "/api/v1/approvals/delegations/"
+    today = timezone.localdate()
+    body = {
+        "delegate": staff.pk,
+        "starts": today.isoformat(),
+        "ends": (today + timedelta(days=3)).isoformat(),
+    }
+    student = make_person("student", "S0302", "Devi", "Learner")
+    refused = client_for(student.user).post(url, body, format="json")
+    assert refused.status_code == 403 and refused.json()["code"] == "permission_denied"
+    assert client_for(make_user("no.record.2", "auditor")).post(url, body, format="json").status_code == 403
+    assert not Delegation.objects.exists()
+    supervisor = make_person("staff", "E0303", "Mark", "Boss")
+    assert client_for(supervisor.user).post(url, body, format="json").status_code == 201

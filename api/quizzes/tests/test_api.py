@@ -342,6 +342,31 @@ def test_an_expired_attempt_is_submitted_when_fetched(site, student, client_for,
 
 
 @pytest.mark.django_db
+def test_a_quiz_write_settles_the_site_before_anything_else(
+    site, student, make_person, client_for, make_question, make_quiz
+):
+    """Item 1.15, found by the permission table (1.16): a student adding a question to a quiz was told what
+    was wrong with the question rather than refused, and a lecturer of another course learnt that the site
+    existed."""
+    question = make_question()
+    quiz = make_quiz([])
+    learner = client_for(student.user)
+    slot = learner.post("/api/v1/quiz-slots/", {"quiz": quiz.id, "question": question.id}, format="json")
+    assert slot.status_code == 403 and slot.json()["code"] == "permission_denied"
+    assert learner.post("/api/v1/quizzes/", {"site": site.id}, format="json").status_code == 403
+    outsider = client_for(make_person("staff", "E0901", "Kofi", "Adams", "lecturer").user)
+    for url, body in (
+        ("/api/v1/quizzes/", {"site": site.id, "title": "Mine"}),
+        ("/api/v1/quiz-slots/", {"quiz": quiz.id, "question": question.id}),
+        ("/api/v1/quiz-overrides/", {"quiz": quiz.id, "student": student.id}),
+    ):
+        unknown = outsider.post(url, body, format="json")
+        field = "site" if "site" in body else "quiz"
+        assert unknown.status_code == 400 and "does not exist" in str(unknown.json()[field]), url
+    assert not QuizSlot.objects.filter(quiz=quiz).exists()
+
+
+@pytest.mark.django_db
 def test_window_attempt_limits_and_overrides(site, lecturer, student, client_for, make_question, make_quiz):
     quiz = make_quiz([make_question()], attempts_allowed=1, time_limit_minutes=20)
     learner, teacher = client_for(student.user), client_for(lecturer.user)
