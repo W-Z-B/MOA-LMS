@@ -99,6 +99,9 @@ export const SITE_TABS = [
   // --- insight --- (items 6.01, 6.02, 3.11, 6.05): Insights for teaching staff, My progress for students
   "insights",
   "progress",
+  // --- tools and AI help --- (items 6.07, 6.11, 6.12): AI help is shown only where it may be used
+  "tools",
+  "ai",
 ] as const;
 export type SiteTab = (typeof SITE_TABS)[number];
 
@@ -255,3 +258,8 @@ export function insightsSection(path: string): InsightsSection {
   return INSIGHTS_SECTIONS.find((s) => s === part) ?? "overview";
 }
 // --- end insight ---
+
+// --- tools and AI help ---
+/** #/admin/tools: the outside tools course administrators register (item 6.07). */
+export const isToolsAdmin = (path: string) => path.split("?")[0] === "/admin/tools";
+// --- end tools and AI help ---

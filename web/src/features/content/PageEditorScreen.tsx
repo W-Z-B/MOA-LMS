@@ -3,6 +3,7 @@ import { errorMessage, get, patch, post } from "../../api/client";
 import type { AccessibilityIssue, Contents, Item } from "../../api/types-content";
 import { documentKind } from "../../api/types-content";
 import { useCrumb } from "../../app/frame";
+import { useAltSuggestions } from "../ai/altText";
 import { RichEditor, type Picture } from "./RichEditor";
 import "./content.css";
 
@@ -54,6 +55,7 @@ export default function PageEditorScreen({ siteId, itemId, moduleId, onNavigate 
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const asked = useRef(0);
   useCrumb(page ? `Editing ${page.title}` : "New page");
+  const describe = useAltSuggestions(siteId); // AI help with alternative text, where it is on (item 6.11)
 
   // The accessibility check, run on the server's own rules a moment after the writer stops typing.
   const check = useCallback((html: string) => {
@@ -170,7 +172,7 @@ export default function PageEditorScreen({ siteId, itemId, moduleId, onNavigate 
           <span className="field-label">
             Text
           </span>
-          <RichEditor key={page?.id ?? "new"} initialHtml={page?.body ?? ""} onChange={write} pictures={pictures} label="Page text" />
+          <RichEditor key={page?.id ?? "new"} initialHtml={page?.body ?? ""} onChange={write} pictures={pictures} label="Page text" describe={describe} />
         </div>
         <aside className="editor-side" aria-labelledby="check-title">
           <h2 id="check-title">Accessibility check</h2>

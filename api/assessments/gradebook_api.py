@@ -208,6 +208,7 @@ def export(request, pk: int):
     header += [f"{q['title']} (%)" for q in book["quizzes"]]
     practicals = list(site.practical_tasks.filter(is_published=True, weight__gt=0))
     header += [f"{t.title} (%)" for t in practicals]
+    header += [f"{t['title']} ({t['tool']}, %)" for t in book["tools"]]  # outside tools (item 6.07)
     header += [f"{c['name']} (%)" for c in categories]
     header += ["Coursework (%)", "Working"]
     record_event(
@@ -236,6 +237,9 @@ def export(request, pk: int):
                 cells.append(
                     item["percent"] if item and item["percent"] is not None else STATE_WORDS[item["state"]]
                 )
+            for t in book["tools"]:
+                cell = row["tools"][str(t["id"])]
+                cells.append(cell["percent"] if cell["percent"] is not None else STATE_WORDS[cell["state"]])
             cells += [row["categories"].get(str(c["id"])) or "" for c in categories]
             cells += [row["coursework_percent"] or "", _working_text(work["items"])]
             yield writer.writerow([_cell(c) for c in cells])
