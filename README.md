@@ -16,6 +16,10 @@ Same stack and licence policy as the HRMS: Django 5, Django REST Framework, Post
 Caddy, Docker Compose. Only permissive licences ship, with the named LGPL and MPL exceptions of
 [ADR 0002](docs/adr/0002-licence-policy.md). Setup: [docs/SETUP.md](docs/SETUP.md); how to contribute and the
 quality gates: [CONTRIBUTING.md](CONTRIBUTING.md); decisions: [docs/adr](docs/adr/README.md).
+Going live: the lecturer training pack [docs/training](docs/training/README.md), acceptance scripts by role
+[docs/acceptance](docs/acceptance/README.md), the [pilot plan](docs/pilot-plan.md), the
+[migration guide](docs/migration-guide.md) for existing material, and keeping the skeleton shared with the HRMS
+and SRMS in step: [docs/shared-skeleton.md](docs/shared-skeleton.md).
 
 **Status:** scaffold with working API and web screens. 21 backend tests pass against PostgreSQL.
 
@@ -28,6 +32,7 @@ quality gates: [CONTRIBUTING.md](CONTRIBUTING.md); decisions: [docs/adr](docs/ad
 | `api/assessments` | Assignments with weights, submissions (text or file, late flag, closed when late work is not allowed), marking with release control, gradebook, weighted coursework percentage |
 | `api/privacy` | Versioned privacy notice acknowledged at sign-in, a person's own record to read and download, correction requests, the retention schedule with disposal approved by a second person, the breach register (see `docs/privacy/`) |
 | `api/integration` | Scoped service keys; sites and class lists pulled from the SRMS; coursework totals pushed to the SRMS; staff training completions pushed to the HRMS |
+| `api/helpdesk` | Help requests from any page, answered by course administrators (item 7.17); the help pages themselves are in `web/src/features/help` |
 | `api/core`, `api/audit`, `api/iam`, `api/notifications` | Shared skeleton: field encryption, insert-only audit log, system roles, session login with TOTP, account lockout, notifications |
 | `web/` | My courses, course site with content, assignments (submit, mark, release), gradebook and announcements |
 
@@ -38,6 +43,7 @@ cp .env.example .env && sh scripts/gen-secret.sh      # paste the two lines into
 docker compose up -d --build
 docker compose exec api python manage.py migrate
 docker compose exec api python manage.py seed
+docker compose exec api python manage.py seed_orientation   # the students' orientation course (item 7.16)
 docker compose exec api python manage.py createsuperuser
 ```
 

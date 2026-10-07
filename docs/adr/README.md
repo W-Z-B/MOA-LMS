@@ -34,7 +34,7 @@ the recommended answer"; GSA may revise any of them by a new record.
 
 | Decision | Question | Why there is no record |
 |---|---|---|
-| D9 | GSA's outstanding answers: what is used today, courses and lecturers per campus, the coursework and examination split, competency-based programmes, attendance rules, devices and connectivity, a data protection contact, hosting | An information request to GSA (item 0.14), not a design choice. No real learner data is loaded until it is answered. |
+| D9 | GSA's outstanding answers: what is used today, courses and lecturers per campus, the coursework and examination split, competency-based programmes, attendance rules, devices and connectivity, a data protection contact, hosting | An information request to GSA (item 0.14), not a design choice: GSA-LMS-Information-Request.md, kept with the planning documents, version 1.0 of 6 October 2026, reply requested by 27 October 2026. No real learner data is loaded until it is answered. |
 | D11 | Branch protection and the issue board | A repository setting for the owner (item 0.22); the gates in [ADR 0009](0009-quality-tooling.md) bind only once it is on. |
 
 To accept a proposed record, change its status line to "Accepted", with the date and who decided, in a pull

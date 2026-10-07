@@ -192,12 +192,14 @@ def record_completion(entry: CatalogueEntry, person, *, request=None, how: str, 
             issue(request, completion, template_code=entry.certificate_template)
         transaction.on_commit(lambda: _report(completion.pk))
     if person.user is not None and person.user.is_active:
+        # Only staff completions go to the HRMS; a student (the orientation course, item 7.16) is not told so.
+        staff = person.kind == person.Kind.STAFF
         notify(
             [person.user],
             title=f"You have completed {entry.site.title}",
-            body="Well done. It is sent to your training record in the HRMS."
+            body=("Well done. It is sent to your training record in the HRMS." if staff else "Well done.")
             + (f" It is valid until {expires:%d/%m/%Y}." if expires else ""),
-            link="/staff-development",
+            link="/staff-development" if staff else f"/sites/{entry.site_id}",
             dedupe_key=f"completed:{completion.pk}:{today:%Y%m%d}",
         )
     paths.unlock_next(person, entry.site, request=request)
