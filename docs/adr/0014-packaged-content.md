@@ -1,6 +1,7 @@
 # ADR 0014: Packaged content: SCORM and H5P players
 
-**Status:** proposed (decision D2); not yet taken. The items it holds up (0.07, 5.12, 5.13) wait for it.
+**Status:** accepted on the recommended answer, 5 October 2026 (decision D2); GSA may revise. Built as
+[ADR 0030](0030-packaged-content-as-built.md) records (items 5.12, 5.13, 6.09).
 **Date:** 5 October 2026.
 
 ## Context

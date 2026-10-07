@@ -214,6 +214,16 @@ class ContentItemSerializer(ReleaseFields):
                 }
             )
         kind = attrs.get("kind") or (instance.kind if instance else ContentItem.Kind.PAGE)
+        # Packages are checked and kept through /packages/ (items 5.12, 5.13), and stay packages.
+        was_package = instance is not None and instance.kind == ContentItem.Kind.PACKAGE
+        if (kind == ContentItem.Kind.PACKAGE) != was_package and (instance is None or "kind" in attrs):
+            raise serializers.ValidationError(
+                {"kind": ["Put a SCORM package or an H5P file up as a package; a package stays a package."]}
+            )
+        if was_package and attrs.get("file"):
+            raise serializers.ValidationError(
+                {"file": ["Put a new version of a package up as a new package."]}
+            )
         self.check_release(attrs, site, instance)
         self._check_licence(attrs, kind)
         if instance is None and kind == ContentItem.Kind.FILE and not attrs.get("file"):
@@ -972,6 +982,9 @@ class ContentItemViewSet(TeachingViewSet):
         item = get_object_or_404(self.get_queryset(), pk=pk)
         if not item.file:
             return Response({"code": "no_file", "detail": "This item has no file."}, status=404)
+        if item.kind == ContentItem.Kind.PACKAGE and not can_teach(request.user, item.module.site):
+            # A package is opened in its player, which records the attempt; its zip is for teaching staff.
+            return Response({"code": "no_file", "detail": "Open the package from the course."}, status=404)
         record(request, "download", item, after={"title": item.title})
         self._complete(item, ItemCompletion.How.DOWNLOADED)
         return FileResponse(
@@ -990,6 +1003,11 @@ class ContentItemViewSet(TeachingViewSet):
         item = self.get_object()
         if site_role(request.user, item.module.site) != Membership.SiteRole.STUDENT:
             raise PermissionDenied("Only students of this course record their progress.")
+        if item.kind == ContentItem.Kind.PACKAGE:
+            return Response(
+                {"code": "completed_by_package", "detail": "A package is complete when you finish it."},
+                status=409,
+            )
         self._complete(item, ItemCompletion.How.MARKED)
         return Response(ContentItemSerializer(item, context=self.get_serializer_context()).data)
 
@@ -1036,6 +1054,9 @@ class ContentItemViewSet(TeachingViewSet):
                     copy.file.save(item.original_name or item.file.name, File(handle), save=False)
             copy.save()
             copy.groups.set(groups)
+            from packages.services import copy_package
+
+            copy_package(item, copy, keep_category=True)
             if is_video:
                 copy_video(item, copy, request.user)  # the copies, poster and captions too (item 4.06)
             record(request, "create", copy, after={**snapshot(copy), "copied_from": item.id})

@@ -8,6 +8,8 @@ import { ItemForm } from "./ItemForm";
 import { ReleaseEditor } from "./ReleaseEditor";
 import "./content.css";
 
+// Packages (items 5.12, 5.13): the form loads only when a package is put up.
+const PackageForm = lazy(() => import("../packages/PackageForm"));
 // --- media: lecture video and offline reading (items 4.03, 4.06), fetched when a course has them ---
 const VideoItem = lazy(() => import("../media/VideoItem"));
 const ModuleDownload = lazy(() => import("../media/ModuleDownload"));
@@ -20,7 +22,7 @@ interface Props {
 }
 
 type Release = { kind: "module"; id: number } | { kind: "item"; id: number };
-type Adding = { module: number; kind: "file" | "link" | "video" };
+type Adding = { module: number; kind: "file" | "link" | "video" | "package" };
 type Dragged = { item: number; from: number };
 
 /** Where a button that was used lives after the list is drawn again, so focus can go back to it. */
@@ -141,6 +143,8 @@ export function ContentTab({ data, teaching, onChanged }: Props) {
       {teaching && (
         <p className="setup-link">
           <a href={`#/sites/${siteId}/setup`}>Course setup: template, copy from another course, dates and storage</a>
+          {" · "}
+          <a href={`#/sites/${siteId}/transfer`}>Import or export content</a>
         </p>
       )}
       {error && (
@@ -235,14 +239,20 @@ export function ContentTab({ data, teaching, onChanged }: Props) {
                 >
                   <div className="item-head">
                     <h3 className="item-title">
-                      {i.kind === "page" ? <a href={`#/sites/${siteId}/pages/${i.id}`}>{i.title}</a> : i.title}
+                      {i.kind === "page" ? (
+                        <a href={`#/sites/${siteId}/pages/${i.id}`}>{i.title}</a>
+                      ) : i.kind === "package" ? (
+                        <a href={`#/sites/${siteId}/packages/${i.id}`}>{i.title}</a>
+                      ) : (
+                        i.title
+                      )}
                     </h3>
                     {!i.is_published && <span className="pill">Draft</span>}
                     {i.under_review && <span className="pill">Under review</span>}
                     {student &&
                       (i.completed ? (
                         <span className="done-mark">Complete</span>
-                      ) : (
+                      ) : i.kind === "package" ? null : (
                         <button
                           type="button"
                           className="secondary small-button"
@@ -328,6 +338,10 @@ export function ContentTab({ data, teaching, onChanged }: Props) {
                         <a className="button secondary small-button" href={`#/sites/${siteId}/pages/${i.id}/edit`}>
                           Edit page
                         </a>
+                      ) : i.kind === "package" ? (
+                        <a className="button secondary small-button" href={`#/sites/${siteId}/packages/${i.id}`}>
+                          Package settings and results
+                        </a>
                       ) : (
                         <button type="button" className="secondary small-button" onClick={() => setEditing(editing === i.id ? null : i.id)}>
                           Edit details
@@ -354,6 +368,9 @@ export function ContentTab({ data, teaching, onChanged }: Props) {
                       >
                         {i.is_published ? "Unpublish" : "Publish"}
                       </button>
+                      <a className="button secondary small-button" href={`#/library/share?item=${i.id}`}>
+                        Share to the library
+                      </a>
                     </div>
                   )}
                   {release?.kind === "item" && release.id === i.id && (
@@ -365,7 +382,7 @@ export function ContentTab({ data, teaching, onChanged }: Props) {
                       onClose={() => setRelease(null)}
                     />
                   )}
-                  {editing === i.id && i.kind !== "page" && (
+                  {editing === i.id && i.kind !== "page" && i.kind !== "package" && (
                     <ItemForm
                       moduleId={m.id}
                       kind={i.kind}
@@ -399,7 +416,19 @@ export function ContentTab({ data, teaching, onChanged }: Props) {
               ))}
             </ol>
             {teaching &&
-              (adding?.module === m.id ? (
+              (adding?.module === m.id && adding.kind === "package" ? (
+                <Suspense fallback={<p className="loading">Opening…</p>}>
+                  <PackageForm
+                    moduleId={m.id}
+                    onCancel={() => setAdding(null)}
+                    onSaved={(saved) => {
+                      setAdding(null);
+                      setStatus(saved.storage?.warning ?? `Added the package “${saved.title}”.`);
+                      onChanged();
+                    }}
+                  />
+                </Suspense>
+              ) : adding?.module === m.id && adding.kind !== "package" ? (
                 <ItemForm
                   moduleId={m.id}
                   kind={adding.kind}
@@ -421,6 +450,12 @@ export function ContentTab({ data, teaching, onChanged }: Props) {
                   <button type="button" className="secondary" onClick={() => setAdding({ module: m.id, kind: "link" })}>
                     Add a link
                   </button>
+                  <button type="button" className="secondary" onClick={() => setAdding({ module: m.id, kind: "package" })}>
+                    Add a SCORM or H5P package
+                  </button>
+                  <a className="button secondary" href="#/library">
+                    From the library
+                  </a>
                   <button type="button" className="secondary" onClick={() => setAdding({ module: m.id, kind: "video" })}>
                     Put a video up
                   </button>

@@ -66,6 +66,9 @@ export const PAGES: readonly Page[] = [
     for: usesLearning,
     under: ["/staff-development", "/certificates"],
   },
+  // --- packaged content and the library (items 5.12 to 5.14, 6.08) ---
+  { path: "/library", label: "Content library", desc: "Material and question banks shared across courses, with open resources", roles: ["lecturer", ...ADMIN_ROLES] },
+  // --- end packaged content ---
   { path: "/admin", label: "Admin", desc: "Accounts, audit log, integration runs, privacy, access review and course administration", roles: [...new Set([...CONSOLE_ROLES, ...ADMIN_ROLES])] },
   // --- help (item 7.17) ---
   { path: "/help", label: "Help", desc: "How to do each task, step by step, and asking for help" },
@@ -220,6 +223,27 @@ export function quizAddress(path: string): QuizView {
 }
 // --- end quizzes ---
 
+// --- packaged content, the library and interchange (items 5.12 to 5.14, 6.08) ---
+/**
+ * #/sites/4/packages/12   a SCORM package or H5P exercise (content item 12), in its player
+ * #/sites/4/transfer      import and export the course's content
+ * #/library, #/library/banks, #/library/share?item=12   the shared content library
+ */
+export type PackageRoute =
+  | { view: "package"; siteId: number; itemId: number }
+  | { view: "transfer"; siteId: number }
+  | { view: "library"; rest: string };
+
+export function packageAddress(path: string): PackageRoute | null {
+  const bare = path.split("?")[0];
+  const pkg = bare.match(/^\/sites\/(\d+)\/packages\/(\d+)\/?$/);
+  if (pkg) return { view: "package", siteId: Number(pkg[1]), itemId: Number(pkg[2]) };
+  const transfer = bare.match(/^\/sites\/(\d+)\/transfer\/?$/);
+  if (transfer) return { view: "transfer", siteId: Number(transfer[1]) };
+  const library = path.match(/^\/library(\/.*)?$/);
+  return library ? { view: "library", rest: library[1] ?? "" } : null;
+}
+// --- end packaged content ---
 // --- media ---
 /** #/sites/4/videos/12/captions: the captions of a lecture video, for its teaching staff (item 4.06). */
 export function captionsAddress(path: string): { siteId: number; itemId: number } | null {

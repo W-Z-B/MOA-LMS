@@ -4,7 +4,7 @@ import { SIGNED_OUT_EVENT, get } from "./api/client";
 import { ADMIN_ROLES, hasAnyRole, type Me } from "./api/types";
 import { usesCampusSwitch } from "./app/people";
 import { Shell } from "./app/Shell";
-import { adminAddress, captionsAddress, contentAddress, forumAddress, helpAddress, isToolsAdmin, messageAddress, siteAddress, useHashRoute } from "./app/router";
+import { adminAddress, captionsAddress, contentAddress, forumAddress, helpAddress, isToolsAdmin, messageAddress, packageAddress, siteAddress, useHashRoute } from "./app/router";
 import { AccountScreen } from "./features/account/AccountScreen";
 import { CalendarScreen } from "./features/calendar/CalendarScreen";
 import { ForumScreen } from "./features/forums/ForumScreen";
@@ -37,6 +37,11 @@ const CourseSetupScreen = lazy(() => import("./features/content/CourseSetupScree
 const TemplatesScreen = lazy(() => import("./features/course-admin/TemplatesScreen"));
 const TakedownsScreen = lazy(() => import("./features/course-admin/TakedownsScreen"));
 const StorageAllowancesScreen = lazy(() => import("./features/course-admin/StorageAllowancesScreen"));
+// --- packaged content, the library and interchange (items 5.12 to 5.14, 6.08): loaded when first opened ---
+const PackageScreen = lazy(() => import("./features/packages/PackageScreen"));
+const TransferScreen = lazy(() => import("./features/packages/TransferScreen"));
+const LibraryScreen = lazy(() => import("./features/packages/LibraryScreen"));
+// --- end packaged content ---
 // --- help (item 7.17): the help pages and their text load only when Help is opened ---
 const HelpScreen = lazy(() => import("./features/help/HelpScreen"));
 // --- end help ---
@@ -144,6 +149,7 @@ export default function App() {
   const admin = adminAddress(path);
   const forum = forumAddress(path);
   const messages = messageAddress(path);
+  const packaged = packageAddress(path);
   const captions = captionsAddress(path);
   const campus = usesCampusSwitch(me) ? campusCode : null;
   // Marking, rubrics, accommodations and notification settings have addresses of their own.
@@ -165,6 +171,12 @@ export default function App() {
         onNavigate={navigate}
       />,
     );
+  // --- packaged content, the library and interchange ---
+  else if (packaged?.view === "package")
+    screen = later(<PackageScreen key={packaged.itemId} siteId={packaged.siteId} itemId={packaged.itemId} />);
+  else if (packaged?.view === "transfer") screen = later(<TransferScreen siteId={packaged.siteId} />);
+  else if (packaged?.view === "library") screen = later(<LibraryScreen path={packaged.rest} onNavigate={navigate} />);
+  // --- end packaged content ---
   // --- media ---
   else if (captions) screen = later(<CaptionsScreen key={captions.itemId} siteId={captions.siteId} itemId={captions.itemId} />);
   else if (path === "/downloads") screen = later(<DownloadsScreen />);

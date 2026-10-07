@@ -97,3 +97,35 @@ class CertificateCheck(models.Model):
 
     def __str__(self) -> str:
         return f"{self.reference} checked at {self.at:%d/%m/%Y %H:%M}"
+
+
+class SigningKey(models.Model):
+    """The installation's Ed25519 key for signing Open Badges credentials (item 5.10). The private half is
+    encrypted at rest; retired keys stay so that credentials signed with them can still be checked."""
+
+    kid = models.CharField(max_length=40, unique=True)
+    public_jwk = models.JSONField(help_text="The public key as a JSON Web Key, as published")
+    private_pem = EncryptedTextField(
+        help_text="The private key (PKCS #8), encrypted with FIELD_ENCRYPTION_KEY"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    retired_at = models.DateTimeField(null=True, blank=True, help_text="No longer signs; still checks")
+
+    class Meta:
+        ordering = ["id"]
+
+    def __str__(self) -> str:
+        return self.kid
+
+
+class BadgeCredential(models.Model):
+    """A certificate as an Open Badges 3.0 credential, signed as a VC-JWT (item 5.10)."""
+
+    certificate = models.OneToOneField(Certificate, on_delete=models.CASCADE, related_name="badge")
+    credential_id = models.UUIDField(unique=True, help_text="The credential's id is urn:uuid:<this>")
+    jwt = models.TextField(help_text="The signed credential, as the holder downloads it")
+    key = models.ForeignKey(SigningKey, on_delete=models.PROTECT, related_name="credentials")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self) -> str:
+        return f"Badge for {self.certificate}"

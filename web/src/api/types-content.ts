@@ -35,7 +35,7 @@ export interface Released {
 export interface Item extends Released {
   id: number;
   module: number;
-  kind: "page" | "file" | "link" | "video";
+  kind: "page" | "file" | "link" | "video" | "package";
   title: string;
   /** A page's text: HTML cleaned on the server against an allow-list (courses.richtext). */
   body: string;
