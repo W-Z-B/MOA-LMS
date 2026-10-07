@@ -13,7 +13,7 @@ function NewRule({ onMade }: { onMade: (message: string) => void }) {
   const courses = useData<Paginated<CatalogueCourse>>("/staff-development/catalogue/");
   const [form, setForm] = useState(EMPTY);
   const action = useAction();
-  const set = (field: keyof typeof EMPTY) => (e: { target: { value: string } }) => setForm({ ...form, [field]: e.target.value });
+  const set = (field: keyof typeof EMPTY) => (e: { target: { value: string } }) => setForm((prev) => ({ ...prev, [field]: e.target.value }));
 
   const submit = (e: FormEvent) => {
     e.preventDefault();

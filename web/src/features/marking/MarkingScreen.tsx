@@ -462,7 +462,7 @@ function GroupMark({ assignment, rows, submission, onSaved }: { assignment: Assi
         {members.map((m) => (
           <label key={m.id}>
             Adjustment for {m.student_name || m.student_no} (+ or −)
-            <input type="number" step="any" value={adjust[m.student_no] ?? ""} onChange={(e) => setAdjust({ ...adjust, [m.student_no]: e.target.value })} />
+            <input type="number" step="any" value={adjust[m.student_no] ?? ""} onChange={(e) => setAdjust((prev) => ({ ...prev, [m.student_no]: e.target.value }))} />
           </label>
         ))}
         {error && (

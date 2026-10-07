@@ -245,7 +245,7 @@ function BankView({ bank }: { bank: QuestionBank }) {
         <legend>Show</legend>
         <label>
           Category
-          <select value={filter.category} onChange={(e) => setFilter({ ...filter, category: e.target.value })}>
+          <select value={filter.category} onChange={(e) => setFilter((prev) => ({ ...prev, category: e.target.value }))}>
             <option value="">All</option>
             {tree.map(({ category, depth }) => (
               <option key={category.id} value={category.id}>
@@ -257,7 +257,7 @@ function BankView({ bank }: { bank: QuestionBank }) {
         </label>
         <label>
           Type
-          <select value={filter.qtype} onChange={(e) => setFilter({ ...filter, qtype: e.target.value })}>
+          <select value={filter.qtype} onChange={(e) => setFilter((prev) => ({ ...prev, qtype: e.target.value }))}>
             <option value="">All</option>
             {(Object.keys(QTYPE_LABEL) as QType[]).map((t) => (
               <option key={t} value={t}>
@@ -268,10 +268,10 @@ function BankView({ bank }: { bank: QuestionBank }) {
         </label>
         <label>
           Tag
-          <input value={filter.tag} onChange={(e) => setFilter({ ...filter, tag: e.target.value })} />
+          <input value={filter.tag} onChange={(e) => setFilter((prev) => ({ ...prev, tag: e.target.value }))} />
         </label>
         <label className="inline">
-          <input type="checkbox" checked={filter.archived} onChange={(e) => setFilter({ ...filter, archived: e.target.checked })} />
+          <input type="checkbox" checked={filter.archived} onChange={(e) => setFilter((prev) => ({ ...prev, archived: e.target.checked }))} />
           Archived too
         </label>
       </fieldset>

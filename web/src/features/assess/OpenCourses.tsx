@@ -90,19 +90,19 @@ export function PublicOpenCourses() {
               <>
                 <label>
                   First name
-                  <input autoComplete="given-name" value={draft.first_name} onChange={(e) => setDraft({ ...draft, first_name: e.target.value })} required maxLength={80} />
+                  <input autoComplete="given-name" value={draft.first_name} onChange={(e) => setDraft((prev) => ({ ...prev, first_name: e.target.value }))} required maxLength={80} />
                 </label>
                 <label>
                   Last name
-                  <input autoComplete="family-name" value={draft.last_name} onChange={(e) => setDraft({ ...draft, last_name: e.target.value })} required maxLength={80} />
+                  <input autoComplete="family-name" value={draft.last_name} onChange={(e) => setDraft((prev) => ({ ...prev, last_name: e.target.value }))} required maxLength={80} />
                 </label>
                 <label>
                   Email address
-                  <input type="email" autoComplete="email" value={draft.email} onChange={(e) => setDraft({ ...draft, email: e.target.value })} required />
+                  <input type="email" autoComplete="email" value={draft.email} onChange={(e) => setDraft((prev) => ({ ...prev, email: e.target.value }))} required />
                 </label>
                 <label>
                   Course to join
-                  <select value={draft.site} onChange={(e) => setDraft({ ...draft, site: e.target.value })}>
+                  <select value={draft.site} onChange={(e) => setDraft((prev) => ({ ...prev, site: e.target.value }))}>
                     <option value="">Choose later</option>
                     {catalogue.courses
                       .filter((c) => c.places_left !== 0)
@@ -122,7 +122,7 @@ export function PublicOpenCourses() {
                   </div>
                 )}
                 <label className="inline">
-                  <input type="checkbox" checked={draft.privacy_accepted} onChange={(e) => setDraft({ ...draft, privacy_accepted: e.target.checked })} required /> I
+                  <input type="checkbox" checked={draft.privacy_accepted} onChange={(e) => setDraft((prev) => ({ ...prev, privacy_accepted: e.target.checked }))} required /> I
                   have read the privacy notice and accept it
                 </label>
                 {problem && (

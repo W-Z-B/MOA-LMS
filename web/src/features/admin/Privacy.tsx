@@ -18,11 +18,11 @@ function DraftForm({ start, onSave, label }: { start: { title: string; body: str
     <form className="stack sub-form" onSubmit={submit}>
       <label>
         Title
-        <input required maxLength={200} value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} />
+        <input required maxLength={200} value={draft.title} onChange={(e) => setDraft((prev) => ({ ...prev, title: e.target.value }))} />
       </label>
       <label>
         Text (Markdown)
-        <textarea required rows={10} value={draft.body} onChange={(e) => setDraft({ ...draft, body: e.target.value })} />
+        <textarea required rows={10} value={draft.body} onChange={(e) => setDraft((prev) => ({ ...prev, body: e.target.value }))} />
       </label>
       <div className="actions">
         <button type="submit" disabled={action.busy}>
