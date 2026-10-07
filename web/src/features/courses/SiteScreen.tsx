@@ -16,6 +16,12 @@ const LogbookTab = lazy(() => import("../practicals/LogbookTab").then((m) => ({ 
 // The quiz screens load when the Quizzes tab is first opened, so they add nothing to the shell (page weight).
 const QuizzesTab = lazy(() => import("../quizzes/QuizzesTab").then((m) => ({ default: m.QuizzesTab })));
 
+// --- insight --- (items 6.01, 6.02, 3.11, 6.05): Insights for teaching staff, My progress for students, loaded when opened.
+const InsightsTab = lazy(() => import("../insights/InsightsTab").then((m) => ({ default: m.InsightsTab })));
+const MyProgress = lazy(() => import("../insights/MyProgress").then((m) => ({ default: m.MyProgress })));
+const tabFor = (tab: SiteTab, teaching: boolean, student: boolean) => (tab === "insights" ? teaching : tab === "progress" ? student : true);
+// --- end insight ---
+
 interface Props {
   siteId: number;
   /** The tab named in the address (item 2.10), so each can be shared: #/sites/4/assignments. */
@@ -34,6 +40,8 @@ const TAB_LABEL: Record<SiteTab, string> = {
   groups: "Groups",
   practicals: "Practicals",
   logbook: "Logbook",
+  insights: "Insights",
+  progress: "My progress",
 };
 
 /**
@@ -91,7 +99,7 @@ export function SiteScreen({ siteId, tab, onTab }: Props) {
         )}
       </div>
       <div className="tabs" role="tablist">
-        {SITE_TABS.map((t) => (
+        {SITE_TABS.filter((t) => tabFor(t, teaching, data.site.my_role === "student")).map((t) => (
           <button key={t} role="tab" aria-selected={tab === t} className={tab === t ? "tab active" : "tab"} onClick={() => onTab(t)}>
             {TAB_LABEL[t]}
           </button>
@@ -110,6 +118,8 @@ export function SiteScreen({ siteId, tab, onTab }: Props) {
       <Suspense fallback={<p className="loading">Loading…</p>}>
         {tab === "practicals" && <PracticalsTab siteId={siteId} teaching={teaching} />}
         {tab === "logbook" && <LogbookTab siteId={siteId} teaching={teaching} />}
+        {tab === "insights" && teaching && <InsightsTab siteId={siteId} />}
+        {tab === "progress" && data.site.my_role === "student" && <MyProgress siteId={siteId} />}
       </Suspense>
     </>
   );

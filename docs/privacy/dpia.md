@@ -84,6 +84,10 @@ What the LMS records is kept to what teaching and security need (see `what-we-re
   the work itself is opened from the course, so the copy that may be emailed or saved is small.
 - An unreleased mark is not shown to the student until the lecturer releases it.
 - The audit entry of a disposal names which work was destroyed, never its content or its mark.
+- Course analytics and progress (items 6.01, 6.02) are worked out from what is already recorded; only the
+  first opening of each item is kept. Early alerts (item 6.05) follow visible rules with thresholds a course
+  administrator sets, carry their evidence, and are decided by a person; the student never sees a label.
+- Reports that leave a course hide totals about fewer than five people (item 6.06).
 
 ## 6. Rights of the people concerned
 

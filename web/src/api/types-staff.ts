@@ -15,7 +15,7 @@ export const PRIVACY_READERS = ["administrator", "dpo", "auditor"] as const;
 export const CORRECTION_READERS = ["administrator", "course_admin", "dpo", "auditor"] as const;
 export const AUDIT_READERS = ["administrator", "auditor"] as const;
 /** Everyone the console has a section for. */
-export const CONSOLE_ROLES = ["administrator", "course_admin", "auditor", "dpo"] as const;
+export const CONSOLE_ROLES = ["administrator", "course_admin", "auditor", "dpo", "registrar", "head_of_department"] as const;
 
 /** Staff development is for members of staff, and for those who look after it. */
 export const usesLearning = (me: Me) => me.person_kind === "staff" || hasAnyRole(me, OVERSEERS);

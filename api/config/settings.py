@@ -60,6 +60,7 @@ INSTALLED_APPS = [
     "calendars",
     "helpdesk",
     "rubrics",
+    "insights",
 ]
 
 MIDDLEWARE = [
@@ -143,6 +144,7 @@ SPECTACULAR_SETTINGS = {
         "QuizReviewEnum": "quizzes.models.Quiz.Review",
         "RubricKindEnum": "rubrics.models.Rubric.Kind",
         "NotificationKindEnum": "notifications.models.Notification.Kind",
+        "AlertKindEnum": "insights.models.AlertRule.Kind",
     },
 }
 
@@ -288,3 +290,11 @@ HELP_REQUESTS_PER_HOUR = int(env("HELP_REQUESTS_PER_HOUR", "5"))
 # enrolled on it at their first sign-in. On by default; set ORIENTATION_AUTO_ENROL=0 to enrol by hand.
 ORIENTATION_SITE_CODE = env("ORIENTATION_SITE_CODE", "GSA-LMS-ORIENTATION")
 ORIENTATION_AUTO_ENROL = env_bool("ORIENTATION_AUTO_ENROL", True)
+
+# Insight (phase 6, item 3.11). Reports that leave a course hide totals for groups smaller than this
+# (item 6.06); a student's standing on a learning outcome is "met" at this percentage of the evidence.
+REPORT_MIN_GROUP = int(env("REPORT_MIN_GROUP", "5"))
+OUTCOME_MET_PERCENT = int(env("OUTCOME_MET_PERCENT", "50"))
+# Competency results and outcome standings sent to the SRMS each night (item 6.10). Off until GSA decides
+# competency records (decision D8, ADR 0017) and the Registrar agrees the SRMS endpoint.
+SRMS_COMPETENCY_PUSH = env_bool("SRMS_COMPETENCY_PUSH", False)

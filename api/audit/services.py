@@ -55,6 +55,8 @@ def subject_of(instance) -> int | None:
         return instance.student_id
     if label == "assessments.mark":
         return instance.submission.student_id
+    if label == "insights.alert":  # an early alert is about the student (item 6.05)
+        return instance.student_id
     if hasattr(instance, "person_id"):  # memberships, completions, correction requests
         return instance.person_id
     if label == "auth.user":  # sign-ins and account changes belong to the person's history too

@@ -96,6 +96,9 @@ export const SITE_TABS = [
   // --- practicals --- (items 3.12 to 3.15): each has addresses below it, #/sites/4/practicals/12/observe
   "practicals",
   "logbook",
+  // --- insight --- (items 6.01, 6.02, 3.11, 6.05): Insights for teaching staff, My progress for students
+  "insights",
+  "progress",
 ] as const;
 export type SiteTab = (typeof SITE_TABS)[number];
 
@@ -241,3 +244,14 @@ export function helpAddress(path: string): HelpView | null {
   return { view: "role", role: first, task: second ?? null };
 }
 // --- end help ---
+
+// --- insight ---
+/** The parts of a site's Insights tab: #/sites/4/insights, /insights/progress, /insights/outcomes, /insights/alerts. */
+export const INSIGHTS_SECTIONS = ["overview", "progress", "outcomes", "alerts"] as const;
+export type InsightsSection = (typeof INSIGHTS_SECTIONS)[number];
+
+export function insightsSection(path: string): InsightsSection {
+  const part = path.split("?")[0].match(/^\/sites\/\d+\/insights\/([a-z]+)\/?$/)?.[1];
+  return INSIGHTS_SECTIONS.find((s) => s === part) ?? "overview";
+}
+// --- end insight ---

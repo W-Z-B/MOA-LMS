@@ -68,6 +68,8 @@ export default defineConfig({
         "src/features/quizzes/**",
         // --- help (item 7.17): the help pages, asking for help and help requests ---
         "src/features/help/**",
+        // Insight (items 3.11, 6.01 to 6.06): analytics, progress, outcomes, early alerts and the reports.
+        "src/features/insights/**",
       ],
       exclude: ["src/**/*.test.*", "src/test/**"],
       reporter: ["text"],

@@ -30,8 +30,15 @@ Our Data Protection Officer is [name or post], [email], [phone].
 - Each time you sign in or out, and from which network address; failed sign-in attempts.
 - Each time you download a course file or a submission.
 - Each submission, mark and change to a course, with who made it and when.
+- The first time you open each item of a course, to show your progress to you and your lecturers.
 
-We do not record how long you spend on a page, which pages you read, or where you are. We use no
+**Early alerts.** Each night the LMS checks three rules that anyone can read: work missed, marks that
+have fallen, and no activity on a course for some days. When one matches, your lecturers see it with the
+evidence (for example, the work that was not handed in), and a person decides whether to contact you. The
+LMS does not predict anything about you, decide anything about you, or label you; you can ask for these
+records as part of your data.
+
+We do not record how long you spend on a page, how often you read it, or where you are. We use no
 advertising or tracking cookies.
 
 **Why.** To run your courses, mark your work and send your coursework marks to the Student Records

@@ -21,6 +21,10 @@ class Role(TimeStampedModel):
     STUDENT = "student"
     AUDITOR = "auditor"
     DPO = "dpo"
+    # Reports (items 6.03, 6.04): a head of department reads them for the units of their grants
+    # (RoleScope.unit_code), the Registrar for their campus, or every campus when the grant names none.
+    HEAD_OF_DEPARTMENT = "head_of_department"
+    REGISTRAR = "registrar"
     CODES = (
         (ADMINISTRATOR, "System Administrator"),
         (COURSE_ADMIN, "Course Administrator"),
@@ -28,9 +32,12 @@ class Role(TimeStampedModel):
         (STUDENT, "Student"),
         (AUDITOR, "Auditor"),
         (DPO, "Data Protection Officer"),
+        (HEAD_OF_DEPARTMENT, "Head of Department"),
+        (REGISTRAR, "Registrar"),
     )
-    # Lecturers too (decision D14): they release marks that become results in the SRMS.
-    MFA_REQUIRED = frozenset({ADMINISTRATOR, COURSE_ADMIN, LECTURER})
+    # Lecturers too (decision D14): they release marks that become results in the SRMS. Heads of department
+    # and the Registrar read reports on marking and staff across their units or campuses.
+    MFA_REQUIRED = frozenset({ADMINISTRATOR, COURSE_ADMIN, LECTURER, HEAD_OF_DEPARTMENT, REGISTRAR})
 
     code = models.CharField(max_length=40, unique=True, choices=CODES)
     name = models.CharField(max_length=80)
