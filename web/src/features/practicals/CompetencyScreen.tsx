@@ -400,19 +400,19 @@ function ImportFramework({ onImported }: { onImported: (framework: FrameworkTree
       <div className="grid2">
         <label>
           Code
-          <input value={draft.code} onChange={(e) => setDraft({ ...draft, code: e.target.value })} required maxLength={40} placeholder="AGR-CROP-L2" />
+          <input value={draft.code} onChange={(e) => setDraft((prev) => ({ ...prev, code: e.target.value }))} required maxLength={40} placeholder="AGR-CROP-L2" />
         </label>
         <label>
           Version
-          <input value={draft.version} onChange={(e) => setDraft({ ...draft, version: e.target.value })} required maxLength={20} />
+          <input value={draft.version} onChange={(e) => setDraft((prev) => ({ ...prev, version: e.target.value }))} required maxLength={20} />
         </label>
         <label className="span2">
           Title
-          <input value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} required maxLength={200} />
+          <input value={draft.title} onChange={(e) => setDraft((prev) => ({ ...prev, title: e.target.value }))} required maxLength={200} />
         </label>
         <label className="span2">
           Published by
-          <input value={draft.source} onChange={(e) => setDraft({ ...draft, source: e.target.value })} maxLength={200} />
+          <input value={draft.source} onChange={(e) => setDraft((prev) => ({ ...prev, source: e.target.value }))} maxLength={200} />
         </label>
         <label className="span2">
           CSV file

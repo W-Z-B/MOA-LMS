@@ -173,14 +173,20 @@ function ParticipationMarks({ forum }: { forum: Forum }) {
                     max={forum.max_mark}
                     step="0.5"
                     value={entry.mark}
-                    onChange={(e) => setEntries({ ...entries, [row.person_id]: { ...entry, mark: e.target.value } })}
+                    onChange={(e) => {
+                      const mark = e.target.value;
+                      setEntries((prev) => ({ ...prev, [row.person_id]: { ...(prev[row.person_id] ?? entry), mark } }));
+                    }}
                   />
                 </label>
                 <label className="grow">
                   Feedback for {row.name}
                   <input
                     value={entry.feedback}
-                    onChange={(e) => setEntries({ ...entries, [row.person_id]: { ...entry, feedback: e.target.value } })}
+                    onChange={(e) => {
+                      const feedback = e.target.value;
+                      setEntries((prev) => ({ ...prev, [row.person_id]: { ...(prev[row.person_id] ?? entry), feedback } }));
+                    }}
                   />
                 </label>
                 <button className="secondary" disabled={!entry.mark} onClick={() => save(row)}>
@@ -260,7 +266,7 @@ export function ForumScreen({ forumId, onNavigate }: Props) {
             {FORUM_TYPE[forum.forum_type].label}. {FORUM_TYPE[forum.forum_type].explain}
           </p>
         </div>
-        <SubscribeButton subscribed={forum.subscribed} path={`/forums/${forum.id}`} onChange={(on) => setForum({ ...forum, subscribed: on })} />
+        <SubscribeButton subscribed={forum.subscribed} path={`/forums/${forum.id}`} onChange={(on) => setForum((prev) => prev && ({ ...prev, subscribed: on }))} />
       </div>
       {/* Cleaned on the server against an allow-list (courses.richtext). */}
       {forum.description && <div className="page-body" dangerouslySetInnerHTML={{ __html: forum.description }} />}

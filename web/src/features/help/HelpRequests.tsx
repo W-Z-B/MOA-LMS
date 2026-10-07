@@ -123,7 +123,7 @@ export function HelpRequests({ me, focus, onNavigate }: Props) {
                 <div className="help-form">
                   <label>
                     Your answer
-                    <textarea rows={4} value={answers[row.id] ?? ""} onChange={(e) => setAnswers({ ...answers, [row.id]: e.target.value })} />
+                    <textarea rows={4} value={answers[row.id] ?? ""} onChange={(e) => setAnswers((prev) => ({ ...prev, [row.id]: e.target.value }))} />
                   </label>
                   <div>
                     <button type="button" disabled={!(answers[row.id] ?? "").trim()} onClick={() => answer(row)}>

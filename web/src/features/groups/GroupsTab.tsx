@@ -301,7 +301,7 @@ function ManageGroups({ siteId }: { siteId: number }) {
           <h3>{editing.id === null ? "New group" : `Change ${editing.name}`}</h3>
           <label>
             Name
-            <input required maxLength={80} value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })} />
+            <input required maxLength={80} value={editing.name} onChange={(e) => setEditing((prev) => prev && ({ ...prev, name: e.target.value }))} />
           </label>
           <fieldset>
             <legend>Students in it</legend>
@@ -311,7 +311,7 @@ function ManageGroups({ siteId }: { siteId: number }) {
                   <input
                     type="checkbox"
                     checked={editing.members.includes(s.membership_id)}
-                    onChange={() => setEditing({ ...editing, members: toggle(editing.members, s.membership_id) })}
+                    onChange={() => setEditing((prev) => prev && ({ ...prev, members: toggle(editing.members, s.membership_id) }))}
                   />
                   {s.name} <span className="muted small">{s.external_id}</span>
                 </label>
@@ -334,26 +334,26 @@ function ManageGroups({ siteId }: { siteId: number }) {
           <fieldset>
             <legend>How</legend>
             <label className="inline">
-              <input type="radio" name="by" checked={random.by === "groups"} onChange={() => setRandom({ ...random, by: "groups" })} />
+              <input type="radio" name="by" checked={random.by === "groups"} onChange={() => setRandom((prev) => prev && ({ ...prev, by: "groups" }))} />
               This many groups
             </label>
             <label className="inline">
-              <input type="radio" name="by" checked={random.by === "size"} onChange={() => setRandom({ ...random, by: "size" })} />
+              <input type="radio" name="by" checked={random.by === "size"} onChange={() => setRandom((prev) => prev && ({ ...prev, by: "size" }))} />
               Groups of at most this many
             </label>
           </fieldset>
           <div className="grid2">
             <label>
               {random.by === "groups" ? "Number of groups" : "Students in a group"}
-              <input required type="number" min="1" value={random.n} onChange={(e) => setRandom({ ...random, n: e.target.value })} />
+              <input required type="number" min="1" value={random.n} onChange={(e) => setRandom((prev) => prev && ({ ...prev, n: e.target.value }))} />
             </label>
             <label>
               Name the groups
-              <input value={random.prefix} maxLength={60} onChange={(e) => setRandom({ ...random, prefix: e.target.value })} />
+              <input value={random.prefix} maxLength={60} onChange={(e) => setRandom((prev) => prev && ({ ...prev, prefix: e.target.value }))} />
             </label>
             <label className="span2">
               Put them in a new set (optional), such as “Lab groups”
-              <input value={random.grouping} maxLength={80} onChange={(e) => setRandom({ ...random, grouping: e.target.value })} />
+              <input value={random.grouping} maxLength={80} onChange={(e) => setRandom((prev) => prev && ({ ...prev, grouping: e.target.value }))} />
             </label>
           </div>
           <div className="actions">
@@ -370,14 +370,14 @@ function ManageGroups({ siteId }: { siteId: number }) {
           <h3>New set of groups</h3>
           <label>
             Name, such as “Field groups”
-            <input required maxLength={80} value={newGrouping.name} onChange={(e) => setNewGrouping({ ...newGrouping, name: e.target.value })} />
+            <input required maxLength={80} value={newGrouping.name} onChange={(e) => setNewGrouping((prev) => prev && ({ ...prev, name: e.target.value }))} />
           </label>
           <fieldset>
             <legend>Groups in the set</legend>
             <div className="talk-choices">
               {groups.map((g) => (
                 <label key={g.id} className="inline">
-                  <input type="checkbox" checked={newGrouping.groups.includes(g.id)} onChange={() => setNewGrouping({ ...newGrouping, groups: toggle(newGrouping.groups, g.id) })} />
+                  <input type="checkbox" checked={newGrouping.groups.includes(g.id)} onChange={() => setNewGrouping((prev) => prev && ({ ...prev, groups: toggle(newGrouping.groups, g.id) }))} />
                   {g.name}
                 </label>
               ))}

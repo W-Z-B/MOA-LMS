@@ -272,7 +272,7 @@ export function ThreadScreen({ forumId, threadId }: Props) {
           </p>
         </div>
         <div className="actions">
-          <SubscribeButton subscribed={data.subscribed} path={`/threads/${threadId}`} onChange={(on) => setData({ ...data, subscribed: on })} />
+          <SubscribeButton subscribed={data.subscribed} path={`/threads/${threadId}`} onChange={(on) => setData((prev) => prev && ({ ...prev, subscribed: on }))} />
           {moderator && (
             <>
               <button className="secondary" onClick={() => flag("pin", !thread.is_pinned)}>

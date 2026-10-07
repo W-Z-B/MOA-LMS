@@ -33,7 +33,7 @@ export function PaperQuizzes({ quizId }: { quizId: number }) {
     setError(null);
     try {
       const made = await post<Paper>(`/quizzes/${quizId}/papers/`, { ...draft, versions: Number(draft.versions) });
-      setDraft({ ...draft, title: "" });
+      setDraft((d) => ({ ...d, title: "" }));
       load();
       setOpen(made.id);
     } catch (err) {
@@ -68,15 +68,15 @@ export function PaperQuizzes({ quizId }: { quizId: number }) {
         <div className="form-row">
           <label>
             Title
-            <input value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} required maxLength={160} />
+            <input value={draft.title} onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))} required maxLength={160} />
           </label>
           <label>
             Day it is sat
-            <input type="date" value={draft.sat_on} onChange={(e) => setDraft({ ...draft, sat_on: e.target.value })} required />
+            <input type="date" value={draft.sat_on} onChange={(e) => setDraft((d) => ({ ...d, sat_on: e.target.value }))} required />
           </label>
           <label>
             Versions
-            <select value={draft.versions} onChange={(e) => setDraft({ ...draft, versions: e.target.value })}>
+            <select value={draft.versions} onChange={(e) => setDraft((d) => ({ ...d, versions: e.target.value }))}>
               <option value="2">A and B</option>
               <option value="1">A only</option>
             </select>

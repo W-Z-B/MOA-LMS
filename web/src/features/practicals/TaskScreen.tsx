@@ -324,12 +324,12 @@ function NewCriterion({ task, onSaved, onError }: { task: PracticalTask; onSaved
       <h3>Add a criterion</h3>
       <label>
         What the assessor looks for
-        <input value={draft.text} onChange={(e) => setDraft({ ...draft, text: e.target.value })} placeholder="Bed formed to 1.2 m wide" required maxLength={300} />
+        <input value={draft.text} onChange={(e) => setDraft((prev) => ({ ...prev, text: e.target.value }))} placeholder="Bed formed to 1.2 m wide" required maxLength={300} />
       </label>
       <div className="grid2">
         <label>
           How it is marked
-          <select value={draft.kind} onChange={(e) => setDraft({ ...draft, kind: e.target.value as Criterion["kind"] })}>
+          <select value={draft.kind} onChange={(e) => setDraft((prev) => ({ ...prev, kind: e.target.value as Criterion["kind"] }))}>
             <option value="pass_fail">Met or not met</option>
             <option value="scored">A score</option>
           </select>
@@ -338,17 +338,17 @@ function NewCriterion({ task, onSaved, onError }: { task: PracticalTask; onSaved
           <>
             <label>
               Highest score
-              <input type="number" min={1} max={100} value={draft.max_score} onChange={(e) => setDraft({ ...draft, max_score: e.target.value })} required />
+              <input type="number" min={1} max={100} value={draft.max_score} onChange={(e) => setDraft((prev) => ({ ...prev, max_score: e.target.value }))} required />
             </label>
             <label>
               Score to pass
-              <input type="number" min={1} max={Number(draft.max_score) || 1} value={draft.pass_score} onChange={(e) => setDraft({ ...draft, pass_score: e.target.value })} required />
+              <input type="number" min={1} max={Number(draft.max_score) || 1} value={draft.pass_score} onChange={(e) => setDraft((prev) => ({ ...prev, pass_score: e.target.value }))} required />
             </label>
           </>
         )}
       </div>
       <label className="inline check-row">
-        <input type="checkbox" checked={draft.is_critical} onChange={(e) => setDraft({ ...draft, is_critical: e.target.checked })} />
+        <input type="checkbox" checked={draft.is_critical} onChange={(e) => setDraft((prev) => ({ ...prev, is_critical: e.target.checked }))} />
         <span>Critical: it must be met for the task to be passed</span>
       </label>
       {task.is_published && (

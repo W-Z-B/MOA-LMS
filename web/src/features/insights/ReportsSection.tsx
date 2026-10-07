@@ -39,7 +39,7 @@ export default function ReportsSection({ me }: { me: Me }) {
 function CoursesReport() {
   const [filters, setFilters] = useState({ campus: "", programme: "", term: "" });
   const { data, error } = useLoad<CourseReport>(`/reports/courses/${query(filters)}`, "Could not load the report.");
-  const set = (key: keyof typeof filters) => (e: { target: { value: string } }) => setFilters({ ...filters, [key]: e.target.value });
+  const set = (key: keyof typeof filters) => (e: { target: { value: string } }) => setFilters((prev) => ({ ...prev, [key]: e.target.value }));
   return (
     <section aria-labelledby="courses-report">
       <h2 id="courses-report">Courses</h2>
@@ -210,11 +210,11 @@ function StaffDevelopmentReport() {
       <div className="filters">
         <label>
           Campus
-          <input value={filters.campus} onChange={(e) => setFilters({ ...filters, campus: e.target.value.toUpperCase() })} maxLength={10} placeholder="Every campus" />
+          <input value={filters.campus} onChange={(e) => setFilters((prev) => ({ ...prev, campus: e.target.value.toUpperCase() }))} maxLength={10} placeholder="Every campus" />
         </label>
         <label>
           Completed since
-          <input type="date" value={filters.since} onChange={(e) => setFilters({ ...filters, since: e.target.value })} />
+          <input type="date" value={filters.since} onChange={(e) => setFilters((prev) => ({ ...prev, since: e.target.value }))} />
         </label>
         <a className="button" href={`/api/v1/reports/staff-development/export/${query(filters)}`} download>
           Export to a spreadsheet

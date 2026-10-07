@@ -58,7 +58,7 @@ export function CategoriesEditor({ siteId, onChanged }: { siteId: number; onChan
       </p>
       {rows.map((c) => {
         const row = edits[c.id] ?? { name: c.name, weight: c.weight, drop_lowest: String(c.drop_lowest) };
-        const put = (change: Partial<Row>) => setEdits({ ...edits, [c.id]: { ...row, ...change } });
+        const put = (change: Partial<Row>) => setEdits((prev) => ({ ...prev, [c.id]: { ...(prev[c.id] ?? row), ...change } }));
         return (
           <form
             key={c.id}
@@ -95,15 +95,15 @@ export function CategoriesEditor({ siteId, onChanged }: { siteId: number; onChan
       <form className="category-row" onSubmit={add} aria-label="New category">
         <label className="name">
           New category
-          <input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} placeholder="Practicals" required maxLength={80} />
+          <input value={draft.name} onChange={(e) => setDraft((prev) => ({ ...prev, name: e.target.value }))} placeholder="Practicals" required maxLength={80} />
         </label>
         <label>
           Weight
-          <input type="number" min={0.01} step="any" value={draft.weight} onChange={(e) => setDraft({ ...draft, weight: e.target.value })} required />
+          <input type="number" min={0.01} step="any" value={draft.weight} onChange={(e) => setDraft((prev) => ({ ...prev, weight: e.target.value }))} required />
         </label>
         <label>
           Drop lowest
-          <input type="number" min={0} max={10} value={draft.drop_lowest} onChange={(e) => setDraft({ ...draft, drop_lowest: e.target.value })} />
+          <input type="number" min={0} max={10} value={draft.drop_lowest} onChange={(e) => setDraft((prev) => ({ ...prev, drop_lowest: e.target.value }))} />
         </label>
         <div className="actions">
           <button type="submit">Add</button>
