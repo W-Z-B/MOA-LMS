@@ -24,7 +24,7 @@ the recommended answer"; GSA may revise any of them by a new record.
 | [0012](0012-new-components.md) | New components approved under the licence policy | D10 | Accepted on the recommended answer |
 | [0013](0013-lecturer-authenticator-code.md) | Lecturers use an authenticator code | D14 | Accepted on the recommended answer |
 | [0014](0014-packaged-content.md) | Packaged content: SCORM and H5P players | D2 | Proposed, open |
-| [0015](0015-video-and-captions.md) | Where video is kept, and how it is made light and captioned | D3 | Proposed, open |
+| [0015](0015-video-and-captions.md) | Where video is kept, and how it is made light and captioned | D3 | Accepted on the recommended answer |
 | [0016](0016-accounts-and-sign-on.md) | Accounts for students and lecturers, and when one sign-on comes | D7 | Proposed, open |
 | [0017](0017-competency-records.md) | Competency records beside marks | D8 | Proposed, open |
 | [0018](0018-text-and-whatsapp-notices.md) | Text messages and WhatsApp for urgent notices only | D12 | Proposed, open |

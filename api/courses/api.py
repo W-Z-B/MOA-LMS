@@ -50,6 +50,9 @@ from courses.models import (
 )
 from iam.permissions import RolePermission
 from iam.services import SITE_ADMIN_ROLES, has_role
+from video.copying import copy_video
+from video.serializers import VideoInfoSerializer
+from video.serializers import describe as describe_video
 
 # Licences that use someone else's material: where it comes from must be said.
 CREDITED = {
@@ -147,6 +150,10 @@ class ContentItemSerializer(ReleaseFields):
     storage = serializers.SerializerMethodField(
         help_text="The site's storage use after a file was saved, with a warning from 80%; null otherwise"
     )
+    video = serializers.SerializerMethodField(
+        help_text="For a video (item 4.06): its state, the qualities it plays in with their sizes, the "
+        "poster frame and the captions; null for every other kind"
+    )
 
     class Meta:
         model = ContentItem
@@ -175,6 +182,7 @@ class ContentItemSerializer(ReleaseFields):
             "under_review",
             "accessibility_issues",
             "storage",
+            "video",
         )
         read_only_fields = ("file_size", "under_review")
         extra_kwargs = {"position": {"required": False}}
@@ -212,6 +220,8 @@ class ContentItemSerializer(ReleaseFields):
             raise serializers.ValidationError({"file": ["Choose the file to put up."]})
         if instance is None and kind == ContentItem.Kind.LINK and not attrs.get("url"):
             raise serializers.ValidationError({"url": ["Give the web address the link goes to."]})
+        if instance is None and kind == ContentItem.Kind.VIDEO and not self.context.get("video_upload"):
+            raise serializers.ValidationError({"kind": ["Put a video up with its own form (POST /videos/)."]})
         body_format = attrs.pop("body_format", "html")
         if "body" in attrs:
             attrs["body"] = self._checked_body(attrs["body"], body_format, site)
@@ -283,6 +293,12 @@ class ContentItemSerializer(ReleaseFields):
 
     def get_storage(self, obj) -> dict | None:
         return getattr(self, "_storage", None)
+
+    @extend_schema_field(VideoInfoSerializer(allow_null=True))
+    def get_video(self, obj) -> dict | None:
+        if obj.kind != ContentItem.Kind.VIDEO:
+            return None
+        return describe_video(obj, teaching=role_on(self, obj.site) in TEACHING)
 
     def create(self, validated_data):
         if "position" not in validated_data:
@@ -882,19 +898,36 @@ class TakedownSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
+def items_for(request):
+    """Published items on the sites the user can open, and drafts only where they teach: a draft is
+    unknown to everyone else. A student does not see an item until its release conditions are met,
+    nor one under review for takedown. Lecture video and offline reading (the video app) use it too."""
+    user = request.user
+    items = ContentItem.objects.filter(module__site__in=visible_sites(user))
+    items = items.select_related("module__site", "requires_item").prefetch_related("groups")
+    items = items.filter(is_published=True) | items.filter(module__site__in=taught_sites(user))
+    hidden = release.hidden_items(request, items)
+    return items.exclude(id__in=hidden) if hidden else items
+
+
+OFFLINE = OpenApiParameter(
+    "offline",
+    OpenApiTypes.STR,
+    enum=["1"],
+    description="1: a copy kept to read offline, which records no progress",
+)
+
+
+def for_offline(request) -> bool:
+    """A copy fetched to read offline (item 4.03) is not the person reading it: it records no progress."""
+    return request.query_params.get("offline") == "1"
+
+
 class ContentItemViewSet(TeachingViewSet):
     serializer_class = ContentItemSerializer
 
     def get_queryset(self):
-        """Published items on the sites the user can open, and drafts only where they teach: a draft is
-        unknown to everyone else. A student does not see an item until its release conditions are met,
-        nor one under review for takedown."""
-        user = self.request.user
-        items = ContentItem.objects.filter(module__site__in=visible_sites(user))
-        items = items.select_related("module__site", "requires_item").prefetch_related("groups")
-        items = items.filter(is_published=True) | items.filter(module__site__in=taught_sites(user))
-        hidden = release.hidden_items(self.request, items)
-        return items.exclude(id__in=hidden) if hidden else items
+        return items_for(self.request)
 
     def get_serializer_class(self):
         return {
@@ -912,6 +945,8 @@ class ContentItemViewSet(TeachingViewSet):
     def _complete(self, item: ContentItem, how: str) -> None:
         """Record a student's progress through the item; anyone else's viewing records nothing."""
         person = person_of(self.request.user)
+        if for_offline(self.request):
+            return
         if person is None or site_role(self.request.user, item.module.site) != Membership.SiteRole.STUDENT:
             return
         completion, created = release.complete(person, item, how)
@@ -921,13 +956,17 @@ class ContentItemViewSet(TeachingViewSet):
             if state is not None:
                 state.completed.add(item.id)
 
+    @extend_schema(parameters=[OFFLINE])
     def retrieve(self, request, *args, **kwargs):
         item = self.get_object()
         if item.kind == ContentItem.Kind.PAGE:
             self._complete(item, ItemCompletion.How.VIEWED)  # opening a page completes it (item 2.16)
         return Response(self.get_serializer(item).data)
 
-    @extend_schema(responses={(200, "application/octet-stream"): OpenApiTypes.BINARY, 404: ErrorSerializer})
+    @extend_schema(
+        parameters=[OFFLINE],
+        responses={(200, "application/octet-stream"): OpenApiTypes.BINARY, 404: ErrorSerializer},
+    )
     @action(detail=True, methods=["get"])
     def download(self, request, pk=None):
         item = get_object_or_404(self.get_queryset(), pk=pk)
@@ -979,8 +1018,9 @@ class ContentItemViewSet(TeachingViewSet):
                 },
                 status=409,
             )
+        is_video = item.kind == ContentItem.Kind.VIDEO
         with transaction.atomic():
-            if item.file:
+            if item.file or is_video:
                 storage.require_room(site, item.file_size)
             item.module.items.filter(position__gt=item.position).update(position=F("position") + 1)
             groups = list(item.groups.all())
@@ -996,9 +1036,11 @@ class ContentItemViewSet(TeachingViewSet):
                     copy.file.save(item.original_name or item.file.name, File(handle), save=False)
             copy.save()
             copy.groups.set(groups)
+            if is_video:
+                copy_video(item, copy, request.user)  # the copies, poster and captions too (item 4.06)
             record(request, "create", copy, after={**snapshot(copy), "copied_from": item.id})
         serializer = ContentItemSerializer(copy, context=self.get_serializer_context())
-        if item.file:
+        if item.file or is_video:
             serializer._storage = storage.summary(site)
         return Response(serializer.data, status=201)
 
@@ -1121,6 +1163,7 @@ class AnnouncementViewSet(TeachingViewSet):
 
     @staticmethod
     def _notify(announcement):
+        from notifications.models import Notification
         from notifications.services import notify
 
         students = Membership.objects.filter(
@@ -1134,6 +1177,7 @@ class AnnouncementViewSet(TeachingViewSet):
             title=f"{announcement.site.code}: {announcement.title}",
             body=announcement.body[:500],
             link=f"/sites/{announcement.site_id}",
+            kind=Notification.Kind.ANNOUNCEMENT,
             dedupe_key=f"announcement:{announcement.id}",
         )
 

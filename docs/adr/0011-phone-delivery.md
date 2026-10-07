@@ -52,3 +52,30 @@ photographs of a field observation or logbook entry) records the account that ma
 sent only while that account is signed in. What one person left waiting is never sent under someone
 else's session; it stays on the device until its owner signs in again. A write with no owner, or made with
 no one signed in, is not kept.
+
+## Note on offline reading, data-light mode and push, 6 October 2026 (items 4.03 to 4.05)
+
+- **Offline reading (point 4).** "Keep to read offline" on a module asks the server what it needs
+  (`GET /api/v1/offline/modules/{id}/`: its pages, documents, the pictures its pages show, and each video in
+  the low copy with its poster frame and captions) and shows the space it will take, what cannot be kept
+  (links) and the space the device has left, before anything is fetched. The files go into a cache that
+  belongs to the signed-in person (`gsa-lms-offline-<account id>`); the service worker answers from it only
+  when the network cannot be reached and only while that person is signed in. Fetching them records no
+  progress (`offline=1`). Downloaded, under Me, lists what is kept with its size and removes it.
+- **Shared phones.** As for writes kept on a device: signing out removes everything the person kept; when
+  a different person signs in, whatever an earlier person left is removed before anything is shown. A session
+  that simply ends keeps the person's modules until they sign in again. Signing out also turns push off for
+  that device, so one person's notices never appear on a phone someone else is using.
+- **Data-light mode (point 6)** is a setting of the device, under Me (Downloaded), because it is about the
+  line the device is on. Until the person chooses, the browser's connection hints decide where it gives them
+  ("save data" or a 2G or 3G line: on; Wi-Fi or a cable: off), and otherwise it is on for a phone and off for
+  a computer. Pictures on pages and photographs wait behind a button with their size; video starts on the low
+  copy and fetches nothing, not even the poster frame, until Play; large downloads say their size.
+- **Push notices (point 5)** are Web Push with VAPID (pywebpush, a named exception under ADR 0002), off until
+  `VAPID_PUBLIC_KEY` and `VAPID_PRIVATE_KEY` are set (`python manage.py vapid_keys` makes a pair). A person
+  turns push on per device, and per kind of notification in the notification settings; released marks,
+  course announcements and reminders before a due date are kinds of their own. The job worker sends each
+  notice once it is committed. A notice carries only its title and the page it opens; its text stays behind
+  sign-in. A subscription may name only a known push service (`PUSH_SERVICE_HOSTS`), so the server never sends
+  a request to an address someone chose, and one the service reports gone, or that fails five times in a
+  row, is removed.

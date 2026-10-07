@@ -6,7 +6,7 @@ Run with:  python -m pytest -q -p no:django scripts
 from email.message import Message
 
 import pytest
-from check_licences import ALIASES, spdx_ok, verdict
+from check_licences import ALIASES, program_verdict, spdx_ok, verdict
 
 POLICY = {
     "permissive": ["MIT", "BSD", "BSD-3-Clause", "Apache-2.0", "PSF-2.0"],
@@ -72,3 +72,41 @@ def test_named_exception_passes_with_its_reason():
 def test_free_text_expression_field_is_understood():
     assert verdict("uritemplate", FakeDist(text="BSD 3-Clause OR Apache-2.0"), POLICY)[0]
     assert ALIASES["bsd 3-clause"] == "BSD-3-Clause"
+
+
+FFMPEG = {
+    "licence": "LGPL-2.1-or-later",
+    "check": {
+        "command": ["ffmpeg", "-L"],
+        "must_say": "Lesser General Public",
+        "build": ["ffmpeg", "-buildconf"],
+        "must_not_say": ["--enable-gpl", "--enable-nonfree"],
+    },
+}
+
+
+def answers(licence: str, build: str):
+    """A stand-in for subprocess.run: the program's licence text, then its build configuration."""
+    from subprocess import CompletedProcess
+
+    def run(command, **kwargs):
+        text = build if "-buildconf" in command else licence
+        return CompletedProcess(command, 0, stdout=text, stderr="")
+
+    return run
+
+
+def test_a_program_beside_the_product_must_say_its_licence_and_build():
+    found = lambda name: f"/usr/local/bin/{name}"  # noqa: E731
+    lgpl = "under the terms of the GNU Lesser General\nPublic License as published"
+    ok = program_verdict(FFMPEG, run=answers(lgpl, "--disable-network --enable-libopenh264"), which=found)
+    assert ok == (True, "LGPL-2.1-or-later")
+    gpl_build = program_verdict(FFMPEG, run=answers(lgpl, "--enable-gpl --enable-libx264"), which=found)
+    assert gpl_build == (False, "built with --enable-gpl")
+    gpl_text = program_verdict(FFMPEG, run=answers("GNU General Public License version 2", ""), which=found)
+    assert gpl_text[0] is False and "LGPL-2.1-or-later" in gpl_text[1]
+
+
+def test_a_program_not_installed_here_or_without_a_check_is_only_named():
+    assert program_verdict(FFMPEG, which=lambda name: None) == (True, "not installed here; not checked")
+    assert program_verdict({"licence": "MIT"}) == (True, "named: MIT")

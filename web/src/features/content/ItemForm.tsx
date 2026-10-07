@@ -3,7 +3,8 @@ import { errorMessage, patch, post } from "../../api/client";
 import type { Licence } from "../../api/types";
 import type { Item } from "../../api/types-content";
 
-type Kind = "file" | "link";
+/** A lecture video (item 4.06) is put up once, at POST /videos/, and prepared by the server. */
+type Kind = "file" | "link" | "video";
 
 const LICENCES: { value: Licence; label: string }[] = [
   { value: "gsa_own", label: "GSA's own material" },
@@ -48,6 +49,10 @@ export function ItemForm({ moduleId, kind, item, onSaved, onCancel }: Props) {
 
   async function save(e: FormEvent) {
     e.preventDefault();
+    if (kind === "video" && !item && !file) {
+      setError("Choose the video to put up.");
+      return;
+    }
     setSaving(true);
     setError(null);
     const fields = {
@@ -58,7 +63,12 @@ export function ItemForm({ moduleId, kind, item, onSaved, onCancel }: Props) {
     };
     try {
       let saved: Item;
-      if (kind === "file" && (file || !item)) {
+      if (kind === "video" && !item) {
+        const form = new FormData();
+        Object.entries({ ...fields, module: moduleId }).forEach(([key, value]) => form.set(key, String(value)));
+        if (file) form.set("file", file);
+        saved = await post<Item>("/videos/", form);
+      } else if (kind === "file" && (file || !item)) {
         const form = new FormData();
         Object.entries(item ? fields : { ...fields, module: moduleId, kind }).forEach(([key, value]) => form.set(key, String(value)));
         if (file) form.set("file", file);
@@ -72,7 +82,7 @@ export function ItemForm({ moduleId, kind, item, onSaved, onCancel }: Props) {
       }
       onSaved(saved);
     } catch (err) {
-      setError(errorMessage(err, kind === "file" ? "Could not save the file." : "Could not save the link."));
+      setError(errorMessage(err, kind === "link" ? "Could not save the link." : kind === "video" ? "Could not put the video up." : "Could not save the file."));
     } finally {
       setSaving(false);
     }
@@ -94,6 +104,12 @@ export function ItemForm({ moduleId, kind, item, onSaved, onCancel }: Props) {
             onChange={(e) => setFile(e.target.files?.[0] ?? null)}
             required={!item}
           />
+        </label>
+      )}
+      {kind === "video" && !item && (
+        <label>
+          Video (MP4, MOV or WebM, put up once: the server makes a low, a standard and a sound-only copy)
+          <input id={`${id}-file`} type="file" accept="video/*,.mp4,.m4v,.mov,.webm,.mkv,.3gp" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
         </label>
       )}
       {kind === "link" && (
@@ -146,7 +162,7 @@ export function ItemForm({ moduleId, kind, item, onSaved, onCancel }: Props) {
           Cancel
         </button>
         <button type="submit" disabled={saving}>
-          {saving ? "Saving…" : item ? "Save changes" : kind === "file" ? "Upload file" : "Add link"}
+          {saving ? (kind === "video" && !item ? "Putting it up…" : "Saving…") : item ? "Save changes" : kind === "file" ? "Upload file" : kind === "video" ? "Put the video up" : "Add link"}
         </button>
       </div>
     </form>

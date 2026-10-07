@@ -124,9 +124,12 @@ export function Shell({ me, path, onNavigate, onLogout, campusCode, onCampusChan
   const closeMenu = useCallback(() => setMenu(null), []);
 
   async function signOut() {
+    // This device stops receiving the person's push notices while they are still signed in to say so (4.04).
+    await import("../features/media/pushDevice").then((m) => m.forgetDevice()).catch(() => undefined);
     await post("/auth/logout/").catch(() => undefined);
-    // No class list kept for the field stays on the phone (ADR 0011).
+    // No class list kept for the field stays on the phone (ADR 0011), nor any module kept to read offline (4.03).
     await import("../features/practicals/fieldCopy").then((m) => m.clearFieldCopies()).catch(() => undefined);
+    await import("../features/media/offlineStore").then((m) => m.clearOffline()).catch(() => undefined);
     onLogout();
   }
 
