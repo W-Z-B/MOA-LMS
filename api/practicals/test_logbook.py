@@ -8,7 +8,7 @@ from django.utils import timezone
 from audit.models import AuditLog
 from courses.models import CourseSite, Membership
 from notifications.models import Notification
-from practicals.conftest import now_iso, photo
+from practicals.conftest import now_iso, photo, today_iso
 from practicals.models import CompetencyResult, LogbookEntry
 
 
@@ -189,7 +189,7 @@ def test_a_sign_off_from_the_phone_keeps_the_phones_time(site, student, lecturer
             "/api/v1/logbook/",
             {
                 "site": site.id,
-                "work_date": now_iso()[:10],
+                "work_date": today_iso(),
                 "unit_type": "pond",
                 "task": "Fed fingerlings",
                 "hours": "1.5",

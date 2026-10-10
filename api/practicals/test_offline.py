@@ -6,7 +6,7 @@ import uuid
 
 import pytest
 
-from practicals.conftest import now_iso, photo
+from practicals.conftest import now_iso, photo, today_iso
 from practicals.models import IdempotencyKey, LogbookEntry, LogbookPhoto, Observation
 
 
@@ -63,7 +63,7 @@ def test_a_refused_request_is_not_kept_so_it_can_be_corrected_and_sent_again(sit
     key = str(uuid.uuid4())
     entry = {
         "site": site.id,
-        "work_date": now_iso()[:10],
+        "work_date": today_iso(),
         "unit_type": "pond",
         "unit_text": "Pond 2, tilapia",
         "task": "Fed fingerlings and checked oxygen",
@@ -102,7 +102,7 @@ def test_sign_off_and_release_are_safe_to_resend(task, passing, student, lecture
         "/api/v1/logbook/",
         {
             "site": site.id,
-            "work_date": now_iso()[:10],
+            "work_date": today_iso(),
             "unit_type": "laboratory",
             "task": "Soil pH tests",
             "hours": "3",
