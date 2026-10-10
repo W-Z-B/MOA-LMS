@@ -12,6 +12,8 @@ from audit.models import AuditLog
 from courses.models import CourseSite
 from iam.models import Role
 from iam.permissions import RolePermission
+from insights.analytics import students_of
+from insights.outcomes import course_code_of, site_outcomes, standings
 from integration.auth import ServiceKeyAuthentication, scope
 from integration.models import CampusRef, IntegrationRun
 
@@ -73,7 +75,72 @@ def campuses(request):
     return Response([{"id": c.id, "code": c.code, "name": c.name} for c in CampusRef.objects.all()])
 
 
-integration_urls = [path("sites/", sites, name="integration-sites")]
+class OutcomeSummaryRowSerializer(serializers.Serializer):
+    campus_code = serializers.CharField(allow_blank=True)
+    course_code = serializers.CharField(allow_blank=True)
+    term_code = serializers.CharField(allow_blank=True)
+    student_count = serializers.IntegerField()
+    met_count = serializers.IntegerField()
+    not_yet_count = serializers.IntegerField()
+    no_evidence_count = serializers.IntegerField()
+
+
+def _outcome_counts(site: CourseSite) -> dict:
+    """One site's met / not-yet / no-evidence counts, from released marks (insights.outcomes.standings,
+    the same view a student would see of their own standing)."""
+    table = standings(site, students_of(site), released_only=True)
+    met = not_yet = no_evidence = 0
+    for student in table["students"]:
+        for cell in student["outcomes"].values():
+            if cell["standing"] == "met":
+                met += 1
+            elif cell["standing"] == "not_yet":
+                not_yet += 1
+            else:
+                no_evidence += 1
+    return {"met_count": met, "not_yet_count": not_yet, "no_evidence_count": no_evidence}
+
+
+@extend_schema(
+    responses=OutcomeSummaryRowSerializer(many=True),
+    summary="Course-outcome aggregates by campus and course (scope outcomes:read)",
+    tags=["integration"],
+)
+@api_view(["GET"])
+@authentication_classes([ServiceKeyAuthentication])
+@permission_classes([scope("outcomes:read")])
+def outcome_summary(request):
+    """Aggregated standings only (item X-02 of the ecosystem gap analysis): no student name or number.
+    One row per published site whose course has SRMS-sourced outcomes to stand on; a site with none is
+    left out, not sent as zero."""
+    rows = []
+    sites = CourseSite.objects.filter(is_published=True, source=CourseSite.Source.SRMS).order_by("code")
+    for site in sites:
+        if not site_outcomes(site):
+            continue
+        counts = _outcome_counts(site)
+        rows.append(
+            {
+                "campus_code": site.campus_code,
+                "course_code": course_code_of(site),
+                "term_code": site.term_code,
+                "student_count": len(students_of(site)),
+                **counts,
+            }
+        )
+    AuditLog.objects.create(
+        action="integration:outcome_summary.read",
+        entity="integration.serviceclient",
+        entity_id=request.auth.pk,
+        after={"client": request.auth.name, "count": len(rows)},
+    )
+    return Response(OutcomeSummaryRowSerializer(rows, many=True).data)
+
+
+integration_urls = [
+    path("sites/", sites, name="integration-sites"),
+    path("outcome-summary/", outcome_summary, name="integration-outcome-summary"),
+]
 reference_urls = [path("campuses/", campuses, name="reference-campuses")]
 
 

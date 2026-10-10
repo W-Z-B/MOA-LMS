@@ -174,6 +174,51 @@ def test_integration_api_requires_a_scoped_key(site):
 
 
 @pytest.mark.django_db
+def test_outcome_summary_counts_standings_with_no_student_name(site, assignment, student, other_student):
+    from insights.models import Outcome, OutcomeLink, SiteProfile
+
+    SiteProfile.objects.create(site=site, course_code="AGR101")
+    outcome = Outcome.objects.create(
+        source=Outcome.Source.SRMS, course_code="AGR101", code="LO1", text="Identify soil types"
+    )
+    OutcomeLink.objects.create(site=site, outcome=outcome, assignment=assignment)
+    submission = Submission.objects.create(
+        assignment=assignment, student=student, text="x", submitted_at=timezone.now()
+    )
+    Mark.objects.create(submission=submission, mark=40, is_released=True)  # 40/50 = 80%, above the 50% line
+
+    _, key = ServiceClient.issue("insights", ["outcomes:read"])
+    _, weak = ServiceClient.issue("other", ["sites:read"])
+
+    anonymous = APIClient().get("/api/v1/integration/outcome-summary/")
+    assert anonymous.status_code in (401, 403)
+    weak_client = APIClient()
+    weak_client.credentials(HTTP_AUTHORIZATION=f"Api-Key {weak}")
+    assert weak_client.get("/api/v1/integration/outcome-summary/").status_code == 403
+
+    client = APIClient()
+    client.credentials(HTTP_AUTHORIZATION=f"Api-Key {key}")
+    rows = client.get("/api/v1/integration/outcome-summary/").json()
+    assert rows == [
+        {
+            "campus_code": "MRP",
+            "course_code": "AGR101",
+            "term_code": "2026-27-S1",
+            "student_count": 2,
+            "met_count": 1,
+            "not_yet_count": 0,
+            "no_evidence_count": 1,
+        }
+    ]
+
+    local = CourseSite.objects.create(code="LOCAL-1", title="Local site", source="local", is_published=True)
+    SiteProfile.objects.create(site=local, course_code="")
+    # A site with no SRMS-sourced outcomes is left out, not sent as a zeroed row.
+    rows_after = client.get("/api/v1/integration/outcome-summary/").json()
+    assert len(rows_after) == 1
+
+
+@pytest.mark.django_db
 def test_a_key_held_by_the_platform_is_registered_without_being_printed(monkeypatch, capsys):
     from django.core.management import CommandError, call_command
 
