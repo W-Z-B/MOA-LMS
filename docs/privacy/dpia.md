@@ -101,7 +101,7 @@ The LMS owns no person and no result: it holds people by reference to the system
 |---|---|---|
 | SRMS to LMS, nightly | Offerings; students' number, name, email and campus; class lists | Date of birth, national identifiers, address, fees, results of other courses |
 | LMS to SRMS | Each student's weighted coursework percentage; attendance totals for courses that need them (SRMS side not built yet) | Individual submissions, feedback, attempts or messages |
-| HRMS to LMS | Staff number, name, email, campus, post, unit; required training | National identifiers, pay, health, address |
+| HRMS to LMS | Staff number, name, email, campus, post, unit, supervisor's staff number; required training by post, unit and campus (scope `training:read`, decision D13) | National identifiers, pay, health, address |
 | LMS to HRMS | Staff development completions | Anything about students |
 | SRMS and HRMS from LMS | Course sites: code, title, term, campus (scope `sites:read`) | Anything about people |
 

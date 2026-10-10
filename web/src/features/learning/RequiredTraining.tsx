@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { post } from "../../api/client";
+import { patch, post } from "../../api/client";
 import { hasAnyRole, type Me, type Paginated } from "../../api/types";
 import { MANAGERS, type CatalogueCourse, type RequiredTraining as Rule, type TrainingAssignment } from "../../api/types-staff";
 import { dmy } from "../../app/format";
@@ -81,8 +81,9 @@ function NewRule({ onMade }: { onMade: (message: string) => void }) {
 }
 
 /**
- * Required training (item 5.05), kept here by course administrators until the HRMS lists requirements
- * (decision D13): what is required of whom, assigning it now, and who is overdue. The auditor reads it.
+ * Required training (item 5.05): what is required of whom, assigning it now, and who is overdue. The auditor
+ * reads it. Course administrators keep their own requirements here; those the HRMS keeps (decision D13) are
+ * shown as such and are changed in the HRMS, not here.
  */
 export function RequiredTraining({ me }: { me: Me }) {
   const rules = useData<Paginated<Rule>>("/staff-development/required/", "Could not load the requirements.");
@@ -101,6 +102,14 @@ export function RequiredTraining({ me }: { me: Me }) {
       return assigned === 0 ? "Everyone it covers has it already." : `${rule.site_title}: assigned to ${assigned} more.`;
     });
 
+  const toggle = (rule: Rule) =>
+    action.run(async () => {
+      await patch<Rule>(`/staff-development/required/${rule.id}/`, { is_active: !rule.is_active });
+      rules.reload();
+      overdue.reload();
+      return rule.is_active ? `${rule.site_title}: no longer required.` : `${rule.site_title}: required again.`;
+    });
+
   return (
     <>
       <Section title="Required training" intro="Courses staff must take, by campus, unit and post as the HRMS records them.">
@@ -114,16 +123,31 @@ export function RequiredTraining({ me }: { me: Me }) {
                 <div className="row-head">
                   <span className="strong">{rule.site_title}</span>
                   {!rule.is_active && <span className="chip chip-draft">Not in force</span>}
+                  <span className="chip">{rule.source === "hrms" ? "From the HRMS" : "Kept in the LMS"}</span>
                 </div>
                 <span className="small muted">
                   For {rule.applies_to} · within {rule.due_days} days
                   {rule.renewal_months ? ` · again every ${rule.renewal_months} months` : ""} · {rule.assigned} assigned
                 </span>
-                {manages && rule.is_active && (
+                {manages && !rule.editable && <span className="small muted">Kept in the HRMS: change it there.</span>}
+                {manages && (rule.is_active || rule.editable) && (
                   <div className="row-actions">
-                    <button type="button" className="secondary" disabled={action.busy} onClick={() => assign(rule)} aria-label={`Assign now: ${rule.site_title}`}>
-                      Assign now
-                    </button>
+                    {rule.is_active && (
+                      <button type="button" className="secondary" disabled={action.busy} onClick={() => assign(rule)} aria-label={`Assign now: ${rule.site_title}`}>
+                        Assign now
+                      </button>
+                    )}
+                    {rule.editable && (
+                      <button
+                        type="button"
+                        className="secondary"
+                        disabled={action.busy}
+                        onClick={() => toggle(rule)}
+                        aria-label={`${rule.is_active ? "Stop requiring" : "Require again"}: ${rule.site_title}`}
+                      >
+                        {rule.is_active ? "Stop requiring" : "Require again"}
+                      </button>
+                    )}
                   </div>
                 )}
               </li>

@@ -118,6 +118,10 @@ export interface RequiredTraining {
   is_active: boolean;
   notes: string;
   assigned: number;
+  /** Who keeps it: course administrators here, or the HRMS (decision D13). */
+  source: "lms" | "hrms";
+  /** False while the LMS reads the HRMS's list and the HRMS keeps this one: change it there. */
+  editable: boolean;
 }
 
 export interface TrainingAssignment {

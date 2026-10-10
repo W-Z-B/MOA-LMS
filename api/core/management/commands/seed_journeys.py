@@ -83,7 +83,7 @@ from quizzes.models import QuestionBank, QuestionCategory
 from rubrics.models import Rubric
 from rubrics.services import replace_criteria
 from staffdev.completion import record_completion
-from staffdev.models import CatalogueEntry
+from staffdev.models import CatalogueEntry, RequiredTraining
 
 SITE = {
     "code": "AGR101-2026-27-S1-MRP",
@@ -606,6 +606,19 @@ class Command(BaseCommand):
                     certificate.check_code = CERTIFICATE_CODE
                     certificate.save(update_fields=["check_code"])
                 found = {"reference": certificate.reference, "code": CERTIFICATE_CODE}
+        # Required training (item 5.05, decision D13): one kept in the LMS, one read from the HRMS.
+        RequiredTraining.objects.get_or_create(
+            site=CourseSite.objects.get(code="SD-101"), post_title="Farm Supervisor", hrms_id=None
+        )
+        RequiredTraining.objects.get_or_create(
+            hrms_id=9001,
+            defaults={
+                "site": CourseSite.objects.get(code="SD-102"),
+                "source": RequiredTraining.Source.HRMS,
+                "unit_code": "FARM",
+                "renewal_months": 24,
+            },
+        )
         return found
 
     @staticmethod

@@ -60,12 +60,13 @@ Open https://lms.localhost:8445.
 ```bash
 docker network create gsa-ecosystem                                   # once per host
 # Keys issued in the HRMS and the SRMS for the client named "lms" go in .env:
-#   HRMS_API_KEY (scopes staff:read org:read training:write)
-#   SRMS_API_KEY (scopes academics:read marks:write)
+#   HRMS_API_KEY (scopes staff:read org:read training:write training:read)
+#   SRMS_API_KEY (scopes academics:read marks:write attendance:write)
 docker compose -f compose.yml -f compose.ecosystem.yml up -d
 docker compose exec api python manage.py sync_ecosystem                        # sites and class lists
 docker compose exec api python manage.py sync_ecosystem --push-marks           # coursework to the SRMS
 docker compose exec api python manage.py sync_ecosystem --push-training        # completions to the HRMS
+docker compose exec api python manage.py sync_ecosystem --training-requirements # required training from the HRMS
 ```
 
 The site and class-list sync also runs nightly at 02:00. A student who drops a course in the SRMS is

@@ -28,7 +28,7 @@ the recommended answer"; GSA may revise any of them by a new record.
 | [0016](0016-accounts-and-sign-on.md) | Accounts for students and lecturers, and when one sign-on comes | D7 | Proposed, open |
 | [0017](0017-competency-records.md) | Competency records beside marks | D8 | Proposed, open |
 | [0018](0018-text-and-whatsapp-notices.md) | Text messages and WhatsApp for urgent notices only | D12 | Proposed, open |
-| [0019](0019-required-training.md) | The HRMS says which staff must take which training | D13 | Proposed, open |
+| [0019](0019-required-training.md) | The HRMS says which staff must take which training | D13 | Proposed; built, switched off (`HRMS_TRAINING_REQUIREMENTS_SYNC`); accepted when GSA confirms |
 | [0020](0020-reports-by-role-grant.md) | Who reads the reports that leave a course: heads of department by unit, the Registrar by campus | | Proposed; built this way, GSA to confirm |
 | [0030](0030-packaged-content-as-built.md) | Packaged content, the statement store, the content library, course interchange and digital badges, as built | D2 | Proposed; built this way, GSA to confirm |
 | [0045](0045-similarity-check-method.md) | How the similarity check compares work: winnowed fingerprints on GSA's server | D4 | Accepted, carrying out 0006 |

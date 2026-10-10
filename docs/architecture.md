@@ -32,8 +32,9 @@ and the Registrar publishes. Completions of staff-development sites go to the HR
 | Staff names and campuses | HRMS `GET /integration/staff/`, `/integration/org/` | `staff:read`, `org:read` | LMS pulls |
 | Offerings and class lists | SRMS `GET /integration/offerings/`, `/integration/enrolments/` | `academics:read` | LMS pulls (nightly, `integration.tasks.sync_srms`) |
 | Coursework percentages | SRMS `POST /integration/coursework-marks/` | `marks:write` | LMS pushes (`sync_ecosystem --push-marks`) |
-| Attendance totals (decision D6, [ADR 0008](adr/0008-attendance-in-the-lms.md)); only for courses whose programme makes attendance a condition | SRMS `POST /integration/attendance-totals/` (SRMS work, not built yet) | to be agreed with the SRMS | LMS pushes (teaching staff, `POST /api/v1/attendance/sites/{id}/send-to-srms/`) |
+| Attendance totals (decision D6, [ADR 0008](adr/0008-attendance-in-the-lms.md)); only for courses whose programme makes attendance a condition | SRMS `POST /integration/attendance-totals/` (SRMS work, not built yet) | `attendance:write` | LMS pushes (teaching staff, `POST /api/v1/attendance/sites/{id}/send-to-srms/`) |
 | Training completions | HRMS `POST /integration/training-completions/` | `training:write` | LMS pushes (`sync_ecosystem --push-training`) |
+| Required training by post, unit and campus (decision D13, [ADR 0019](adr/0019-required-training.md)) | HRMS `GET /integration/training-requirements/` | `training:read` | LMS pulls (nightly, `integration.tasks.sync_training_requirements`, only with `HRMS_TRAINING_REQUIREMENTS_SYNC` on; `sync_ecosystem --training-requirements`) |
 | Course sites | LMS `GET /api/v1/integration/sites/` | `sites:read` | Sibling systems pull |
 
 No integration endpoint carries NIS number, TIN, national ID, date of birth or address.

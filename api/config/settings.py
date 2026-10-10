@@ -289,6 +289,11 @@ ESCALATE_AFTER_DAYS = int(env("ESCALATE_AFTER_DAYS", "2"))
 RENEWAL_WINDOW_DAYS = int(env("RENEWAL_WINDOW_DAYS", "60"))
 # Days before a required course is due on which a reminder goes.
 REQUIRED_TRAINING_REMIND_DAYS = int(env("REQUIRED_TRAINING_REMIND_DAYS", "7"))
+# Decision D13 (ADR 0019): the HRMS lists who must take which training; the LMS reads the list each night
+# before the daily required-training run (HRMS scope training:read). Off until GSA gives the LMS's HRMS key
+# that scope. While it is on, the requirements the HRMS keeps are read-only here; course administrators keep
+# the rest.
+HRMS_TRAINING_REQUIREMENTS_SYNC = env_bool("HRMS_TRAINING_REQUIREMENTS_SYNC", False)
 
 # Certificates (items 5.08 to 5.11): the heading, the reference prefix, where they are checked, and how many
 # wrong codes one address, or one reference, may try within LOGIN_LOCKOUT_MINUTES.
