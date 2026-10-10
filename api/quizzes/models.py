@@ -179,6 +179,14 @@ class Quiz(TimeStampedModel):
     is_practice = models.BooleanField(
         default=False, help_text="Revision only: never counts, unlimited attempts"
     )
+    is_secure_exam = models.BooleanField(
+        default=False,
+        help_text=(
+            "Secure exam mode (item 3.25, ADR 0045): one attempt only, enforced on the server, and the "
+            "sitting's focus changes and copy/paste/right-click attempts are logged for teaching staff to "
+            "review. A deterrent on a web page, not a lockdown browser or webcam proctoring (ADR 0006)."
+        ),
+    )
     is_published = models.BooleanField(default=False)
     shuffle_questions = models.BooleanField(default=False)
     shuffle_answers = models.BooleanField(default=True)
@@ -213,6 +221,14 @@ class Quiz(TimeStampedModel):
             models.CheckConstraint(
                 condition=Q(pass_mark__isnull=True) | (Q(pass_mark__gte=0) & Q(pass_mark__lte=100)),
                 name="quiz_pass_mark_percentage",
+            ),
+            models.CheckConstraint(
+                condition=Q(is_secure_exam=False) | Q(attempts_allowed=1),
+                name="quiz_secure_exam_one_attempt",
+            ),
+            models.CheckConstraint(
+                condition=Q(is_secure_exam=False) | Q(is_practice=False),
+                name="quiz_secure_exam_not_practice",
             ),
         ]
 
@@ -362,7 +378,12 @@ class AttemptAnswer(TimeStampedModel):
 
 
 class AttemptEvent(models.Model):
-    """What happened during an attempt, in server time (item 3.21 part)."""
+    """What happened during an attempt, in server time (item 3.21 part).
+
+    The INTEGRITY kinds (item 3.25) are reported by the student's own browser during a secure exam sitting:
+    they describe what the page observed, in server time, not a verdict on the student. See
+    quizzes.services.record_integrity_event and ADR 0045.
+    """
 
     class Kind(models.TextChoices):
         STARTED = "started", "Started"
@@ -374,9 +395,27 @@ class AttemptEvent(models.Model):
         AUTO_SUBMITTED = "auto_submitted", "Submitted automatically when time ran out"
         MARKED = "marked", "Marked by a person"
         RELEASED = "released", "Result released"
+        # Secure exam integrity events (item 3.25): reported by the browser, not enforced by it.
+        FOCUS_LOST = "focus_lost", "Left the quiz window or tab"
+        FOCUS_RESUMED = "focus_resumed", "Returned to the quiz window or tab"
+        COPY_ATTEMPTED = "copy_attempted", "Tried to copy text from the quiz page"
+        PASTE_ATTEMPTED = "paste_attempted", "Tried to paste into an answer"
+        CONTEXT_MENU_BLOCKED = "context_menu_blocked", "Tried to open the right-click menu"
+
+    # The kinds that make up the integrity log shown to teaching staff (item 3.25), as distinct from the
+    # full event log (every kind) kept for every attempt.
+    INTEGRITY_KINDS = frozenset(
+        {
+            Kind.FOCUS_LOST,
+            Kind.FOCUS_RESUMED,
+            Kind.COPY_ATTEMPTED,
+            Kind.PASTE_ATTEMPTED,
+            Kind.CONTEXT_MENU_BLOCKED,
+        }
+    )
 
     attempt = models.ForeignKey(Attempt, on_delete=models.CASCADE, related_name="events")
-    kind = models.CharField(max_length=20, choices=Kind.choices)
+    kind = models.CharField(max_length=24, choices=Kind.choices)
     at = models.DateTimeField(auto_now_add=True)
     detail = models.JSONField(default=dict, blank=True)
     actor = models.ForeignKey(

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError, errorMessage, get, post } from "../../api/client";
-import type { AnswerSaved, Attempt, AttemptQuestion } from "../../api/types-quizzes";
+import type { AnswerSaved, Attempt, AttemptQuestion, IntegrityEventKind } from "../../api/types-quizzes";
 import { flush, pending, saveQuizAnswer } from "../../app/offlineQueue";
 import { SendState } from "../../app/SendState";
 import { AnswerInput } from "./AnswerInput";
@@ -115,6 +115,57 @@ export function AttemptPlayer({ attemptId, onBack }: Props) {
 
   useEffect(() => () => typing.current.forEach((t) => window.clearTimeout(t.timer)), []);
 
+  // Secure exam mode (item 3.25): report what the page observes, in server time, to the sitting's integrity
+  // log. This cannot enforce anything on a web page: it is a deterrent and a record, not a lockdown browser.
+  const away = useRef(false);
+  const state = attempt?.state;
+  const secure = attempt?.is_secure_exam ?? false;
+  useEffect(() => {
+    if (state !== "in_progress" || !secure) return;
+    const report = (kind: IntegrityEventKind) => {
+      void post(`/quiz-attempts/${attemptId}/integrity-event/`, { kind }).catch(() => {
+        // Best-effort telemetry: a lost event does not interrupt the student answering the quiz.
+      });
+    };
+    const left = () => {
+      if (away.current) return;
+      away.current = true;
+      report("focus_lost");
+    };
+    const returned = () => {
+      if (!away.current) return;
+      away.current = false;
+      report("focus_resumed");
+    };
+    const onVisibility = () => (document.hidden ? left() : returned());
+    const onCopy = (e: Event) => {
+      e.preventDefault();
+      report("copy_attempted");
+    };
+    const onPaste = (e: Event) => {
+      e.preventDefault();
+      report("paste_attempted");
+    };
+    const onContextMenu = (e: Event) => {
+      e.preventDefault();
+      report("context_menu_blocked");
+    };
+    window.addEventListener("blur", left);
+    window.addEventListener("focus", returned);
+    document.addEventListener("visibilitychange", onVisibility);
+    document.addEventListener("copy", onCopy);
+    document.addEventListener("paste", onPaste);
+    document.addEventListener("contextmenu", onContextMenu);
+    return () => {
+      window.removeEventListener("blur", left);
+      window.removeEventListener("focus", returned);
+      document.removeEventListener("visibilitychange", onVisibility);
+      document.removeEventListener("copy", onCopy);
+      document.removeEventListener("paste", onPaste);
+      document.removeEventListener("contextmenu", onContextMenu);
+    };
+  }, [state, secure, attemptId]);
+
   const submit = useCallback(
     async (auto = false) => {
       if (!attempt) return;
@@ -221,6 +272,14 @@ export function AttemptPlayer({ attemptId, onBack }: Props) {
         <h2>{attempt.quiz_title}</h2>
         {sync && <Countdown secondsLeft={sync.seconds} syncedAt={sync.at} onExpire={expire} />}
       </div>
+      {attempt.is_secure_exam && (
+        <p className="notice">
+          <strong>Secure exam sitting.</strong> Copying, pasting and the right-click menu are turned off on
+          this page, and leaving this window or tab is recorded for your teaching staff to look at afterwards.
+          This is a deterrent built into the page, not a lockdown browser: it cannot stop someone determined
+          to get around it.
+        </p>
+      )}
       {attempt.last_page > 1 && (
         <p className="muted page-of" ref={top} tabIndex={-1}>
           Page {current} of {attempt.last_page}
@@ -232,20 +291,22 @@ export function AttemptPlayer({ attemptId, onBack }: Props) {
           {error}
         </p>
       )}
-      {shown.map((q) => (
-        <section key={q.position} className="module question" aria-labelledby={`q${q.position}-head`}>
-          <div className="panel-head">
-            <h3 id={`q${q.position}-head`}>Question {q.position}</h3>
-            <span className="muted small">
-              {Number(q.max_mark)} {Number(q.max_mark) === 1 ? "mark" : "marks"}
-            </span>
-          </div>
-          {q.qtype !== "cloze" && <Rich html={q.text} />}
-          {q.image_url && q.qtype !== "image_label" && <img className="question-image" src={q.image_url} alt={`Picture for question ${q.position}`} />}
-          <AnswerInput q={q} value={responses[q.position] ?? null} onChange={(r, isTyping) => change(q, r, isTyping)} onFile={(f) => void upload(q, f)} />
-          <SendMark sending={sending[q.position]} />
-        </section>
-      ))}
+      <div className={attempt.is_secure_exam ? "secure-exam-questions" : undefined}>
+        {shown.map((q) => (
+          <section key={q.position} className="module question" aria-labelledby={`q${q.position}-head`}>
+            <div className="panel-head">
+              <h3 id={`q${q.position}-head`}>Question {q.position}</h3>
+              <span className="muted small">
+                {Number(q.max_mark)} {Number(q.max_mark) === 1 ? "mark" : "marks"}
+              </span>
+            </div>
+            {q.qtype !== "cloze" && <Rich html={q.text} />}
+            {q.image_url && q.qtype !== "image_label" && <img className="question-image" src={q.image_url} alt={`Picture for question ${q.position}`} />}
+            <AnswerInput q={q} value={responses[q.position] ?? null} onChange={(r, isTyping) => change(q, r, isTyping)} onFile={(f) => void upload(q, f)} />
+            <SendMark sending={sending[q.position]} />
+          </section>
+        ))}
+      </div>
       {confirming ? (
         <section className="module confirm" aria-labelledby="confirm-head">
           <h3 id="confirm-head" ref={confirmHead} tabIndex={-1}>

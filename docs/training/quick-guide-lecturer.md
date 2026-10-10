@@ -41,6 +41,7 @@ comment**.
 | Students not logging in | **Not seen in N days** on Home |
 | Weights and totals | **Gradebook** tab: **Categories and weights**, **Export to a spreadsheet** |
 | Quizzes and question banks | **Quizzes** tab; **Question banks** |
+| A secure exam and its integrity log | Quiz **Settings**: tick **Secure exam** (one attempt, enforced); the log is on each attempt once submitted. A deterrent on the page, not a lockdown browser (item 3.25) |
 | Calendar, Discussion, rubric library | Search for them (Ctrl K) |
 | Sending coursework marks to the SRMS | **Gradebook** tab: **Send coursework to the SRMS** (lecturers only; it locks the marks) |
 

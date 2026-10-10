@@ -238,6 +238,24 @@ label.match-row {
 .attempt-nav {
   margin: 16px 0;
 }
+/* Secure exam mode (item 3.25): a soft deterrent against copying the question text. It does not stop
+   anyone determined to get around it, and never applies to the answer fields themselves. */
+.secure-exam-questions {
+  user-select: none;
+  -webkit-user-select: none;
+}
+.secure-exam-questions input,
+.secure-exam-questions textarea {
+  user-select: text;
+  -webkit-user-select: text;
+}
+.integrity-log-list {
+  margin: 0;
+  padding-left: 1.2em;
+}
+.integrity-log-list li {
+  margin-bottom: 4px;
+}
 .confirm {
   border-color: var(--amber);
 }

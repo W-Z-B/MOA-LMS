@@ -37,6 +37,9 @@ guessing passwords.
 - Each time you download a course file or a submission.
 - Each submission, mark and change made to a course, with who made it and when.
 - The first time you open each item of a course, to show your progress to you and your lecturers.
+- If a quiz is set as a secure exam: when your browser loses or regains focus, and attempts to copy, \
+paste or open the right-click menu on the exam page, while you are sitting it. This is a timeline for \
+your lecturer to read, not a decision made about you, and it is kept with that attempt.
 The LMS does not record how long you spend on a page, how often you read it, or your location, and it uses \
 no advertising or tracking cookies. The only cookies keep you signed in and protect forms.
 
@@ -73,6 +76,7 @@ nothing else about you; your question and its answer are not kept, only that a q
 How long it is kept (proposed, to be confirmed by GSA)
 - Submissions, marks and feedback: 6 years after the end of the term of the course.
 - Sign-in attempts: 1 year. Notifications: 2 years.
+- A secure exam's integrity events: with the exam attempt.
 - The audit record of changes: kept as GSA's evidence of how the system was used.
 GSA disposes of records only when a second person approves.
 

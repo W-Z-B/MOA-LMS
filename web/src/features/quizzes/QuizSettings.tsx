@@ -22,6 +22,7 @@ interface Draft {
   pass_mark: string;
   weight: string;
   is_practice: boolean;
+  is_secure_exam: boolean;
   shuffle_questions: boolean;
   shuffle_answers: boolean;
   questions_per_page: string;
@@ -43,6 +44,7 @@ const draftOf = (q: Quiz): Draft => ({
   pass_mark: q.pass_mark ?? "",
   weight: q.weight,
   is_practice: q.is_practice,
+  is_secure_exam: q.is_secure_exam,
   shuffle_questions: q.shuffle_questions,
   shuffle_answers: q.shuffle_answers,
   questions_per_page: String(q.questions_per_page),
@@ -171,7 +173,13 @@ export function QuizSettings({ quiz, onSaved, onDeleted }: Props) {
           </label>
           <label>
             Attempts allowed (0 for unlimited)
-            <input type="number" min={0} value={d.attempts_allowed} disabled={d.is_practice} onChange={(e) => set("attempts_allowed", e.target.value)} />
+            <input
+              type="number"
+              min={0}
+              value={d.attempts_allowed}
+              disabled={d.is_practice || d.is_secure_exam}
+              onChange={(e) => set("attempts_allowed", e.target.value)}
+            />
           </label>
           <label>
             Which attempt counts
@@ -205,8 +213,24 @@ export function QuizSettings({ quiz, onSaved, onDeleted }: Props) {
         <fieldset className="stack">
           <legend>Options</legend>
           <label className="inline">
-            <input type="checkbox" checked={d.is_practice} onChange={(e) => set("is_practice", e.target.checked)} />
+            <input
+              type="checkbox"
+              checked={d.is_practice}
+              disabled={d.is_secure_exam}
+              onChange={(e) => set("is_practice", e.target.checked)}
+            />
             Practice quiz: never counts, unlimited attempts
+          </label>
+          <label className="inline">
+            <input
+              type="checkbox"
+              checked={d.is_secure_exam}
+              disabled={d.is_practice}
+              onChange={(e) => set("is_secure_exam", e.target.checked)}
+            />
+            Secure exam: one attempt only, enforced on the server; focus changes, copy, paste and right-click
+            attempts during the sitting are logged for the integrity log. This is a deterrent built into the
+            page, not a lockdown browser or webcam proctoring.
           </label>
           <label className="inline">
             <input type="checkbox" checked={d.shuffle_questions} onChange={(e) => set("shuffle_questions", e.target.checked)} />

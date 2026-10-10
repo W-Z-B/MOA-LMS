@@ -46,6 +46,12 @@ def grace_seconds() -> int:
     return int(getattr(settings, "QUIZ_GRACE_SECONDS", 30))
 
 
+def integrity_event_cap() -> int:
+    """The most integrity events (item 3.25) kept for one attempt: a ceiling against a runaway page script,
+    not a limit anyone sitting a normal exam would reach."""
+    return int(getattr(settings, "QUIZ_INTEGRITY_EVENT_CAP", 500))
+
+
 class Refusal(Exception):
     """A rule refuses the request. Rendered as {code, detail} with the given HTTP status."""
 
@@ -303,6 +309,41 @@ def quiz_max_mark(quiz: Quiz) -> Decimal:
 
 def _record_event(attempt, kind, user=None, **detail):
     AttemptEvent.objects.create(attempt=attempt, kind=kind, actor=user, detail=detail)
+
+
+# ---------------------------------------------------------------------------------------------------------
+# Secure exam mode and the integrity log (item 3.25)
+#
+# The LMS has no lockdown browser, no webcam proctoring and no AI-writing detector (ADR 0006): a web page
+# cannot enforce any of those. What it can do is notice, in server time, that the page lost focus, or that
+# someone tried to copy, paste or open the right-click menu, and keep a plain timeline of that for the
+# course's teaching staff to weigh alongside the student's answers. It is evidence, never a verdict.
+
+
+def record_integrity_event(attempt: Attempt, kind: str, user=None, **detail) -> AttemptEvent | None:
+    """Log one integrity event reported by the student's own browser during a secure exam sitting.
+
+    Silently does nothing (returns None) when it would not mean anything: the attempt is not the quiz's
+    secure exam mode, the attempt has already finished, the kind is not one of the integrity kinds, or the
+    attempt has already reached the cap on events kept (a runaway page script is capped, not trusted to
+    throttle itself). None of these is reported to the student as an error: the deterrent banner on the
+    page does not depend on whether the server kept the event.
+    """
+    if (
+        not attempt.quiz.is_secure_exam
+        or attempt.state != Attempt.State.IN_PROGRESS
+        or kind not in AttemptEvent.INTEGRITY_KINDS
+    ):
+        return None
+    if attempt.events.filter(kind__in=AttemptEvent.INTEGRITY_KINDS).count() >= integrity_event_cap():
+        return None
+    return AttemptEvent.objects.create(attempt=attempt, kind=kind, actor=user, detail=detail)
+
+
+def integrity_log(attempt: Attempt) -> list[dict]:
+    """The attempt's integrity timeline (item 3.25): descriptive, in server time, oldest first."""
+    events = attempt.events.filter(kind__in=AttemptEvent.INTEGRITY_KINDS).order_by("at", "id")
+    return [{"kind": e.kind, "label": AttemptEvent.Kind(e.kind).label, "at": e.at} for e in events]
 
 
 def start_attempt(quiz: Quiz, person, user, now=None) -> tuple[Attempt, bool]:

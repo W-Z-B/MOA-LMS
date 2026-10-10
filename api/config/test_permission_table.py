@@ -340,6 +340,8 @@ TABLE: dict[str, Access] = {
     "POST /api/v1/quiz-attempts/{pk}/next-page/": STUDENT + HIDDEN,
     "POST /api/v1/quiz-attempts/{pk}/release/": SITE_TEACHERS + HIDDEN,
     "POST /api/v1/quiz-attempts/{pk}/submit/": STUDENT + HIDDEN,
+    "POST /api/v1/quiz-attempts/{pk}/integrity-event/": STUDENT + HIDDEN,  # the student's own sitting
+    "GET /api/v1/quiz-attempts/{pk}/integrity-log/": SITE_TEACHERS + HIDDEN,
     # --- practical assessment -----------------------------------------------------------------------------
     "GET /api/v1/practical-assessors/": SITE_TEACHERS,
     "POST /api/v1/practical-assessors/": SITE_TEACHERS + HIDDEN,

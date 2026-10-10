@@ -42,6 +42,21 @@ describe("a quiz's settings and publishing (items 3.02 and 3.03)", () => {
     });
   });
 
+  it("sends secure exam mode, and disables attempts and the practice option while it is on (item 3.25)", async () => {
+    const { calls } = open("settings", {
+      "PATCH /quizzes/12/": { body: quiz({ is_secure_exam: true, attempts_allowed: 1 }) },
+    });
+    const secure = await screen.findByLabelText(/Secure exam:/);
+    const practice = screen.getByLabelText(/Practice quiz:/);
+    expect(screen.getByLabelText(/Attempts allowed/)).not.toBeDisabled();
+    await userEvent.click(secure);
+    expect(screen.getByLabelText(/Attempts allowed/)).toBeDisabled();
+    expect(practice).toBeDisabled();
+    await userEvent.click(screen.getByRole("button", { name: "Save settings" }));
+    expect(await screen.findByText("Saved")).toBeInTheDocument();
+    expect(calls.find((c) => c.method === "PATCH")!.body).toMatchObject({ is_secure_exam: true });
+  });
+
   it("lists every reason the server gives for not publishing", async () => {
     open("settings", {
       "PATCH /quizzes/12/": [

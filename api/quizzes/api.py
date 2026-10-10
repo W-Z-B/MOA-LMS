@@ -10,7 +10,7 @@ from decimal import Decimal
 
 from django.db import transaction
 from django.db.models import ProtectedError
-from django.http import FileResponse
+from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from drf_spectacular.types import OpenApiTypes
@@ -33,6 +33,7 @@ from quizzes import formats, marking, schemas, services
 from quizzes.models import (
     Attempt,
     AttemptAnswer,
+    AttemptEvent,
     Question,
     QuestionBank,
     QuestionCategory,
@@ -567,6 +568,7 @@ class QuizSerializer(serializers.ModelSerializer):
             "pass_mark",
             "weight",
             "is_practice",
+            "is_secure_exam",
             "is_published",
             "shuffle_questions",
             "shuffle_answers",
@@ -622,8 +624,16 @@ class QuizSerializer(serializers.ModelSerializer):
         return sorted(cleaned, key=lambda b: -b["min_percent"])
 
     def validate(self, attrs):
-        if attrs.get("is_practice", getattr(self.instance, "is_practice", False)):
+        is_practice = attrs.get("is_practice", getattr(self.instance, "is_practice", False))
+        is_secure_exam = attrs.get("is_secure_exam", getattr(self.instance, "is_secure_exam", False))
+        if is_practice and is_secure_exam:
+            raise serializers.ValidationError(
+                {"is_secure_exam": "A practice quiz cannot also be a secure exam."}
+            )
+        if is_practice:
             attrs["weight"], attrs["attempts_allowed"] = 0, 0  # practice never counts and is unlimited
+        elif is_secure_exam:
+            attrs["attempts_allowed"] = 1  # secure exam mode (item 3.25): one attempt only, enforced
         opens = attrs.get("opens_at", getattr(self.instance, "opens_at", None))
         closes = attrs.get("closes_at", getattr(self.instance, "closes_at", None))
         if opens and closes and closes <= opens:
@@ -1061,6 +1071,7 @@ def attempt_payload(attempt: Attempt, request, now=None) -> dict:
         "seconds_left": seconds_left,
         "submitted_at": attempt.submitted_at,
         "auto_submitted": attempt.auto_submitted,
+        "is_secure_exam": quiz.is_secure_exam,
         "navigation": quiz.navigation,
         "current_page": attempt.current_page,
         "last_page": services.last_page(attempt),
@@ -1085,6 +1096,12 @@ class ManualMarkSerializer(serializers.Serializer):
     comment = serializers.CharField(required=False, allow_blank=True, default="")
 
 
+class IntegrityEventSerializer(serializers.Serializer):
+    """One integrity event (item 3.25): only the kinds the server recognises are accepted."""
+
+    kind = serializers.ChoiceField(choices=sorted(k.value for k in AttemptEvent.INTEGRITY_KINDS))
+
+
 AnswerSaved = inline_serializer(
     "AnswerSaved",
     {
@@ -1095,6 +1112,14 @@ AnswerSaved = inline_serializer(
         "seconds_left": serializers.IntegerField(allow_null=True),
     },
 )
+
+
+class IntegrityLogEntrySerializer(serializers.Serializer):
+    """One entry in an attempt's integrity timeline (item 3.25): descriptive, never a verdict."""
+
+    kind = serializers.CharField()
+    label = serializers.CharField()
+    at = serializers.DateTimeField()
 
 
 class AttemptViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
@@ -1122,6 +1147,16 @@ class AttemptViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
     def _teaching(self, attempt):
         if not can_teach(self.request.user, attempt.quiz.site):
             raise PermissionDenied("Only the site's teaching staff can do this.")
+
+    def _attempt_in_site(self, pk):
+        """Look up an attempt by anyone who belongs to its site, student or teaching staff alike, unlike
+        get_queryset() which only shows a student their own attempts: the integrity actions below are
+        telemetry, not the attempt itself, so a stranger to the site still gets a 404 (the id tells them
+        nothing), but a classmate or another member of staff is refused with 403, not told the id is bad."""
+        attempt = get_object_or_404(Attempt.objects.select_related("quiz__site", "student"), pk=pk)
+        if site_role(self.request.user, attempt.quiz.site) is None:
+            raise Http404
+        return attempt
 
     @extend_schema(responses=OpenApiTypes.OBJECT)
     def retrieve(self, request, *args, **kwargs):
@@ -1272,6 +1307,32 @@ class AttemptViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
         attempt = self.get_object()
         self._teaching(attempt)
         return Response([{"kind": e.kind, "at": e.at, "detail": e.detail} for e in attempt.events.all()])
+
+    @extend_schema(request=IntegrityEventSerializer, responses={204: None})
+    @action(detail=True, methods=["post"], url_path="integrity-event")
+    def integrity_event(self, request, pk=None):
+        """Log one integrity event (item 3.25) seen by the student's own browser during a secure exam
+        sitting: the window lost focus, or someone tried to copy, paste or open the right-click menu.
+
+        This is telemetry, not an enforcement point: it always answers 204, whether or not anything was
+        kept (quizzes.services.record_integrity_event says when it is not), so a background report never
+        interrupts the student answering the quiz."""
+        attempt = self._attempt_in_site(pk)
+        self._own(attempt)
+        data = IntegrityEventSerializer(data=request.data)
+        data.is_valid(raise_exception=True)
+        services.record_integrity_event(attempt, data.validated_data["kind"], request.user)
+        return Response(status=204)
+
+    @extend_schema(responses=IntegrityLogEntrySerializer(many=True))
+    @action(detail=True, methods=["get"], url_path="integrity-log")
+    def integrity_log(self, request, pk=None):
+        """The sitting's integrity timeline (item 3.25), for the site's teaching staff: a plain record of
+        what the page observed, in server time, not a verdict on the student. Weigh it with their answers.
+        """
+        attempt = self._attempt_in_site(pk)
+        self._teaching(attempt)
+        return Response(services.integrity_log(attempt))
 
 
 router = DefaultRouter()
