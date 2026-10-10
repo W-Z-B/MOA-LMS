@@ -91,6 +91,11 @@ class ExtensionViewSet(TeachingViewSet):
     def site_from_data(self, data):
         return data["assignment"].site
 
+    def kept(self, instance) -> dict:
+        """An extension's reason may describe an illness: the log keeps that it was given or changed (a
+        fingerprint), never the words (ASVS 7.1.2), as for accommodations."""
+        return _kept(instance)
+
     def perform_create(self, serializer):
         self._require_teaching(self.site_from_data(serializer.validated_data))
         with transaction.atomic():
@@ -99,7 +104,7 @@ class ExtensionViewSet(TeachingViewSet):
                 created_by=self.request.user,
                 updated_by=self.request.user,
             )
-            record(self.request, "create", instance, after=snapshot(instance), reason=instance.reason)
+            record(self.request, "create", instance, after=self.kept(instance), reason="Extension granted")
 
     def perform_update(self, serializer):
         if (

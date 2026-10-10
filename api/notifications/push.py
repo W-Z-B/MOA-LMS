@@ -16,6 +16,7 @@ from urllib.parse import urlsplit
 from django.conf import settings
 from django.utils import timezone
 
+from core import outbound
 from notifications.models import Notification, NotificationPreference, PushSubscription
 
 log = logging.getLogger(__name__)
@@ -58,7 +59,17 @@ def send(note: Notification) -> int:
     if not configured():
         return 0
     delivered = 0
+    session = outbound.requests_session()  # no redirects, no proxies (core.outbound)
     for subscription in PushSubscription.objects.filter(user_id=note.recipient_id):
+        try:
+            outbound.check_url(subscription.endpoint)  # a known push service, on a public address
+        except outbound.NotFound:
+            log.warning("push service of subscription %s could not be found", subscription.pk)
+            continue  # the network, for now: tried again with the next notice
+        except outbound.OutboundRefused as refused:
+            log.warning("push subscription %s removed: %s", subscription.pk, refused)
+            subscription.delete()
+            continue
         try:
             webpush(
                 subscription_info={
@@ -70,6 +81,7 @@ def send(note: Notification) -> int:
                 vapid_claims={"sub": settings.VAPID_SUBJECT},
                 ttl=TTL_SECONDS,
                 timeout=10,
+                requests_session=session,
             )
         except (WebPushException, RequestException) as error:
             code = getattr(getattr(error, "response", None), "status_code", None)

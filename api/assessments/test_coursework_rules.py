@@ -52,7 +52,17 @@ def test_extensions_for_a_student_or_a_group(site, assignment, student, other_st
         format="json",
     )
     assert granted.status_code == 201, granted.json()
-    assert AuditLog.objects.get(entity="assessments.extension").reason == "Flooding at home"
+    # The reason may describe an illness: the audit log keeps that one was given, never the words (7.1.2).
+    entry = AuditLog.objects.get(entity="assessments.extension")
+    assert "Flooding" not in str([entry.reason, entry.before, entry.after])
+    assert entry.after["reason"].startswith("***")
+    changed = teacher.patch(
+        f"/api/v1/extensions/{granted.json()['id']}/", {"reason": "Flooding and illness"}, format="json"
+    )
+    assert changed.status_code == 200, changed.json()
+    update = AuditLog.objects.get(entity="assessments.extension", action="update")
+    assert "Flooding" not in str([update.before, update.after])
+    assert update.before["reason"] != update.after["reason"]  # the fingerprint shows that it changed
     assert learner.get(f"/api/v1/assignments/{assignment.id}/").json()["my_due_at"].startswith(later[:16])
     handed_in = learner.post(f"/api/v1/assignments/{assignment.id}/submit/", {"text": "x"}, format="json")
     assert (

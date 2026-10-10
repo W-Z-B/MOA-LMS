@@ -15,6 +15,8 @@ from urllib.parse import urlparse
 
 from django.conf import settings
 
+from core import outbound
+
 
 class ProviderError(Exception):
     """The model could not be reached, or did not answer."""
@@ -58,7 +60,10 @@ class OllamaProvider:
             method="POST",
         )
         try:
-            with urllib.request.urlopen(request, timeout=self.timeout) as response:  # noqa: S310 - GSA's URL
+            # GSA's own server, at the address set in the environment (core.outbound: no redirects).
+            with outbound.urlopen(
+                request, timeout=self.timeout, configured=True, schemes=("http", "https")
+            ) as response:
                 answer = json.loads(response.read(2_000_000).decode("utf-8"))
         except (urllib.error.URLError, OSError, ValueError) as error:
             raise ProviderError("The AI model could not be reached.") from error

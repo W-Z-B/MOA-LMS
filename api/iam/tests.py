@@ -70,6 +70,22 @@ def test_lecturers_must_verify_an_authenticator_code_too(lecturer, site):
 
 
 @pytest.mark.django_db
+@pytest.mark.parametrize("role", ["auditor", "dpo"])
+def test_the_auditor_and_the_data_protection_officer_must_verify_a_code(make_user, site, role):
+    """They read sensitive records: every site and the audit log, anyone's whole record (ASVS 4.3.3)."""
+    reader = make_user(f"{role}.one", role)
+    client = APIClient()
+    login = client.post(
+        "/api/v1/auth/login/", {"username": f"{role}.one", "password": PASSWORD}, format="json"
+    )
+    assert login.json()["mfa_required"] is True and login.json()["mfa_verified"] is False
+    for address in ("/api/v1/sites/", "/api/v1/audit/"):
+        assert client.get(address).json()["code"] == "mfa_required"
+    assert verify(client, reader).status_code == 200
+    assert client.get("/api/v1/sites/").status_code == 200
+
+
+@pytest.mark.django_db
 def test_teaching_on_a_site_needs_a_code_whatever_the_system_roles(make_person, site):
     from courses.models import Membership
 
@@ -163,3 +179,12 @@ def test_a_forged_forwarded_for_header_does_not_reach_the_records(student):
     client.post("/api/v1/auth/login/", {"username": "26MRP0001", "password": PASSWORD}, format="json")
     assert LoginAttempt.objects.get().source_ip == "190.80.1.2"
     assert AuditLog.objects.filter(action="login").latest("at").source_ip == "190.80.1.2"
+
+
+def test_a_self_registered_learner_needs_no_authenticator_code():
+    """Open-course learners (item 5.07) read only their own short courses: the auditor and DPO change
+    leaves them out."""
+    from iam.models import Role
+
+    assert Role.LEARNER not in Role.MFA_REQUIRED and Role.STUDENT not in Role.MFA_REQUIRED
+    assert {Role.AUDITOR, Role.DPO} <= Role.MFA_REQUIRED

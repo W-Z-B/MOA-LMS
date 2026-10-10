@@ -5,10 +5,12 @@ import logging
 from django.conf import settings
 from procrastinate.contrib.django import app
 
+from core.schedule import periodic
+
 log = logging.getLogger(__name__)
 
 
-@app.periodic(cron="10 2 * * *")  # 02:10, after the sites at 02:00, so every course code is known (3.11)
+@periodic("10 2 * * *")  # 02:10, after the sites at 02:00, so every course code is known (3.11)
 @app.task(name="insights.sync_outcomes", queue="integration")
 def sync_outcomes(timestamp: int | None = None) -> dict:
     from insights import srms
@@ -19,7 +21,7 @@ def sync_outcomes(timestamp: int | None = None) -> dict:
     return srms.sync_outcomes()
 
 
-@app.periodic(cron="50 2 * * *")  # 02:50, after the coursework totals at 02:30 (item 6.10)
+@periodic("50 2 * * *")  # 02:50, after the coursework totals at 02:30 (item 6.10)
 @app.task(name="insights.push_competency", queue="integration")
 def push_competency(timestamp: int | None = None) -> dict:
     from insights import srms
@@ -30,7 +32,7 @@ def push_competency(timestamp: int | None = None) -> dict:
     return srms.push_all_competency()
 
 
-@app.periodic(cron="15 4 * * *")  # 04:15, once the night's marks and class lists are in (item 6.05)
+@periodic("15 4 * * *")  # 04:15, once the night's marks and class lists are in (item 6.05)
 @app.task(name="insights.early_alerts", queue="insights")
 def early_alerts(timestamp: int | None = None) -> dict:
     from insights import alerts

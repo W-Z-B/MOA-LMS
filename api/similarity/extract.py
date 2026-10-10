@@ -18,6 +18,8 @@ MAX_CHARS = 400_000  # about 70 000 words: far beyond any hand-in
 MAX_PART_BYTES = 20 * 1024 * 1024  # the most read from one part of an Office package
 MAX_PDF_PAGES = 400
 MAX_SLIDES = 400
+MAX_PARTS = 2000  # entries in an Office package (core.archives)
+MAX_UNPACKED_BYTES = 200 * 1024 * 1024  # the whole package once unpacked, by the sizes it declares
 
 W_NS = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
 A_NS = "{http://schemas.openxmlformats.org/drawingml/2006/main}"
@@ -62,8 +64,24 @@ def _paragraphs(data: bytes, paragraph: str, run: str) -> list[str]:
     return lines
 
 
+def _package(content: bytes) -> zipfile.ZipFile:
+    """The Office package, once core.archives has checked it: parts, size once unpacked, zip bombs."""
+    from core import archives
+
+    try:
+        package = archives.open_zip(io.BytesIO(content))
+    except archives.ArchiveRefused as refused:
+        raise Unreadable("it could not be opened") from refused
+    try:
+        archives.checked(package, max_entries=MAX_PARTS, max_bytes=MAX_UNPACKED_BYTES)
+    except archives.ArchiveRefused as refused:
+        package.close()
+        raise Unreadable(str(refused).rstrip(".").lower()) from refused
+    return package
+
+
 def docx_text(content: bytes) -> str:
-    with zipfile.ZipFile(io.BytesIO(content)) as package:
+    with _package(content) as package:
         names = set(package.namelist())
         parts = ["word/document.xml"] + sorted(
             n for n in names if re.match(r"^word/(footnotes|endnotes)\.xml$", n)
@@ -76,7 +94,7 @@ def docx_text(content: bytes) -> str:
 
 
 def pptx_text(content: bytes) -> str:
-    with zipfile.ZipFile(io.BytesIO(content)) as package:
+    with _package(content) as package:
         slides = sorted(
             ((int(m.group(1)), n) for n in package.namelist() if (m := SLIDE.match(n))), key=lambda s: s[0]
         )[:MAX_SLIDES]

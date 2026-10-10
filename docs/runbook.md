@@ -1,9 +1,11 @@
 # Administrator's runbook
 
-**Version 1.0, 6 October 2026,** checklist item 7.11. For the people who run the GSA LMS on its server: the
+**Version 1.1, 6 October 2026,** checklist item 7.11. For the people who run the GSA LMS on its server: the
 LMS administrators and GSA's IT Officer. It says how to install, upgrade, back up and restore the system,
 look after terms and storage, answer the alerts, change the keys, and respond to an incident. Every command
-here was checked against the code on branch `feature/finish-operations`; where something is not built yet,
+here was checked against the code on branch `feature/finish-operations`, and version 1.1 against
+`feature/finish-hardening` (the production stack, scheduled times, changing the encryption key); where
+something is not built yet,
 this page says so and lists it under [Open actions](#open-actions).
 
 For a developer's machine, read [SETUP.md](SETUP.md) instead. For what each role does on screen, read the
@@ -83,6 +85,8 @@ Then edit `.env` (`.env.example` explains each line):
 | `METRICS_TOKEN` | A long random value, if the monitoring will be installed |
 | `HRMS_API_URL`, `HRMS_API_KEY`, `SRMS_API_URL`, `SRMS_API_KEY` | From the HRMS and SRMS administrators ([Keys](#keys)) |
 | `TZ` | `America/Guyana` |
+| `OUTBOUND_PRIVATE_HOSTS` | Usually empty. The hosts of `HRMS_API_URL`, `SRMS_API_URL` and `AI_OLLAMA_URL` may be on GSA's private network and are allowed by default; name here any other name they are reached by. Every other request the server sends (a tool's key set, push notices) is refused a private address, and no request follows a redirect (`core/outbound.py`) |
+| `HTTP_PORT`, `HTTPS_PORT` | Leave unset (80 and 443) |
 
 Leave the optional settings at their defaults unless GSA has decided otherwise. Settings that wait for a
 decision by GSA are off by default and stay off until GSA says so: `TERMS_FROM_SRMS`,
@@ -97,24 +101,16 @@ and other encrypted values cannot be read, and the audit log cannot be checked.
 
 ### 2. Start the stack
 
-Three things in the production configuration need a change before go-live (see [Open actions](#open-actions)):
-it still publishes Caddy on ports 8082 and 8445 rather than 80 and 443; it still mounts the `api` source
-folder from the host over the image's code, in the API and the job worker; and nothing serves the admin
-site's style sheets, so the admin site works but looks plain. Until the first two are fixed in the
-repository, correct them in a file of this server's own, `deploy/compose.site.yml`, before the first start:
-
-```yaml
-# This server's corrections, until deploy/compose.prod.yml has them (runbook, "Open actions").
-services:
-  caddy:
-    ports: !override ["80:80", "443:443"]
-  api:
-    volumes: !override ["files:/srv/files"]
-  worker:
-    volumes: !override ["files:/srv/files"]
-```
-
-and add `-f deploy/compose.site.yml` to the `dc` alias and to `COMPOSE` in the backup settings.
+The production configuration (`deploy/compose.prod.yml`) runs the API under gunicorn
+(`api/config/gunicorn.py`), never the development server, from an image without development tools and with
+no source folder mounted over its code; the job worker from the same image; the web app as a built bundle;
+and Caddy with `deploy/Caddyfile.prod` on ports 80 and 443 (set `HTTP_PORT` and `HTTPS_PORT` in `.env` to
+use others). Every long-running service restarts by itself and has a health check (`dc ps` shows
+`healthy`). The containers' own files are read-only: only the volumes (`files`, `backups`, the database,
+the uploads on their way in, FFmpeg's working copies) can be written. The API, the worker and the copy of
+the admin site's style sheets run as the unprivileged user `app`; no container may gain privileges; Caddy
+keeps only the right to bind ports 80 and 443. Docker keeps at most 50 MB of logs a service. Secrets come
+only from `.env`; `DJANGO_DEBUG` is forced off whatever `.env` says.
 
 ```sh
 dc up -d --build                                   # database, API, job worker, web bundle, Caddy
@@ -148,6 +144,10 @@ administrator a named account of their own instead:
    a role is written to the audit log and signs that person out everywhere, so they sign in again with the
    new role. The admin site opens only for accounts with **Staff status**, and only after an authenticator
    code; keep that to the LMS administrators. Everyday administration is in the web app's **Admin** page.
+   Every add, change and removal made in the admin site, of any record, is written to the audit log with
+   "Django admin" as the reason; marks and handed-in work can only be read there. Administrators, course
+   administrators, lecturers, heads of department, the Registrar, the auditor and the Data Protection
+   Officer set up an authenticator app at their first sign-in and give a code at each one.
 3. Give the SRMS its key into the LMS; the key is shown once. Hand it over in person or through GSA's
    password manager:
 
@@ -395,36 +395,49 @@ There is no disk-space alert yet ([Open actions](#open-actions)); look at `df -h
 
 ## Scheduled jobs
 
-The job worker runs these by itself. **The scheduler reads each time as UTC** (checked against
-Procrastinate 3.10, which the LMS uses), although several of the code's comments were written as if it were
-Guyana time; Guyana is UTC−4 all year. Until that is corrected ([Open actions](#open-actions)), these are the
-real times:
+The job worker runs these by itself, **at Guyana time.** Procrastinate (3.10, which the LMS uses) reads a
+schedule in UTC, so every job is declared in local time through `core/schedule.py`, which moves the hours to
+UTC (Guyana keeps UTC−4 all year; a test, `core/test_schedule.py`, checks each job's local time). The
+worker's log shows the UTC form when it starts (`Registering task ... cron 0 21 * * *` for 17:00).
 
-| Job | Schedule in the code | UTC | Guyana time | What it does |
-|---|---|---|---|---|
-| `integration.sync_staff` | `45 1 * * *` | 01:45 daily | 21:45 the evening before | Staff records from the HRMS |
-| `integration.sync_srms` | `0 2 * * *` | 02:00 daily | 22:00 | Course sites and class lists from the SRMS |
-| `insights.sync_outcomes` | `10 2 * * *` | 02:10 daily | 22:10 | Learning outcomes from the SRMS course outlines |
-| `staffdev.completion_sweep` | `15 2 * * *` | 02:15 daily | 22:15 | Staff development completions worked out |
-| `integration.push_marks` | `30 2 * * *` | 02:30 daily | 22:30 | Coursework totals to the SRMS |
-| `integration.push_training` | `45 2 * * *` | 02:45 daily | 22:45 | Training completions to the HRMS |
-| `insights.push_competency` | `50 2 * * *` | 02:50 daily | 22:50 | Competency results to the SRMS, only if `SRMS_COMPETENCY_PUSH` is on |
-| `audit.verify_chain` | `30 3 * * *` | 03:30 daily | 23:30 | Checks the audit log's chain of fingerprints |
-| `privacy.retention_purge` | `0 4 * * *` | 04:00 daily | 00:00 | Removes old sign-in attempts, password-link requests, certificate checks, notifications and AI-help records |
-| `insights.early_alerts` | `15 4 * * *` | 04:15 daily | 00:15 | Early alerts about students who may need help |
-| `terms.lifecycle` | `30 4 * * *` | 04:30 daily | 00:30 | Closes terms and archives old ones |
-| `iam.access_review_reminder` | `0 6 * * 1` | 06:00 Mondays | 02:00 Mondays | Reminds the reviewers when the term's access review is due |
-| `integration.sync_training_requirements` | `0 6 * * *` | 06:00 daily | 02:00 | Required training from the HRMS, only if `HRMS_TRAINING_REQUIREMENTS_SYNC` is on |
-| `staffdev.required_training` | `30 6 * * *` | 06:30 daily | 02:30 | Required training: who must do what, and reminders |
-| `approvals.chase_decisions` | `0 7 * * 1-5` | 07:00 weekdays | 03:00 weekdays | Chases decisions that have waited too long |
-| `assessments.due_reminders` | `5 * * * *` | 5 past each hour | 5 past each hour | Reminders of work coming due |
-| `notifications.daily_summary` | `0 17 * * *` | 17:00 daily | 13:00 | The daily summary email for those who chose one |
+| Job | Guyana time | What it does |
+|---|---|---|
+| `integration.sync_staff` | 01:45 daily | Staff records from the HRMS |
+| `integration.sync_srms` | 02:00 daily | Course sites and class lists from the SRMS |
+| `insights.sync_outcomes` | 02:10 daily | Learning outcomes from the SRMS course outlines |
+| `staffdev.completion_sweep` | 02:15 daily | Staff development completions worked out |
+| `integration.push_marks` | 02:30 daily | Coursework totals to the SRMS |
+| `integration.push_training` | 02:45 daily | Training completions to the HRMS |
+| `insights.push_competency` | 02:50 daily | Competency results to the SRMS, only if `SRMS_COMPETENCY_PUSH` is on |
+| `audit.verify_chain` | 03:30 daily | Checks the audit log's chain of fingerprints |
+| `opencourses.purge_registrations` | 03:40 daily | Removes open-course registrations whose link was never followed |
+| `privacy.retention_purge` | 04:00 daily | Removes old sign-in attempts, password-link requests, certificate checks, notifications and AI-help records |
+| `insights.early_alerts` | 04:15 daily | Early alerts about students who may need help |
+| `terms.lifecycle` | 04:30 daily | Closes terms and archives old ones |
+| `iam.access_review_reminder` | 06:00 Mondays | Reminds the reviewers when the term's access review is due |
+| `integration.sync_training_requirements` | 06:00 daily | Required training from the HRMS, when that is switched on |
+| `staffdev.required_training` | 06:30 daily | Required training: who must do what, and reminders |
+| `approvals.chase_decisions` | 07:00 weekdays | Chases decisions that have waited too long |
+| `assessments.due_reminders` | 5 past each hour | Reminders of work coming due |
+| `peerreview.allocate_due` | 20 past each hour | Gives out work past its due date for peer review |
+| `notifications.daily_summary` | 17:00 daily | The daily summary email for those who chose one |
 
-The jobs from 21:45 to 23:30 Guyana time run on the evening before the UTC date, so the night's exchanges
-with the HRMS and SRMS finish before midnight in Guyana. The nightly backup is a `cron` line on the server,
-not a job of the worker: it runs at 01:15 by the server's own clock, which on a server set to Guyana time is
-after all of them. To run a job now, for example after fixing a fault:
-`dc exec api python manage.py procrastinate defer integration.sync_srms`.
+The night's exchanges with the HRMS and SRMS run between 01:45 and 02:50. The nightly backup is a `cron`
+line on the server, not a job of the worker: at 01:15 by the server's own clock (set it to Guyana time), it
+runs before them. A new job is declared with `@periodic("<local cron>")` from `core.schedule`, never with
+procrastinate's `app.periodic`, and added to the test's list with its local time. To run a job now, for
+example after fixing a fault: `dc exec api python manage.py procrastinate defer integration.sync_srms`.
+
+### Long uploads
+
+A lecture video of up to 1 GB is put up once, at `/api/v1/videos/`, often over a slow line. Caddy takes up
+to 1100 MB on that one address (60 MB elsewhere) and sets no limit on how long a body may take to arrive; a
+client must send its headers within 15 seconds. Once the whole request has arrived, Caddy waits up to **15
+minutes** for the API's answer on that address only, and **60 seconds** everywhere else
+(`deploy/Caddyfile.prod`, `response_header_timeout`). gunicorn runs threads (`gthread`): its `timeout`
+(`GUNICORN_TIMEOUT`, 60 seconds) restarts a worker process that stops answering gunicorn, not a slow
+request, so an upload in progress keeps one thread busy and is not cut. The upload waits in the `api_tmp`
+volume, not in memory. If many lecturers upload at once, raise `GUNICORN_THREADS` rather than the timeouts.
 
 ## Monitoring
 
@@ -603,7 +616,8 @@ opening in the safe's log. Never put a key in email, chat, a ticket or the repos
 | Secret | Where it is | Holder |
 |---|---|---|
 | `DJANGO_SECRET_KEY` | `.env` | Server, sealed envelope |
-| `FIELD_ENCRYPTION_KEY` | `.env` | Server, sealed envelope |
+| `FIELD_ENCRYPTION_KEY` (or `FIELD_ENCRYPTION_KEYS` while changing it) | `.env` | Server, sealed envelope |
+| Retired encryption keys (`AUDIT_CHAIN_RETIRED_KEYS`) | `.env`, only to check the audit chain | Server, sealed envelope |
 | Database password (`DB_PASSWORD`) | `.env`, and in PostgreSQL | Server, sealed envelope |
 | SMTP password | `.env`; `deploy/monitoring/smtp_password` | Server |
 | `METRICS_TOKEN` | `.env` and `deploy/monitoring/metrics_token` | Server |
@@ -625,19 +639,32 @@ assignment with names hidden is being marked. Change it at once if it may be kno
 ### FIELD_ENCRYPTION_KEY
 
 Encrypts authenticator secrets, accommodation reasons, calendar feed addresses, certificate check codes, the
-LTI platform key and push subscriptions (`core/crypto.py`), and is the source of the audit chain's key, the
-audit log's fingerprints of hidden values and the attendance check-in codes.
+LTI platform key, badge signing keys and push subscriptions (`core/crypto.py`), and is the source of the
+audit chain's key, the audit log's fingerprints of hidden values and the attendance check-in codes.
 
-**It cannot be changed yet.** The LMS reads one key only: with a new one, every encrypted value stops
-reading (no one could sign in with an authenticator code), and every audit entry already written fails the
-chain check. Changing it needs two things that are not built ([Open actions](#open-actions)): reading with
-the old key while writing with the new (a list of keys), with a command that re-encrypts every value; and a
-chain check that knows which key sealed which entries. Until then:
+### Changing the encryption key
 
-- keep it secret and keep it in the envelope; a restore needs the key that was in use when the backup was
-  made;
-- if it may be known to someone else, that is an incident: record it, and ask the development team for the
-  re-encryption step before anything else.
+The LMS can hold several keys at once: `FIELD_ENCRYPTION_KEYS`, a comma-separated list, newest first, wins
+over `FIELD_ENCRYPTION_KEY`. New values are encrypted with the newest; stored values open with whichever key
+fits. To change the key (once a year, when someone who knew it leaves, or at once if it may be known):
+
+1. Check the audit chain: `dc exec api python manage.py verify_audit_chain`. Do not go on if it is broken.
+2. Make a new key with `scripts/gen-secret.sh`. In `.env`, remove `FIELD_ENCRYPTION_KEY` and write
+   `FIELD_ENCRYPTION_KEYS=<new>,<old>`. Restart: `dc up -d --force-recreate api worker`.
+3. Encrypt everything again with the new key: `dc exec api python manage.py rotate_field_key`. It is
+   recorded in the audit log (`field_key_rotated`, with how many values each field had, never a value).
+   `rotate_field_key --check` says how many values are still on an old key (it should say 0). It can be run
+   again safely; a value no key opens stops it with the field named.
+4. Take the old key out of use, but keep it: `FIELD_ENCRYPTION_KEYS=<new>` (or `FIELD_ENCRYPTION_KEY=<new>`)
+   and `AUDIT_CHAIN_RETIRED_KEYS=<old>`. The old key no longer opens anything; it is kept only so that the
+   audit entries written before the change still verify (each entry is sealed with the key in use when it
+   was written, and keys may only get newer along the chain, so the old key cannot seal anything later).
+   Restart as in step 2, and check the chain again (step 1).
+5. Put the new `.env` in the sealed envelope, and keep the old key with it: a backup made before the
+   change needs the old key to be read, and the chain needs it to be checked.
+
+After a change, the fingerprints the audit log shows for hidden values (`***` followed by ten characters)
+are worked out with the new key, so the same value shows a new fingerprint on either side of the change.
 
 ### The audit log and its chain
 
@@ -773,18 +800,16 @@ being misused.
 
 ## Open actions
 
-Found while writing this runbook; each is a change to the code or configuration, not to this page.
+Found while writing this runbook; each is a change to the code or configuration, not to this page. Done in
+version 1.1 and removed: the production stack's ports, source mount and the admin's style sheets; scheduled
+times at Guyana time; a changeable encryption key; every change in the Django admin site audited.
 
 | Action | Why it matters | Where |
 |---|---|---|
-| Production ports 80 and 443; no host source mounted over the image; serve the admin site's style sheets | The override keeps the development ports (8082, 8445) and the `./api` mount; with `DJANGO_DEBUG=0` nothing serves `/static/` | `deploy/compose.prod.yml` (`ports: !override`, `volumes: !override` for `api` and `worker`); `collectstatic` in `api/Dockerfile` and a static file server |
-| Make the scheduled times mean what the comments say (Guyana time), or correct the comments | The daily summary goes at 13:00, not 17:00; the approvals chase at 03:00, not 07:00 | `api/*/tasks.py` |
 | Record the SRMS site and class-list copy as an integration run | A failing nightly copy raises no alert | `api/integration/tasks.py` `sync_srms`, `integration/runs.py` |
-| A list of encryption keys (`MultiFernet`), a re-encryption command, and a chain check that knows each entry's key | Without them `FIELD_ENCRYPTION_KEY` can never be changed | `api/core/crypto.py`, `api/audit/chain.py` |
 | A command to change the LTI platform key and remove retired ones, written to the audit log | Retired keys stay published for ever; the change leaves no audit entry | `api/lti/keys.py` |
 | Alerts for disk space and for a missing backup metric (`absent(...)`) | A full disk stops the database; a stopped node_exporter hides a missing backup | `deploy/monitoring/alerts.yml` |
 | Remove finished and dealt-with jobs regularly | Procrastinate keeps every job; the table grows for ever | A periodic `procrastinate.builtin_tasks.remove_old_jobs` |
-| Changes made in the Django admin site to marks, submissions, memberships, sites, people and accounts | Only roles and authenticators are written to the audit log there | `api/*/admin.py` (use `AuditedAdmin`, or remove those models from the admin) |
 | Logs kept off the server, and the clock checked | ASVS 1.7.2, 7.3.4 | Hosting (item 7.04) |
 
 ## Next review

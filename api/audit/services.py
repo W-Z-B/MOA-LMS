@@ -13,6 +13,7 @@ from core.fields import EncryptedTextField
 from core.net import client_ip
 
 MASK = "***"
+SECRET_FIELDS = frozenset({"password", "key_hash"})  # auth.User's hash; integration.ServiceClient's
 
 
 def _plain(value):
@@ -33,11 +34,12 @@ def masked(value) -> str | None:
 
 
 def snapshot(instance) -> dict:
-    """JSON-safe copy of a model instance. Encrypted fields are masked, never logged in clear."""
+    """JSON-safe copy of a model instance. Encrypted fields, password hashes and service key hashes are
+    masked, never logged in clear (an account changed in the Django admin is snapshotted whole)."""
     data = {}
     for field in instance._meta.concrete_fields:
         value = field.value_from_object(instance)
-        if isinstance(field, EncryptedTextField):
+        if isinstance(field, EncryptedTextField) or field.name in SECRET_FIELDS:
             data[field.name] = masked(value)
         elif isinstance(field, models.BinaryField):
             data[field.name] = MASK if value else None

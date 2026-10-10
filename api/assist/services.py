@@ -15,7 +15,6 @@ the course's material only: nothing about the student.
 import html
 import json
 import re
-import zipfile
 from dataclasses import dataclass, field
 from html.parser import HTMLParser
 
@@ -25,11 +24,17 @@ from django.utils import timezone
 
 from assist.models import Exchange, SiteSwitch
 from assist.providers import ProviderError, enabled, provider
+from core import archives
 from courses import release
 from courses.access import person_of, site_role
 from courses.models import ContentItem, CourseSite, Membership
 
 LONGEST_SOURCE = 12_000  # characters of a lecturer's material sent for drafting
+# Word and PowerPoint files read for drafting (core.archives): parts, size once unpacked, and each part read.
+OFFICE_MAX_PARTS = 2000
+OFFICE_MAX_BYTES = 100 * archives.MB
+OFFICE_PART_BYTES = 2_000_000
+SLIDE = re.compile(r"ppt/slides/slide\d+\.xml")
 EXCERPT = 2_000  # characters of each passage the helper answers from
 PASSAGES = 3
 NOT_FOUND = "NOT_IN_MATERIAL"
@@ -129,16 +134,19 @@ def html_text(body: str) -> str:
 
 
 def _office_text(item: ContentItem) -> str:
-    """The words of a Word or PowerPoint file, from the XML inside it."""
-    with item.file.open("rb") as stored, zipfile.ZipFile(stored) as package:
-        names = sorted(
-            n
-            for n in package.namelist()
-            if n == "word/document.xml" or re.fullmatch(r"ppt/slides/slide\d+\.xml", n)
+    """The words of a Word or PowerPoint file, from the XML inside it. The zip is checked first
+    (core.archives: parts, unpacked size, zip bombs), each part is read no further than OFFICE_PART_BYTES,
+    and a part that declares a document type or entities is refused (ASVS 12.1.2)."""
+    with item.file.open("rb") as stored, archives.open_zip(stored) as package:
+        infos = archives.checked(package, max_entries=OFFICE_MAX_PARTS, max_bytes=OFFICE_MAX_BYTES)
+        wanted = sorted(
+            (i for i in infos if i.filename == "word/document.xml" or SLIDE.fullmatch(i.filename)),
+            key=lambda i: i.filename,
         )
         text = []
-        for name in names[:200]:
-            xml = package.read(name)[:2_000_000].decode("utf-8", "ignore")
+        for info in wanted[:200]:
+            with package.open(info) as part:
+                xml = archives.xml_text(part.read(OFFICE_PART_BYTES), info.filename)
             xml = re.sub(r"</w:p>|</a:p>", "\n", xml)
             text.append(html.unescape(re.sub(r"<[^>]+>", "", xml)))
     return "\n".join(text).strip()
@@ -153,7 +161,12 @@ def material_text(item: ContentItem) -> str:
         with item.file.open("rb") as stored:
             kind = sniff(stored)
         if kind in ("docx", "pptx"):
-            return _office_text(item)
+            try:
+                return _office_text(item)
+            except archives.ArchiveRefused as refused:
+                raise Refusal(
+                    "not_readable", f"The file cannot be read for drafting: {refused}", 400
+                ) from refused
     raise Refusal("not_readable", "Only pages, and Word or PowerPoint files, can be read for drafting.", 400)
 
 

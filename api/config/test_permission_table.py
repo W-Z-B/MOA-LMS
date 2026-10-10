@@ -128,8 +128,9 @@ SERVICE_KEY = NOBODY  # service-to-service: an Api-Key, never a person's session
 
 # Every endpoint and method. Read "SITE_TEACHERS + HIDDEN" as: the site's teaching staff may; everyone else
 # is refused, and those who cannot open the site are answered 404 (or "does not exist" for an id in a body).
-# A teaching-only read below leaves the auditor out although item 1.02 says the auditor reads everything:
-# that is how those views are written today, and left to GSA to decide (see the report for item 1.16).
+# The auditor reads everything (item 1.02), the library and insights included, read-only. A teaching-only read
+# below that still leaves the auditor out is deliberate and explained in docs/security/asvs-l2.md (the
+# auditor's reading).
 TABLE: dict[str, Access] = {
     # --- the platform -------------------------------------------------------------------------------------
     "GET /api/health/": PUBLIC,
@@ -553,16 +554,17 @@ TABLE: dict[str, Access] = {
     "GET /api/play/{token}/": PUBLIC,
     "GET /api/play/{token}/{entry}": PUBLIC,
     # --- the shared content library (item 5.14) -----------------------------------------------------------
-    # For anyone who teaches, and the course administrators; not students, the auditor or the DPO.
-    "GET /api/v1/library/items/": STAFF + ADMINS,
+    # For anyone who teaches, and the course administrators; the auditor reads it (item 1.02); not students
+    # or the DPO.
+    "GET /api/v1/library/items/": STAFF + ADMINS + AUDITOR,
     "POST /api/v1/library/items/": STAFF + ADMINS,  # to the whole School's shelf: anyone who teaches
-    "GET /api/v1/library/items/{pk}/": STAFF + ADMINS,
+    "GET /api/v1/library/items/{pk}/": STAFF + ADMINS + AUDITOR,
     "PATCH /api/v1/library/items/{pk}/": ADMINS,  # the world's was added by the course administrator
     "DELETE /api/v1/library/items/{pk}/": ADMINS,
-    "GET /api/v1/library/items/{pk}/download/": STAFF + ADMINS,
+    "GET /api/v1/library/items/{pk}/download/": STAFF + ADMINS + AUDITOR,
     "POST /api/v1/library/items/{pk}/use/": SITE_TEACHERS + HIDDEN,  # into a module of a course one teaches
     "POST /api/v1/library/items/share/": SITE_TEACHERS + HIDDEN,  # an item of a course one teaches
-    "GET /api/v1/library/banks/": STAFF + ADMINS,
+    "GET /api/v1/library/banks/": STAFF + ADMINS + AUDITOR,
     "POST /api/v1/library/banks/share/": SITE_TEACHERS + HIDDEN,  # a bank of a course one teaches
     # --- course interchange (item 6.08) -------------------------------------------------------------------
     "GET /api/v1/sites/{pk}/export-cartridge/": SITE_TEACHERS + HIDDEN,
@@ -578,23 +580,23 @@ TABLE: dict[str, Access] = {
     "GET /api/v1/help-requests/{pk}/": OWN + ADMINS + HIDDEN,
     "POST /api/v1/help-requests/{pk}/answer/": ADMINS,
     # --- insights: analytics, progress, outcomes, alerts, reports (items 3.11, 6.01 to 6.06) ---------------
-    "GET /api/v1/sites/{pk}/insights/": SITE_TEACHERS + HIDDEN,
-    "GET /api/v1/sites/{pk}/progress/": SITE_TEACHERS + HIDDEN,
-    "GET /api/v1/sites/{pk}/progress/{person_id}/": SITE_TEACHERS + HIDDEN,
+    "GET /api/v1/sites/{pk}/insights/": TEACHER_READERS + HIDDEN,  # the auditor reads (item 1.02)
+    "GET /api/v1/sites/{pk}/progress/": TEACHER_READERS + HIDDEN,
+    "GET /api/v1/sites/{pk}/progress/{person_id}/": TEACHER_READERS + HIDDEN,
     "GET /api/v1/sites/{pk}/my-progress/": STUDENTS + HIDDEN,  # from released marks, their own only
-    "GET /api/v1/sites/{pk}/outcomes/": SITE_TEACHERS + HIDDEN,
+    "GET /api/v1/sites/{pk}/outcomes/": TEACHER_READERS + HIDDEN,
     "POST /api/v1/sites/{pk}/outcomes/": SITE_TEACHERS + HIDDEN,
     "POST /api/v1/sites/{pk}/outcomes/{outcome_id}/links/": SITE_TEACHERS + HIDDEN,
-    "GET /api/v1/sites/{pk}/outcome-standings/": SITE_TEACHERS + HIDDEN,
-    "GET /api/v1/sites/{pk}/outcome-evidence/": SITE_TEACHERS + HIDDEN,
+    "GET /api/v1/sites/{pk}/outcome-standings/": TEACHER_READERS + HIDDEN,
+    "GET /api/v1/sites/{pk}/outcome-evidence/": TEACHER_READERS + HIDDEN,
     "PATCH /api/v1/outcomes/{outcome_id}/": SITE_TEACHERS + HIDDEN,
     "DELETE /api/v1/outcomes/{outcome_id}/": SITE_TEACHERS + HIDDEN,
     "DELETE /api/v1/outcome-links/{link_id}/": SITE_TEACHERS + HIDDEN,
-    "GET /api/v1/sites/{pk}/alerts/": SITE_TEACHERS + HIDDEN,  # never a student, never the auditor
+    "GET /api/v1/sites/{pk}/alerts/": SITE_TEACHERS + HIDDEN,  # never a student, nor the auditor (asvs-l2.md)
     "POST /api/v1/alerts/{alert_id}/acknowledge/": SITE_TEACHERS + HIDDEN,
     "POST /api/v1/alerts/{alert_id}/act/": SITE_TEACHERS + HIDDEN,
     "POST /api/v1/alerts/{alert_id}/dismiss/": SITE_TEACHERS + HIDDEN,
-    "GET /api/v1/alert-rules/": STAFF + ADMINS,  # anyone who teaches somewhere
+    "GET /api/v1/alert-rules/": STAFF + ADMINS + AUDITOR,  # anyone who teaches somewhere, and the auditor
     "PATCH /api/v1/alert-rules/{rule_id}/": ADMINS,
     # The reports also answer a registrar and a head of department within their grants (insights.reports);
     # those two roles are not among this table's nine.

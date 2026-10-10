@@ -52,7 +52,7 @@ def test_lecturer_sees_what_the_class_opened_handed_in_and_scored(
     assert "not recorded" in data["not_recorded"]
 
 
-def test_analytics_and_class_progress_are_refused_to_students_and_strangers(
+def test_analytics_and_class_progress_are_refused_to_students_and_strangers_and_read_by_the_auditor(
     site, student, auditor, make_person, client_for
 ):
     stranger = make_person("staff", "E0999", "Other", "Lecturer", "lecturer")
@@ -61,8 +61,13 @@ def test_analytics_and_class_progress_are_refused_to_students_and_strangers(
     for path in ("insights", "progress", f"progress/{student.id}", "outcome-standings", "alerts", "outcomes"):
         answer = client_for(student.user).get(f"/api/v1/sites/{site.id}/{path}/")
         assert answer.status_code == 403, path
-        assert client_for(auditor).get(f"/api/v1/sites/{site.id}/{path}/").status_code == 403, path
+        # The auditor reads everything but the alerts, and changes nothing (item 1.02).
+        expected = 403 if path == "alerts" else 200
+        assert client_for(auditor).get(f"/api/v1/sites/{site.id}/{path}/").status_code == expected, path
         assert client_for(stranger.user).get(f"/api/v1/sites/{site.id}/{path}/").status_code == 404, path
+    outcome = {"code": "LO9", "text": "Read a soil test"}
+    refused = client_for(auditor).post(f"/api/v1/sites/{site.id}/outcomes/", outcome, format="json")
+    assert refused.status_code == 403
 
 
 def test_class_progress_counts_items_work_marks_and_last_seen(

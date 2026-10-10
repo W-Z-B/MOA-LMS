@@ -1,35 +1,10 @@
 from django.contrib import admin
 
-from audit.services import record, snapshot
+from iam.admin_audit import AuditedAdmin
 from iam.models import Role, RoleScope, TotpDevice
 
-
-class AuditedAdmin(admin.ModelAdmin):
-    """Changes made in the Django admin reach the chained audit log like every other change (ASVS 7.1.3,
-    4.3.3): giving or taking a role, and removing an authenticator so that it is set up again."""
-
-    added, changed, removed = "create", "update", "delete"
-
-    def save_model(self, request, obj, form, change):
-        before = snapshot(type(obj).objects.get(pk=obj.pk)) if change and obj.pk else None
-        super().save_model(request, obj, form, change)
-        record(
-            request,
-            self.changed if change else self.added,
-            obj,
-            before=before,
-            after=snapshot(obj),
-            reason="Django admin",
-        )
-
-    def delete_model(self, request, obj):
-        before, pk = snapshot(obj), obj.pk
-        super().delete_model(request, obj)
-        record(request, self.removed, obj, before=before, entity_id=pk, reason="Django admin")
-
-    def delete_queryset(self, request, queryset):
-        for obj in queryset:
-            self.delete_model(request, obj)
+# Every admin is audited (iam.admin_audit, mixed in by iam.admin_site.LmsAdminSite.register); these name the
+# actions as the web app does: giving or taking a role, and removing an authenticator so it is set up again.
 
 
 @admin.register(Role)

@@ -4,9 +4,10 @@ administrators and the auditor at once, and every result goes to the application
 from procrastinate.contrib.django import app
 
 from audit import chain
+from core.schedule import periodic
 
 
-@app.periodic(cron="30 3 * * *")
+@periodic("30 3 * * *")
 @app.task(name="audit.verify_chain", queue="audit")
 def verify_chain(timestamp: int | None = None) -> bool:
     return chain.verify().intact

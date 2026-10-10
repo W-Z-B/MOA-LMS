@@ -5,12 +5,13 @@ import logging
 from django.conf import settings
 from procrastinate.contrib.django import app
 
+from core.schedule import periodic
 from integration.client import IntegrationError
 
 log = logging.getLogger(__name__)
 
 
-@app.periodic(cron="0 2 * * *")  # 02:00 every night, after the SRMS has synced staff at 01:30
+@periodic("0 2 * * *")  # 02:00 every night, after the SRMS has synced staff at 01:30
 @app.task(name="integration.sync_srms", queue="integration")
 def sync_srms(timestamp: int | None = None) -> dict:
     from integration import srms
@@ -31,7 +32,7 @@ def _hrms_configured() -> bool:
     return bool(settings.HRMS_API_URL and settings.HRMS_API_KEY)
 
 
-@app.periodic(cron="45 1 * * *")  # 01:45, before the sites at 02:00, so lecturers and staff are current
+@periodic("45 1 * * *")  # 01:45, before the sites at 02:00, so lecturers and staff are current
 @app.task(name="integration.sync_staff", queue="integration")
 def sync_staff(timestamp: int | None = None) -> dict:
     from integration import hrms
@@ -42,7 +43,7 @@ def sync_staff(timestamp: int | None = None) -> dict:
     return hrms.sync_staff()
 
 
-@app.periodic(cron="0 6 * * *")  # 06:00, before the daily required-training run at 06:30 (decision D13)
+@periodic("0 6 * * *")  # 06:00, before the daily required-training run at 06:30 (decision D13)
 @app.task(name="integration.sync_training_requirements", queue="integration")
 def sync_training_requirements(timestamp: int | None = None) -> dict:
     from integration import hrms
@@ -55,7 +56,7 @@ def sync_training_requirements(timestamp: int | None = None) -> dict:
     return hrms.sync_training_requirements()
 
 
-@app.periodic(cron="30 2 * * *")  # 02:30, after the sites and class lists are current (item 1.23)
+@periodic("30 2 * * *")  # 02:30, after the sites and class lists are current (item 1.23)
 @app.task(name="integration.push_marks", queue="integration")
 def push_marks(timestamp: int | None = None) -> dict:
     from integration import srms
@@ -66,7 +67,7 @@ def push_marks(timestamp: int | None = None) -> dict:
     return srms.push_all_marks()
 
 
-@app.periodic(cron="45 2 * * *")  # 02:45, after the nightly completion sweep (items 1.23, 5.06)
+@periodic("45 2 * * *")  # 02:45, after the nightly completion sweep (items 1.23, 5.06)
 @app.task(name="integration.push_training", queue="integration")
 def push_training(timestamp: int | None = None) -> dict:
     from integration import hrms

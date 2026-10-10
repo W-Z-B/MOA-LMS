@@ -827,6 +827,10 @@ class TeachingViewSet(viewsets.ModelViewSet):
     def _require_teaching(self, site: CourseSite) -> None:
         require_teaching(self.request.user, site)
 
+    def kept(self, instance) -> dict:
+        """What the audit log keeps of a record; a view whose records hold sensitive words masks them."""
+        return snapshot(instance)
+
     def update(self, request, *args, **kwargs):
         self._require_teaching(self.site_of(self.get_object()))
         return super().update(request, *args, **kwargs)
@@ -835,19 +839,19 @@ class TeachingViewSet(viewsets.ModelViewSet):
         self._require_teaching(self.site_from_data(serializer.validated_data))
         with transaction.atomic():
             instance = serializer.save(created_by=self.request.user, updated_by=self.request.user)
-            record(self.request, "create", instance, after=snapshot(instance))
+            record(self.request, "create", instance, after=self.kept(instance))
 
     def perform_update(self, serializer):
         self._require_teaching(self.site_of(serializer.instance))
         with transaction.atomic():
-            before = snapshot(serializer.instance)
+            before = self.kept(serializer.instance)
             instance = serializer.save(updated_by=self.request.user)
-            record(self.request, "update", instance, before=before, after=snapshot(instance))
+            record(self.request, "update", instance, before=before, after=self.kept(instance))
 
     def perform_destroy(self, instance):
         self._require_teaching(self.site_of(instance))
         with transaction.atomic():
-            before, entity_id = snapshot(instance), instance.pk
+            before, entity_id = self.kept(instance), instance.pk
             instance.delete()
             record(self.request, "delete", instance, before=before, entity_id=entity_id)
 

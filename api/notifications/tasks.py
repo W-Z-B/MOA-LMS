@@ -5,12 +5,13 @@ import logging
 
 from procrastinate.contrib.django import app
 
+from core.schedule import periodic
 from notifications.services import send_daily_summaries
 
 log = logging.getLogger(__name__)
 
 
-@app.periodic(cron="0 17 * * *")
+@periodic("0 17 * * *")
 @app.task(name="notifications.daily_summary", queue="notifications")
 def daily_summary(timestamp: int | None = None) -> int:
     sent = send_daily_summaries()

@@ -39,8 +39,11 @@ class Role(TimeStampedModel):
         (REGISTRAR, "Registrar"),
     )
     # Lecturers too (decision D14): they release marks that become results in the SRMS. Heads of department
-    # and the Registrar read reports on marking and staff across their units or campuses.
-    MFA_REQUIRED = frozenset({ADMINISTRATOR, COURSE_ADMIN, LECTURER, HEAD_OF_DEPARTMENT, REGISTRAR})
+    # and the Registrar read reports on marking and staff across their units or campuses. The auditor and the
+    # Data Protection Officer read sensitive records (every site and the audit log; anyone's whole record).
+    MFA_REQUIRED = frozenset(
+        {ADMINISTRATOR, COURSE_ADMIN, LECTURER, HEAD_OF_DEPARTMENT, REGISTRAR, AUDITOR, DPO}
+    )
 
     code = models.CharField(max_length=40, unique=True, choices=CODES)
     name = models.CharField(max_length=80)

@@ -47,10 +47,15 @@ RUN pip install --require-hashes -r requirements.txt \
     && if [ "$INSTALL_DEV" = "1" ]; then pip install --require-hashes -r requirements.txt -r requirements-dev.txt; fi
 
 COPY . .
-# The API runs unprivileged. /srv/files is the document volume: creating it here with the right owner
-# means a fresh named volume inherits that ownership. For a volume created before this change run:
+# The admin site's style sheets and scripts, gathered at build time into /app/staticfiles. The production
+# stack copies them into the volume Caddy serves at /static/ (deploy/compose.prod.yml, service "static").
+RUN DJANGO_SECRET_KEY=collectstatic-only python manage.py collectstatic --noinput --verbosity 0
+# The API runs unprivileged. /srv/files is the document volume, /srv/static the admin's files for Caddy and
+# /tmp the uploads on their way in: creating them here with the right owner means a fresh named volume
+# inherits that ownership. For a volume created before this change run:
 #   docker compose exec -u root api chown -R app:app /srv/files
-RUN useradd --create-home app && mkdir -p /srv/files && chown -R app:app /app /srv/files
+RUN useradd --create-home app && mkdir -p /srv/files /srv/static \
+    && chown -R app:app /app /srv/files /srv/static && chmod 1777 /tmp
 USER app
 
 EXPOSE 8000

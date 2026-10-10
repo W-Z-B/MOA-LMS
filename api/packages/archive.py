@@ -24,10 +24,11 @@ from dataclasses import dataclass, field
 
 from django.conf import settings
 
+from core.archives import too_compressed  # the zip-bomb rule every uploaded zip meets
 from quizzes.formats import FormatError, parse_xml
 
 MB = 1024 * 1024
-MAX_RATIO = 100  # an entry above 1 MB unpacked may not be more than 100 times its packed size
+
 RESERVED = "__lms__"  # the player's own addresses live under this name; a package may not use it
 REFUSED_EXTENSIONS = frozenset(
     {
@@ -111,7 +112,7 @@ def entries(archive: zipfile.ZipFile) -> dict[str, zipfile.ZipInfo]:
             raise PackageRefused(f"The package holds a program ({name[:80]}), which is not accepted.")
         if name in found or name.lower() in {n.lower() for n in found}:
             raise PackageRefused(f"The package holds two files named {name[:80]}.")
-        if info.file_size > MB and info.file_size > MAX_RATIO * max(info.compress_size, 1):
+        if too_compressed(info):
             raise PackageRefused("The package unpacks to far more than its size, so it was refused.")
         total += info.file_size
         if total > limit_bytes:

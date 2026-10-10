@@ -25,3 +25,9 @@ class LmsAdminSite(admin.AdminSite):
     def login(self, request, extra_context=None):
         """No password form of its own: people sign in through the web app, then open the admin."""
         return HttpResponseRedirect("/")
+
+    def register(self, model_or_iterable, admin_class=None, **options):
+        """Every model admin is audited (iam.admin_audit), whichever app registers it, Django's too."""
+        from iam.admin_audit import audited
+
+        return super().register(model_or_iterable, audited(admin_class), **options)

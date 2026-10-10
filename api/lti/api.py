@@ -19,6 +19,7 @@ from rest_framework.routers import SimpleRouter
 
 from assessments.models import GradeCategory
 from audit.services import record, snapshot
+from core import outbound
 from core.serializers import ErrorSerializer
 from courses import release
 from courses.access import TaughtRecord, can_teach, taught_sites, visible_sites
@@ -79,6 +80,9 @@ class ToolSerializer(serializers.ModelSerializer):
         return _secure(value)
 
     def validate_jwks_url(self, value):
+        """The server fetches this address itself, so it may not name a private network (ASVS 5.2.6)."""
+        if value and outbound.plainly_private(value):
+            raise serializers.ValidationError("Give the tool's public key set address, not a private one.")
         return _secure(value)
 
     def validate_redirect_urls(self, value):

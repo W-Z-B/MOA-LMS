@@ -4,10 +4,12 @@ import logging
 
 from procrastinate.contrib.django import app
 
+from core.schedule import periodic
+
 log = logging.getLogger(__name__)
 
 
-@app.periodic(cron="20 * * * *")
+@periodic("20 * * * *")
 @app.task(name="peerreview.allocate_due", queue="notifications")
 def allocate_due(timestamp: int | None = None) -> int:
     from peerreview.services import allocate_due as run

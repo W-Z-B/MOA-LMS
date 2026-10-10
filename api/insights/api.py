@@ -2,7 +2,8 @@
 and the reports that leave a course (6.03, 6.04, 6.06).
 
 Inside a site, teaching staff and course administrators read the analytics, everyone's progress, the
-outcomes and the alerts; a student reads only their own progress, from released marks, and never an alert.
+outcomes and the alerts; the auditor reads the same, read-only, except the alerts themselves (item 1.02;
+docs/security/asvs-l2.md); a student reads only their own progress, from released marks, and never an alert.
 The reports are read by the roles named in insights.reports, for the rows their grants cover.
 """
 
@@ -26,6 +27,7 @@ from audit.services import record, record_event, snapshot
 from core.serializers import ErrorSerializer
 from courses.access import TEACHING, person_of, site_role, taught_sites, visible_sites
 from courses.models import CourseSite, Membership
+from iam.models import Role
 from iam.permissions import RolePermission
 from iam.services import SITE_ADMIN_ROLES, has_role
 from insights import analytics, outcomes, reports
@@ -270,6 +272,16 @@ def _teaching_site(request, pk) -> CourseSite:
     return site
 
 
+def _reading_site(request, pk) -> CourseSite:
+    """A site whose analytics, progress and outcomes the caller may read: its teaching staff, course
+    administrators, and the auditor (read-only, item 1.02). Early alerts stay with the teaching staff:
+    a label about one student, for those who teach them (docs/security/asvs-l2.md, the auditor's reading)."""
+    site, role = _site(request, pk)
+    if role not in TEACHING and role != "auditor":
+        raise PermissionDenied("Only the site's teaching staff and the auditor can see this.")
+    return site
+
+
 def _open_alerts(site) -> dict[int, int]:
     rows = Alert.objects.filter(site=site, state__in=[Alert.State.OPEN, Alert.State.ACKNOWLEDGED])
     counts: dict[int, int] = {}
@@ -289,7 +301,7 @@ def _open_alerts(site) -> dict[int, int]:
 @api_view(["GET"])
 @permission_classes([RolePermission])
 def site_analytics(request, pk: int):
-    site = _teaching_site(request, pk)
+    site = _reading_site(request, pk)
     return Response(analytics.course_analytics(site))
 
 
@@ -300,7 +312,7 @@ def site_analytics(request, pk: int):
 @api_view(["GET"])
 @permission_classes([RolePermission])
 def site_progress(request, pk: int):
-    site = _teaching_site(request, pk)
+    site = _reading_site(request, pk)
     rows = analytics.class_progress(site)
     alerts = _open_alerts(site)
     for row in rows:
@@ -326,7 +338,7 @@ def _student_progress(site, person, *, released_only: bool) -> dict:
 @api_view(["GET"])
 @permission_classes([RolePermission])
 def student_progress(request, pk: int, person_id: int):
-    site = _teaching_site(request, pk)
+    site = _reading_site(request, pk)
     membership = get_object_or_404(
         Membership.objects.select_related("person"),
         site=site,
@@ -388,7 +400,7 @@ class LocalOutcomeSerializer(serializers.ModelSerializer):
 @api_view(["GET", "POST"])
 @permission_classes([RolePermission])
 def site_outcomes(request, pk: int):
-    site = _teaching_site(request, pk)
+    site = _reading_site(request, pk) if request.method == "GET" else _teaching_site(request, pk)
     if request.method == "GET":
         return Response(_outcomes_payload(site))
     if not outcomes.may_add_local(site):
@@ -558,7 +570,7 @@ class EvidenceChoicesSerializer(serializers.Serializer):
 def outcome_evidence(request, pk: int):
     from quizzes.models import QuizSlot
 
-    site = _teaching_site(request, pk)
+    site = _reading_site(request, pk)
     assignments = Assignment.objects.filter(site=site).order_by("due_at", "id")
     in_quizzes = QuizSlot.objects.filter(quiz__site=site, question__isnull=False).values("question_id")
     questions = (
@@ -586,7 +598,7 @@ def outcome_evidence(request, pk: int):
 @api_view(["GET"])
 @permission_classes([RolePermission])
 def outcome_standings(request, pk: int):
-    site = _teaching_site(request, pk)
+    site = _reading_site(request, pk)
     return Response(outcomes.standings(site, analytics.students_of(site)))
 
 
@@ -705,7 +717,7 @@ def _ensure_rules() -> None:
 
 
 def _may_read_rules(user) -> bool:
-    return has_role(user, *SITE_ADMIN_ROLES) or taught_sites(user).exists()
+    return has_role(user, *SITE_ADMIN_ROLES, Role.AUDITOR) or taught_sites(user).exists()
 
 
 @extend_schema(

@@ -34,12 +34,12 @@ class FakeResponse(io.BytesIO):
 def test_outlines_are_read_over_http_with_the_service_key(configured, monkeypatch):
     seen = []
 
-    def urlopen(request, timeout):
+    def urlopen(request, timeout, **options):
         seen.append(request)
         body = [{"course_code": "AGR101", "outcomes": [{"code": "LO1", "text": "Sample a soil"}]}]
         return FakeResponse(json.dumps(body).encode())
 
-    monkeypatch.setattr("urllib.request.urlopen", urlopen)
+    monkeypatch.setattr("core.outbound.urlopen", urlopen)
 
     summary = srms.sync_outcomes()
 
@@ -130,13 +130,13 @@ def test_competency_results_and_outcome_standings_are_posted_in_the_agreed_shape
     hand_in(report, student, mark=45, released=True)
     sent = []
 
-    def urlopen(request, timeout):
+    def urlopen(request, timeout, **options):
         sent.append(request)
         return FakeResponse(
             json.dumps({"accepted": ["26MRP0001"], "locked": [], "unknown": ["26MRP0009"]}).encode()
         )
 
-    monkeypatch.setattr("urllib.request.urlopen", urlopen)
+    monkeypatch.setattr("core.outbound.urlopen", urlopen)
 
     summary = srms.push_all_competency()
 
