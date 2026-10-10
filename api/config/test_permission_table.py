@@ -143,6 +143,7 @@ TABLE: dict[str, Access] = {
     "GET /api/v1/search/": SIGNED_IN,  # results scoped to what the person may open
     "GET /api/v1/reference/campuses/": SIGNED_IN,
     "GET /api/v1/integration/sites/": SERVICE_KEY,
+    "GET /api/v1/integration/outcome-summary/": SERVICE_KEY,
     # --- signing in and the account -----------------------------------------------------------------------
     "POST /api/v1/auth/login/": PUBLIC,
     "POST /api/v1/auth/logout/": SIGNED_IN,
