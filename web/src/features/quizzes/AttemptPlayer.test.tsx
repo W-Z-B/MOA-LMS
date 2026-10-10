@@ -163,6 +163,54 @@ describe("answering an attempt (items 3.03 and 4.02)", () => {
   });
 });
 
+describe("secure exam mode (item 3.25)", () => {
+  it("shows the deterrent notice and reports one focus-lost/resumed pair per excursion", async () => {
+    const { calls } = open(
+      { "POST /quiz-attempts/30/integrity-event/": { status: 204 } },
+      attempt({ is_secure_exam: true }),
+    );
+    expect(await screen.findByText(/Secure exam sitting/)).toBeInTheDocument();
+    expect(screen.getByText(/not a lockdown browser/)).toBeInTheDocument();
+
+    window.dispatchEvent(new Event("blur"));
+    window.dispatchEvent(new Event("blur")); // a second signal for the same excursion is not reported again
+    await waitFor(() => expect(calls.filter((c) => c.path.endsWith("/integrity-event/"))).toHaveLength(1));
+    window.dispatchEvent(new Event("focus"));
+    await waitFor(() => expect(calls.filter((c) => c.path.endsWith("/integrity-event/"))).toHaveLength(2));
+    const kinds = calls.filter((c) => c.path.endsWith("/integrity-event/")).map((c) => (c.body as { kind: string }).kind);
+    expect(kinds).toEqual(["focus_lost", "focus_resumed"]);
+  });
+
+  it("reports copy, paste and the right-click menu, and turns their default action off", async () => {
+    const { calls } = open(
+      { "POST /quiz-attempts/30/integrity-event/": { status: 204 } },
+      attempt({ is_secure_exam: true }),
+    );
+    await screen.findByText(/Secure exam sitting/);
+    const copy = new Event("copy", { cancelable: true });
+    const paste = new Event("paste", { cancelable: true });
+    const contextMenu = new Event("contextmenu", { cancelable: true });
+    document.dispatchEvent(copy);
+    document.dispatchEvent(paste);
+    document.dispatchEvent(contextMenu);
+    expect(copy.defaultPrevented).toBe(true);
+    expect(paste.defaultPrevented).toBe(true);
+    expect(contextMenu.defaultPrevented).toBe(true);
+    await waitFor(() => expect(calls.filter((c) => c.path.endsWith("/integrity-event/"))).toHaveLength(3));
+    const kinds = calls.filter((c) => c.path.endsWith("/integrity-event/")).map((c) => (c.body as { kind: string }).kind);
+    expect(kinds).toEqual(["copy_attempted", "paste_attempted", "context_menu_blocked"]);
+  });
+
+  it("reports nothing for an ordinary quiz", async () => {
+    const { calls } = open({}, attempt({ is_secure_exam: false }));
+    await screen.findByRole("heading", { name: "Question 1" });
+    expect(screen.queryByText(/Secure exam sitting/)).not.toBeInTheDocument();
+    window.dispatchEvent(new Event("blur"));
+    document.dispatchEvent(new Event("copy", { cancelable: true }));
+    expect(calls.some((c) => c.path.endsWith("/integrity-event/"))).toBe(false);
+  });
+});
+
 describe("the review (item 3.05)", () => {
   it("shows only what the review options let through", async () => {
     open({}, finished({ score: null, percent: null, passed: null, is_released: false, questions: [mcQuestion({ response: { choice: "a" } })] }));

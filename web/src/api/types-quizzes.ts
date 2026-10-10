@@ -113,6 +113,8 @@ export interface Quiz {
   pass_mark: string | null;
   weight: string;
   is_practice: boolean;
+  /** Secure exam mode (item 3.25): one attempt only, enforced on the server; the sitting is logged. */
+  is_secure_exam: boolean;
   is_published: boolean;
   shuffle_questions: boolean;
   shuffle_answers: boolean;
@@ -208,6 +210,8 @@ export interface Attempt {
   seconds_left: number | null;
   submitted_at: string | null;
   auto_submitted: boolean;
+  /** Secure exam mode (item 3.25): the deterrent banner shows, and integrity events are reported. */
+  is_secure_exam: boolean;
   navigation: "free" | "sequential";
   current_page: number;
   last_page: number;
@@ -219,6 +223,16 @@ export interface Attempt {
   passed: boolean | null;
   overall_feedback: string;
   questions: AttemptQuestion[];
+}
+
+/** Kinds the server accepts from the browser's own integrity reporting (item 3.25). */
+export type IntegrityEventKind = "focus_lost" | "focus_resumed" | "copy_attempted" | "paste_attempted" | "context_menu_blocked";
+
+/** One entry in an attempt's integrity timeline, read by teaching staff (item 3.25). */
+export interface IntegrityLogEntry {
+  kind: IntegrityEventKind | string;
+  label: string;
+  at: string;
 }
 
 export interface AnswerSaved {

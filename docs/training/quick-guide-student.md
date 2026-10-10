@@ -20,7 +20,8 @@ receipt**.
 feedback. The **Gradebook** tab shows your marks and **How your coursework total is worked out**.
 
 **6. Take a quiz.** **Quizzes** tab, **Start the quiz**. Use **Next page**; at the end **Finish
-attempt...**, then **Submit my answers**. Watch **Time left**.
+attempt...**, then **Submit my answers**. Watch **Time left**. If it says **Secure exam sitting**, you get
+one attempt only, copying and pasting are off, and leaving the window is recorded for your lecturer.
 
 **7. Check in to a class.** **Classes** tab, **Check in**, type the **Code on the screen**, **Check in**.
 It opens 15 minutes before the class and closes at the end.

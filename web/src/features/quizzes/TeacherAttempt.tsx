@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { errorMessage, get, post } from "../../api/client";
-import type { Attempt, AttemptQuestion } from "../../api/types-quizzes";
+import type { Attempt, AttemptQuestion, IntegrityLogEntry } from "../../api/types-quizzes";
 import { BackLink } from "./AttemptPlayer";
 import { Review } from "./Review";
 
@@ -64,8 +64,48 @@ export function TeacherAttempt({ attemptId, onBack }: { attemptId: number; onBac
           <button onClick={() => void release()}>Release this result</button>
         </div>
       )}
+      {attempt.is_secure_exam && <IntegrityLog attemptId={attempt.id} />}
       <Review attempt={attempt} extra={finished ? (q) => <MarkForm attemptId={attempt.id} q={q} onMarked={setAttempt} /> : undefined} />
     </>
+  );
+}
+
+/**
+ * The sitting's integrity log (item 3.25): a plain timeline of what the student's browser reported during a
+ * secure exam sitting, not an accusation. The course's teaching staff read it alongside the student's answers.
+ */
+function IntegrityLog({ attemptId }: { attemptId: number }) {
+  const [events, setEvents] = useState<IntegrityLogEntry[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    get<IntegrityLogEntry[]>(`/quiz-attempts/${attemptId}/integrity-log/`)
+      .then(setEvents)
+      .catch((err) => setError(errorMessage(err, "Could not open the integrity log.")));
+  }, [attemptId]);
+
+  return (
+    <section className="module" aria-labelledby="integrity-log-head">
+      <h3 id="integrity-log-head">Integrity log</h3>
+      <p className="muted small">
+        What the page observed during this sitting, in server time. It is a timeline for you to weigh
+        alongside the student&rsquo;s answers, not a verdict.
+      </p>
+      {error && (
+        <p role="alert" className="error">
+          {error}
+        </p>
+      )}
+      {events && events.length === 0 && <p className="muted">Nothing was reported during this sitting.</p>}
+      {events && events.length > 0 && (
+        <ul className="integrity-log-list">
+          {events.map((e, i) => (
+            <li key={i}>
+              <time dateTime={e.at}>{new Date(e.at).toLocaleString()}</time> — {e.label}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
 

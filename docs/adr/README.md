@@ -31,6 +31,7 @@ the recommended answer"; GSA may revise any of them by a new record.
 | [0019](0019-required-training.md) | The HRMS says which staff must take which training | D13 | Proposed, open |
 | [0020](0020-reports-by-role-grant.md) | Who reads the reports that leave a course: heads of department by unit, the Registrar by campus | | Proposed; built this way, GSA to confirm |
 | [0030](0030-packaged-content-as-built.md) | Packaged content, the statement store, the content library, course interchange and digital badges, as built | D2 | Proposed; built this way, GSA to confirm |
+| [0045](0045-secure-exam-mode.md) | Secure exam mode is a deterrent and a log, not a lockdown | | Accepted on the recommended answer, carrying out 0006 |
 
 ## Open decisions with no record yet
 

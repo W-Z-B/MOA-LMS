@@ -22,6 +22,7 @@ when people use it, so that the privacy notice can say it and anyone adding a fe
 | A score an outside tool posts, and a tool reading a class list | Each time | Tool scores, audit log | The student, the course's teaching staff | With the marks; the audit log |
 | A question to the AI study helper: when, by whom, whether answered, which items were the sources (never the question or the answer) | Each question | AI exchanges | The system | 1 year, removed nightly (rule `ai-exchanges`) |
 | An AI draft for a lecturer, and the record it was saved as | Each draft | AI exchanges, audit log ("AI-drafted") | Administrators, the auditor | Drafts 1 year; the audit entry with the audit log |
+| A secure exam sitting's integrity event: the quiz window lost or regained focus, or a copy, paste or right-click attempt on the exam page (item 3.25) | Each event, only while a secure exam attempt is open | Quiz attempts (`AttemptEvent`) | The course's teaching staff, same as the attempt's full event log; never shown to the student as a label | With the attempt |
 
 ## What the LMS does not record
 
