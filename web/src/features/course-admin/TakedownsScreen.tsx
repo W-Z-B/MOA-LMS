@@ -79,7 +79,7 @@ export default function TakedownsScreen() {
               <div className="stack">
                 <label>
                   Note on the decision (optional)
-                  <input value={notes[row.id] ?? ""} onChange={(e) => setNotes({ ...notes, [row.id]: e.target.value })} />
+                  <input value={notes[row.id] ?? ""} onChange={(e) => setNotes((prev) => ({ ...prev, [row.id]: e.target.value }))} />
                 </label>
                 <div className="actions">
                   <button type="button" className="secondary" onClick={() => review(row, "restore")}>

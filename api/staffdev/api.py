@@ -278,8 +278,11 @@ class CatalogueViewSet(viewsets.ReadOnlyModelViewSet):
         if not has_role(request.user, *MANAGERS):
             raise PermissionDenied("Only course administrators change the catalogue.")
         site = get_object_or_404(CourseSite, pk=site)
-        if site.kind != CourseSite.Kind.STAFF_DEVELOPMENT:
-            return _refused("not_staff_development", "Only staff-development sites go in the catalogue.", 400)
+        # Open short courses (item 5.07) keep their summary, places and completion rules here too.
+        if site.kind not in (CourseSite.Kind.STAFF_DEVELOPMENT, CourseSite.Kind.OPEN):
+            return _refused(
+                "not_staff_development", "Only staff-development and open sites go in the catalogue.", 400
+            )
         current = CatalogueEntry.objects.filter(site=site).first()
         data = CatalogueEntrySerializer(current, data=request.data)
         data.is_valid(raise_exception=True)

@@ -9,6 +9,7 @@ import { Moderation } from "./Moderation";
 import { RubricMarker } from "./RubricMarker";
 import { filledMark, penaltyPercent } from "./score";
 import { SpreadsheetMarks } from "./SpreadsheetMarks";
+import { SimilarityPanel } from "../assess/SimilarityPanel";
 import "./marking.css";
 
 interface Props {
@@ -322,6 +323,7 @@ function OneSubmission({ assignment, rows, submission, open, onSaved, onGroupSav
           </form>
 
           <FeedbackFiles submission={submission} locked={locked} onChanged={(s) => onSaved(s, "Feedback file returned.")} />
+          <SimilarityPanel key={submission.id} submissionId={submission.id} />
           {assignment.is_group && submission.group && <GroupMark assignment={assignment} rows={rows} submission={submission} onSaved={onGroupSaved} />}
           {assignment.moderation !== "none" && (
             <Moderation submission={submission} assignment={assignment} moderation={history?.moderation ?? null} onChanged={(s) => {
@@ -460,7 +462,7 @@ function GroupMark({ assignment, rows, submission, onSaved }: { assignment: Assi
         {members.map((m) => (
           <label key={m.id}>
             Adjustment for {m.student_name || m.student_no} (+ or −)
-            <input type="number" step="any" value={adjust[m.student_no] ?? ""} onChange={(e) => setAdjust({ ...adjust, [m.student_no]: e.target.value })} />
+            <input type="number" step="any" value={adjust[m.student_no] ?? ""} onChange={(e) => setAdjust((prev) => ({ ...prev, [m.student_no]: e.target.value }))} />
           </label>
         ))}
         {error && (

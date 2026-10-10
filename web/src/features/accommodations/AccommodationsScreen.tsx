@@ -174,22 +174,22 @@ function AccommodationForm({ existing, onSaved, onCancel }: { existing?: Accommo
       <div className="grid2">
         <label>
           More time in quizzes (%)
-          <input type="number" min={0} max={300} value={draft.extra_time_percent} onChange={(e) => setDraft({ ...draft, extra_time_percent: Number(e.target.value) })} />
+          <input type="number" min={0} max={300} value={draft.extra_time_percent} onChange={(e) => setDraft((prev) => ({ ...prev, extra_time_percent: Number(e.target.value) }))} />
         </label>
         <label>
           More days for each assignment
-          <input type="number" min={0} max={60} value={draft.extra_days} onChange={(e) => setDraft({ ...draft, extra_days: Number(e.target.value) })} />
+          <input type="number" min={0} max={60} value={draft.extra_days} onChange={(e) => setDraft((prev) => ({ ...prev, extra_days: Number(e.target.value) }))} />
         </label>
         <label className="span2">
           Another format needed (optional)
-          <input value={draft.other_format} maxLength={300} onChange={(e) => setDraft({ ...draft, other_format: e.target.value })} placeholder="Large print; papers read aloud" />
+          <input value={draft.other_format} maxLength={300} onChange={(e) => setDraft((prev) => ({ ...prev, other_format: e.target.value }))} placeholder="Large print; papers read aloud" />
         </label>
         <label className="span2">
           Reason (course administrators only; never shown to lecturers)
-          <textarea value={draft.reason} onChange={(e) => setDraft({ ...draft, reason: e.target.value })} />
+          <textarea value={draft.reason} onChange={(e) => setDraft((prev) => ({ ...prev, reason: e.target.value }))} />
         </label>
         <label className="inline span2">
-          <input type="checkbox" checked={draft.is_active} onChange={(e) => setDraft({ ...draft, is_active: e.target.checked })} />
+          <input type="checkbox" checked={draft.is_active} onChange={(e) => setDraft((prev) => ({ ...prev, is_active: e.target.checked }))} />
           In force
         </label>
       </div>

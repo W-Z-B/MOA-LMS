@@ -640,6 +640,34 @@ TABLE: dict[str, Access] = {
     "POST /api/v1/sites/{pk}/ai/drafts/alt-text/": SITE_TEACHERS + HIDDEN,
     "POST /api/v1/sites/{pk}/ai/ask/": SITE_READERS + HIDDEN,  # the study helper
     "POST /api/v1/ai/drafts/{pk}/saved/": LECTURER + HIDDEN,  # whoever asked for the draft
+    # --- similarity, peer review, paper quizzes and open short courses (3.20, 3.24, 4.13, 5.07) ----------
+    "GET /api/v1/submissions/{pk}/similarity/": SITE_TEACHERS + HIDDEN,  # never the student
+    "POST /api/v1/submissions/{pk}/similarity/": SITE_TEACHERS + HIDDEN,
+    "GET /api/v1/assignments/{pk}/similarity/": SITE_TEACHERS + HIDDEN,
+    "GET /api/v1/assignments/{pk}/peer-review/": SITE_MEMBERS + HIDDEN,  # staff overview, or own reviews
+    "PUT /api/v1/assignments/{pk}/peer-review/": SITE_TEACHERS + HIDDEN,
+    "DELETE /api/v1/assignments/{pk}/peer-review/": SITE_TEACHERS + HIDDEN,
+    "POST /api/v1/assignments/{pk}/peer-review/allocate/": SITE_TEACHERS + HIDDEN,
+    "POST /api/v1/assignments/{pk}/peer-review/release/": SITE_TEACHERS + HIDDEN,
+    "POST /api/v1/assignments/{pk}/peer-review/apply/": SITE_TEACHERS + HIDDEN,
+    "GET /api/v1/peer-reviews/{pk}/": CLASSMATE + HIDDEN,  # the reviewer only: the world's is the classmate
+    "POST /api/v1/peer-reviews/{pk}/": CLASSMATE + HIDDEN,
+    "GET /api/v1/peer-reviews/{pk}/files/{file_id}/": CLASSMATE + HIDDEN,
+    "POST /api/v1/peer-reviews/{pk}/moderate/": SITE_TEACHERS + HIDDEN,
+    "POST /api/v1/submissions/{pk}/peer-mark/": SITE_TEACHERS + HIDDEN,
+    "GET /api/v1/quizzes/{pk}/papers/": SITE_TEACHERS + HIDDEN,
+    "POST /api/v1/quizzes/{pk}/papers/": SITE_TEACHERS + HIDDEN,
+    "GET /api/v1/quiz-papers/{pk}/": SITE_TEACHERS + HIDDEN,
+    "DELETE /api/v1/quiz-papers/{pk}/": SITE_TEACHERS + HIDDEN,
+    "GET /api/v1/quiz-papers/{pk}/pdf/": SITE_TEACHERS + HIDDEN,
+    "GET /api/v1/quiz-papers/{pk}/grid/": SITE_TEACHERS + HIDDEN,
+    "POST /api/v1/quiz-papers/{pk}/grid/": SITE_TEACHERS + HIDDEN,
+    "POST /api/v1/quiz-papers/{pk}/upload/": SITE_TEACHERS + HIDDEN,
+    "GET /api/v1/open-courses/": PUBLIC,  # the public catalogue, when OPEN_COURSES_ENABLED is on
+    "POST /api/v1/open-courses/register/": PUBLIC,
+    "GET /api/v1/open-courses/confirm/": PUBLIC,
+    "POST /api/v1/open-courses/confirm/": PUBLIC,
+    "POST /api/v1/open-courses/{pk}/join/": PEOPLE,  # a person record is needed to join
 }
 
 # The world record each {pk} names, by the path segment before it.
@@ -714,6 +742,9 @@ SEGMENT_OBJECTS = {
     "takedowns": "takedown",
     "terms": "term",
     "site-archives": "site_archive",
+    "peer-reviews": "peer_review",
+    "quiz-papers": "quiz_paper",
+    "open-courses": "open_site",
     "threads": "thread",
 }
 # A {name} that says what it is, whatever segment precedes it.
@@ -732,6 +763,7 @@ NAMED_OBJECTS = {
     "item_id": "placed_item",
     "site_id": "site",
     "line_item_id": "line_item",
+    "file_id": "submission_file",
 }
 
 
@@ -1423,6 +1455,27 @@ def build_world() -> dict:
         "position": 1,
     }
 
+    # Similarity, peer review, paper quizzes and open short courses (items 3.20, 3.24, 4.13, 5.07). The
+    # classmate reviews the student's work; the paper has one empty version; the open course has places.
+    from opencourses.models import OpenRegistration  # noqa: F401 - the app's tables are in the world
+    from paperquizzes.models import PaperQuiz, PaperVersion
+    from peerreview.models import PeerReview, PeerReviewSetup
+    from staffdev.models import CatalogueEntry as OpenEntry
+
+    peer_setup = PeerReviewSetup.objects.create(
+        assignment=assignment, reviews_due_at=now + timedelta(days=14), allocated_at=now
+    )
+    peer_review = PeerReview.objects.create(
+        setup=peer_setup, reviewer=classmate, submission=submission, position=1
+    )
+    quiz_paper = PaperQuiz.objects.create(quiz=quiz, title="Paper test", sat_on=today)
+    PaperVersion.objects.create(paper=quiz_paper, label="A", items=[])
+    open_site = CourseSite.objects.create(
+        code="OPEN-POULTRY", title="Backyard poultry", kind=CourseSite.Kind.OPEN, is_published=True
+    )
+    OpenEntry.objects.create(site=open_site, summary="A small flock.")
+    world.update({"peer_review": peer_review.id, "quiz_paper": quiz_paper.id, "open_site": open_site.id})
+
     # Sessions last: a change of roles or teaching signs a person out.
     sessions = {}
     for role, user in users.items():
@@ -1467,6 +1520,7 @@ def _ai_on(settings):
     settings.AI_ENABLED, settings.AI_MODEL, settings.AI_TIMEOUT_SECONDS = True, "permission-table", 1
     settings.AI_OLLAMA_URL = "http://127.0.0.1:9"
     settings.OPEN_BADGES_ENABLED = True  # off by default: on, a certificate's badge reaches its own checks
+    settings.OPEN_COURSES_ENABLED = True  # off by default: on, the open-course pages reach their own checks
 
 
 @pytest.fixture(scope="module")

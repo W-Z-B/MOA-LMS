@@ -28,6 +28,10 @@ urlpatterns = [
     path("api/v1/", include("practicals.api")),
     path("api/v1/", include("courses.group_api")),
     path("api/v1/", include("rubrics.api")),
+    path("api/v1/", include("similarity.api")),
+    path("api/v1/", include("peerreview.api")),
+    path("api/v1/", include("paperquizzes.api")),
+    path("api/v1/", include("opencourses.api")),
     path("api/v1/", include("courses.api")),
     # --- packaged content, statements, the library and interchange (5.10, 5.12 to 5.14, 6.08, 6.09) ---
     path("api/v1/", include("packages.api")),

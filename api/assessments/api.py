@@ -262,6 +262,9 @@ class AssignmentSerializer(serializers.ModelSerializer):
     my_due_at = serializers.SerializerMethodField(help_text="The caller's own due date, extensions included")
     my_submission = serializers.SerializerMethodField()
     submissions_count = serializers.SerializerMethodField()
+    peer_review = serializers.SerializerMethodField(
+        help_text="Peer review (item 4.13): {reviews_due_at, allocated, released}, or null when it has none"
+    )
 
     class Meta:
         model = Assignment
@@ -297,6 +300,7 @@ class AssignmentSerializer(serializers.ModelSerializer):
             "my_due_at",
             "my_submission",
             "submissions_count",
+            "peer_review",
         )
         read_only_fields = ("marks_released_at",)
 
@@ -363,6 +367,17 @@ class AssignmentSerializer(serializers.ModelSerializer):
     def get_submissions_count(self, obj) -> int | None:
         request = self.context.get("request")
         return obj.submissions.count() if request and can_teach(request.user, obj.site) else None
+
+    @extend_schema_field(OpenApiTypes.OBJECT)
+    def get_peer_review(self, obj) -> dict | None:
+        setup = getattr(obj, "peer_review", None)
+        if setup is None:
+            return None
+        return {
+            "reviews_due_at": setup.reviews_due_at.isoformat(),
+            "allocated": setup.allocated_at is not None,
+            "released": setup.released_at is not None,
+        }
 
 
 # A device clock may run a little fast; further ahead than this it is wrong (as practicals.offline).

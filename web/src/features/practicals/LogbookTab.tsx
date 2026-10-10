@@ -278,7 +278,7 @@ function EntryForm({ siteId, entryId, onNavigate }: { siteId: number; entryId: n
       <div className="grid2">
         <label>
           Date of the work
-          <input type="date" value={draft.work_date} max={localDate()} onChange={(e) => setDraft({ ...draft, work_date: e.target.value })} required />
+          <input type="date" value={draft.work_date} max={localDate()} onChange={(e) => setDraft((prev) => ({ ...prev, work_date: e.target.value }))} required />
         </label>
         <label>
           Hours
@@ -289,13 +289,13 @@ function EntryForm({ siteId, entryId, onNavigate }: { siteId: number; entryId: n
             max={24}
             step="0.25"
             value={draft.hours}
-            onChange={(e) => setDraft({ ...draft, hours: e.target.value })}
+            onChange={(e) => setDraft((prev) => ({ ...prev, hours: e.target.value }))}
             required
           />
         </label>
         <label>
           Where
-          <select value={draft.unit_type} onChange={(e) => setDraft({ ...draft, unit_type: e.target.value as UnitType })}>
+          <select value={draft.unit_type} onChange={(e) => setDraft((prev) => ({ ...prev, unit_type: e.target.value as UnitType }))}>
             {UNIT_TYPES.map((u) => (
               <option key={u.value} value={u.value}>
                 {u.label}
@@ -305,15 +305,15 @@ function EntryForm({ siteId, entryId, onNavigate }: { siteId: number; entryId: n
         </label>
         <label>
           Which unit
-          <input value={draft.unit_text} maxLength={160} placeholder="Pen 3, broilers" onChange={(e) => setDraft({ ...draft, unit_text: e.target.value })} />
+          <input value={draft.unit_text} maxLength={160} placeholder="Pen 3, broilers" onChange={(e) => setDraft((prev) => ({ ...prev, unit_text: e.target.value }))} />
         </label>
         <label className="span2">
           What you did
-          <input value={draft.task} maxLength={300} onChange={(e) => setDraft({ ...draft, task: e.target.value })} required />
+          <input value={draft.task} maxLength={300} onChange={(e) => setDraft((prev) => ({ ...prev, task: e.target.value }))} required />
         </label>
         <label className="span2">
           Notes
-          <textarea value={draft.notes} onChange={(e) => setDraft({ ...draft, notes: e.target.value })} />
+          <textarea value={draft.notes} onChange={(e) => setDraft((prev) => ({ ...prev, notes: e.target.value }))} />
         </label>
       </div>
       {existing && existing.photo_files.length > 0 && <Gallery photos={existing.photo_files} label="Photos already sent" />}

@@ -46,6 +46,16 @@ def now_iso(**delta) -> str:
     return (timezone.now() + timedelta(**delta)).isoformat()
 
 
+def today_iso() -> str:
+    """Today's date, by the server's local (Guyana) calendar day.
+
+    A work date is compared against `timezone.localdate()`, not UTC, so a test that writes "today" for
+    work_date must use this rather than slicing `now_iso()`: between 20:00 and 23:59 Guyana time (00:00-03:59
+    UTC) the UTC calendar date is already tomorrow's, and that date would be refused as in the future.
+    """
+    return timezone.localdate().isoformat()
+
+
 def photo(name="plot 7.jpg"):
     return SimpleUploadedFile(name, b"\xff\xd8\xff\xe0" + b"0" * 64, content_type="image/jpeg")
 

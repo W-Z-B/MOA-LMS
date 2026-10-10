@@ -41,6 +41,8 @@ services:
       DEMO_TOTP_SECRET: *totp
       # seed_journeys writes the fictional invitation links and certificate code here for the journeys.
       JOURNEY_LINKS_FILE: /srv/files/journeys/links.json
+      # Open short courses (item 5.07) are off unless GSA decides; on here so their journeys run.
+      OPEN_COURSES_ENABLED: "1"
       # The desktop and phone runs sign the one fictional lecturer in with the same code at once.
       MFA_REFUSE_REUSED_CODES: "0"
       # Digital badges (item 5.10) are off until GSA's address is settled; the journeys check them.

@@ -303,7 +303,7 @@ export function ContentTab({ data, teaching, onChanged }: Props) {
                             Move to module
                             <select
                               value={destinations[i.id] ?? ""}
-                              onChange={(e) => setDestinations({ ...destinations, [i.id]: e.target.value })}
+                              onChange={(e) => setDestinations((prev) => ({ ...prev, [i.id]: e.target.value }))}
                             >
                               <option value="">Choose…</option>
                               {modules

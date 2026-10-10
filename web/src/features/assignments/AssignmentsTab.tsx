@@ -100,11 +100,21 @@ export function AssignmentsTab({ siteId, teaching }: Props) {
                     <button className="secondary" aria-expanded={open?.id === a.id && open.what === "extensions"} onClick={() => toggle(a.id, "extensions")}>
                       Extensions
                     </button>
+                    <a className="button secondary" href={`#/sites/${siteId}/assignments/${a.id}/peer-review`}>
+                      Peer review
+                    </a>
                   </>
                 ) : (
-                  <button className="secondary" aria-expanded={open?.id === a.id} onClick={() => toggle(a.id, "work")}>
-                    {open?.id === a.id ? "Close" : "Open"}
-                  </button>
+                  <>
+                    <button className="secondary" aria-expanded={open?.id === a.id} onClick={() => toggle(a.id, "work")}>
+                      {open?.id === a.id ? "Close" : "Open"}
+                    </button>
+                    {a.peer_review?.allocated && (
+                      <a className="button secondary" href={`#/sites/${siteId}/assignments/${a.id}/peer-review`}>
+                        Peer review
+                      </a>
+                    )}
+                  </>
                 )}
               </div>
             </div>

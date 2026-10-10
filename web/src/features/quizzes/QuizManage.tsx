@@ -7,6 +7,7 @@ import { BackLink } from "./AttemptPlayer";
 import { QuizQuestions } from "./QuizQuestions";
 import { getAll, plainText, toLocalInput } from "./quizUtil";
 import { QuizSettings } from "./QuizSettings";
+import { PaperQuizzes } from "../assess/PaperQuizzes";
 
 const SECTION_LABEL: Record<QuizSection, string> = {
   settings: "Settings",
@@ -15,6 +16,7 @@ const SECTION_LABEL: Record<QuizSection, string> = {
   marking: "Marking",
   results: "Results",
   statistics: "Statistics",
+  paper: "On paper",
 };
 
 interface Props {
@@ -65,6 +67,7 @@ export function QuizManage({ siteId, quizId, section, onOpen, onBack }: Props) {
       {section === "marking" && <MarkingQueue quiz={quiz} onOpen={onOpen} />}
       {section === "results" && <Results quiz={quiz} onOpen={onOpen} />}
       {section === "statistics" && <Statistics quiz={quiz} />}
+      {section === "paper" && <PaperQuizzes quizId={quiz.id} />}
     </>
   );
 }
@@ -161,7 +164,7 @@ function Overrides({ quiz, siteId }: { quiz: Quiz; siteId: number }) {
         <div className="grid2">
           <label className="span2">
             Student
-            <select value={draft.student} onChange={(e) => setDraft({ ...draft, student: e.target.value })} required>
+            <select value={draft.student} onChange={(e) => setDraft((prev) => ({ ...prev, student: e.target.value }))} required>
               <option value="">Choose…</option>
               {students
                 .filter((s) => !taken.has(s.person_id))
@@ -174,19 +177,19 @@ function Overrides({ quiz, siteId }: { quiz: Quiz; siteId: number }) {
           </label>
           <label>
             Extra minutes
-            <input type="number" min={0} value={draft.extra_minutes} onChange={(e) => setDraft({ ...draft, extra_minutes: e.target.value })} />
+            <input type="number" min={0} value={draft.extra_minutes} onChange={(e) => setDraft((prev) => ({ ...prev, extra_minutes: e.target.value }))} />
           </label>
           <label>
             Extra attempts
-            <input type="number" min={0} value={draft.extra_attempts} onChange={(e) => setDraft({ ...draft, extra_attempts: e.target.value })} />
+            <input type="number" min={0} value={draft.extra_attempts} onChange={(e) => setDraft((prev) => ({ ...prev, extra_attempts: e.target.value }))} />
           </label>
           <label>
             Closes for them (optional)
-            <input type="datetime-local" value={draft.closes_at} min={toLocalInput(quiz.opens_at)} onChange={(e) => setDraft({ ...draft, closes_at: e.target.value })} />
+            <input type="datetime-local" value={draft.closes_at} min={toLocalInput(quiz.opens_at)} onChange={(e) => setDraft((prev) => ({ ...prev, closes_at: e.target.value }))} />
           </label>
           <label>
             Reason (kept for the record; not shown to the student)
-            <input value={draft.reason} maxLength={200} onChange={(e) => setDraft({ ...draft, reason: e.target.value })} />
+            <input value={draft.reason} maxLength={200} onChange={(e) => setDraft((prev) => ({ ...prev, reason: e.target.value }))} />
           </label>
         </div>
         <div className="actions">

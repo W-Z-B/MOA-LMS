@@ -70,6 +70,20 @@ export const PAGES: readonly Page[] = [
   { path: "/library", label: "Content library", desc: "Material and question banks shared across courses, with open resources", roles: ["lecturer", ...ADMIN_ROLES] },
   // --- end packaged content ---
   { path: "/admin", label: "Admin", desc: "Accounts, audit log, integration runs, privacy, access review and course administration", roles: [...new Set([...CONSOLE_ROLES, ...ADMIN_ROLES])] },
+  // --- assessment extras ---
+  {
+    path: "/open-courses",
+    label: "Short courses",
+    desc: "Open short courses to join, and your certificates",
+    for: (me) => me.roles.includes("learner") || hasAnyRole(me, ADMIN_ROLES),
+  },
+  {
+    path: "/help/assessment-and-ai",
+    label: "Assessment and AI",
+    desc: "Guidance for lecturers: the two lanes, declared AI use and the similarity check",
+    for: (me) => teachesOrRuns(me),
+  },
+  // --- end assessment extras ---
   // --- help (item 7.17) ---
   { path: "/help", label: "Help", desc: "How to do each task, step by step, and asking for help" },
   // --- end help ---
@@ -206,10 +220,10 @@ export function classAddress(path: string): { session: number; code: boolean } |
  * #/sites/4/quizzes                       the quizzes of the site
  * #/sites/4/quizzes/banks                 question banks (teaching staff)
  * #/sites/4/quizzes/12                    one quiz; teaching staff also /settings, /questions, /students,
- *                                         /marking, /results and /statistics
+ *                                         /marking, /results and /statistics, and /paper (item 3.24)
  * #/sites/4/quizzes/12/attempts/30        an attempt: answering it, or its review
  */
-export const QUIZ_SECTIONS = ["settings", "questions", "students", "marking", "results", "statistics"] as const;
+export const QUIZ_SECTIONS = ["settings", "questions", "students", "marking", "results", "statistics", "paper"] as const;
 export type QuizSection = (typeof QUIZ_SECTIONS)[number];
 
 export type QuizView =
@@ -229,6 +243,38 @@ export function quizAddress(path: string): QuizView {
 }
 // --- end quizzes ---
 
+// --- assessment extras: peer review, open short courses and the assessment guidance (items 4.13, 5.07, 6.13) ---
+/**
+ * #/sites/4/assignments/12/peer-review   peer review of an assignment (staff overview, or a student's reviews)
+ * #/sites/4/peer-reviews/33              one piece of work to review
+ * #/open-courses                         short courses (public before sign-in; join and certificates after)
+ * #/open-courses/confirm/{token}         the emailed registration link
+ * #/help/assessment-and-ai               guidance for lecturers
+ */
+export type AssessRoute =
+  | { view: "peer-review"; siteId: number; assignmentId: number }
+  | { view: "peer-work"; siteId: number; reviewId: number }
+  | { view: "open-courses" }
+  | { view: "open-confirm"; token: string }
+  | { view: "help-ai" };
+
+export function assessAddress(path: string): AssessRoute | null {
+  const bare = path.split("?")[0].replace(/\/$/, "");
+  const peer = bare.match(/^\/sites\/(\d+)\/assignments\/(\d+)\/peer-review$/);
+  if (peer) return { view: "peer-review", siteId: Number(peer[1]), assignmentId: Number(peer[2]) };
+  const work = bare.match(/^\/sites\/(\d+)\/peer-reviews\/(\d+)$/);
+  if (work) return { view: "peer-work", siteId: Number(work[1]), reviewId: Number(work[2]) };
+  const confirm = bare.match(/^\/open-courses\/confirm\/([A-Za-z0-9_-]+)$/);
+  if (confirm) return { view: "open-confirm", token: confirm[1] };
+  if (bare === "/open-courses") return { view: "open-courses" };
+  if (bare === "/help/assessment-and-ai") return { view: "help-ai" };
+  return null;
+}
+
+/** Who teaches or runs courses: the guidance on assessment and AI is for them. */
+export const teachesOrRuns = (me: Me) =>
+  hasAnyRole(me, ["lecturer", ...ADMIN_ROLES]) || ["lecturer", "course_admin", "admin"].includes(me.persona ?? "");
+// --- end assessment extras ---
 // --- packaged content, the library and interchange (items 5.12 to 5.14, 6.08) ---
 /**
  * #/sites/4/packages/12   a SCORM package or H5P exercise (content item 12), in its player

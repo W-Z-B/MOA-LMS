@@ -102,7 +102,7 @@ export function DateManager({ siteId }: { siteId: number }) {
                           aria-label={`${FIELD[row.field]}: ${row.title}`}
                           value={value}
                           required={row.field === "due_at"}
-                          onChange={(e) => setEdits({ ...edits, [k]: e.target.value })}
+                          onChange={(e) => setEdits((prev) => ({ ...prev, [k]: e.target.value }))}
                         />
                       </td>
                     </tr>
